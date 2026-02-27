@@ -1,1 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DJ Roster — Ark Bar & Love Beach Club</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+:root {
+  /* Ark Bar website palette */
+  --teal:        #5DB8C0;
+  --teal-dark:   #3a9aa3;
+  --teal-light:  #A8D8DC;
+  --teal-pale:   #dff1f3;
+  --teal-bg:     #eaf6f7;
+  --ark-blue:    #2B3990;
+  --ark-orange:  #F15A29;
+  --white:       #ffffff;
+  --text-dark:   #1c2b2d;
+  --text-mid:    #4a6e72;
+  --text-light:  #89b5b9;
+  --border:      #c6e4e7;
+  --border-soft: #daeef0;
+  --radius:      16px;
+  --radius-sm:   10px;
+  --shadow:      0 4px 24px rgba(45,130,140,0.12);
+  --shadow-sm:   0 2px 12px rgba(45,130,140,0.08);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: var(--teal-bg);
+  color: var(--text-dark);
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--teal);
+  padding: 28px 20px 52px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: -80px; left: -80px;
+  width: 240px; height: 240px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%);
+  border-radius: 50%;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 32px;
+  background: var(--teal-bg);
+  border-radius: 32px 32px 0 0;
+}
+
+.header-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.logo-ark {
+  height: 52px;
+  width: auto;
+  object-fit: contain;
+}
+
+.logo-love {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+.logo-divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(255,255,255,0.25);
+}
+
+.header-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 10px;
+}
+
+.header-title {
+  font-size: clamp(28px, 7vw, 40px);
+  font-weight: 900;
+  color: var(--white);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.header-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+/* ── LAYOUT ── */
+.wrap { max-width: 480px; margin: 0 auto; padding: 0 16px; }
+
+/* ── STEPS ── */
+.steps-wrap { padding: 20px 4px 4px; }
+.steps-row { display: flex; align-items: center; }
+.step-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+  color: var(--text-light);
+  flex-shrink: 0;
+  transition: all 0.3s;
+  font-family: 'Montserrat', sans-serif;
+}
+.step-dot.active {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: white;
+  box-shadow: 0 0 0 5px rgba(93,184,192,0.2);
+}
+.step-dot.done {
+  background: var(--teal-dark);
+  border-color: var(--teal-dark);
+  color: white;
+}
+.step-line { flex: 1; height: 2px; background: var(--border-soft); transition: background 0.3s; }
+.step-line.done { background: var(--teal-dark); }
+.step-labels { display: flex; justify-content: space-between; margin-top: 6px; }
+.step-lbl {
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--text-light); width: 32px; text-align: center;
+}
+.step-lbl.active { color: var(--teal-dark); }
+.step-lbl.done { color: var(--teal-dark); }
+
+/* ── CARDS ── */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  margin-top: 14px;
+  display: none;
+  animation: up 0.3s ease;
+  border: 1px solid var(--border-soft);
+}
+.card.active { display: block; }
+@keyframes up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 5px;
+  letter-spacing: -0.01em;
+}
+.card-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-mid);
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+
+/* ── FIELD LABEL ── */
+.field { margin-bottom: 16px; }
+.field-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-mid);
+  margin-bottom: 8px;
+}
+
+/* ── CUSTOM SELECT ── */
+.custom-select { position: relative; }
+
+.custom-select-trigger {
+  width: 100%;
+  padding: 14px 44px 14px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+  background: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  user-select: none;
+  position: relative;
+}
+
+.custom-select-trigger .placeholder { color: var(--text-light); font-weight: 500; }
+.custom-select-trigger .selected-val { color: var(--text-dark); font-weight: 700; }
+
+.custom-select-trigger .arrow {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.25s;
+  color: var(--text-light);
+}
+
+.custom-select.open .custom-select-trigger { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(93,184,192,0.15); }
+.custom-select.open .arrow { transform: translateY(-50%) rotate(180deg); }
+
+.custom-select-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: var(--white);
+  border: 2px solid var(--teal);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 32px rgba(45,130,140,0.18);
+  z-index: 100;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.custom-select.open .custom-select-dropdown {
+  max-height: 320px;
+  opacity: 1;
+  pointer-events: all;
+  overflow-y: auto;
+}
+
+.custom-select-dropdown::-webkit-scrollbar { width: 4px; }
+.custom-select-dropdown::-webkit-scrollbar-track { background: transparent; }
+.custom-select-dropdown::-webkit-scrollbar-thumb { background: var(--teal-light); border-radius: 4px; }
+
+.custom-option {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: 'Montserrat', sans-serif;
+}
+.custom-option:hover { background: var(--teal-pale); color: var(--teal-dark); }
+.custom-option.selected { background: var(--teal-pale); color: var(--teal-dark); font-weight: 700; }
+.custom-option + .custom-option { border-top: 1px solid var(--border-soft); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 15px;
+  border: none; border-radius: var(--radius-sm);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.btn-primary {
+  background: var(--teal);
+  color: white;
+  box-shadow: 0 4px 18px rgba(93,184,192,0.35);
+}
+.btn-primary:hover { background: var(--teal-dark); transform: translateY(-1px); box-shadow: 0 6px 22px rgba(93,184,192,0.4); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-ghost {
+  background: var(--teal-pale);
+  color: var(--text-mid);
+  border: 2px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--teal); color: var(--teal-dark); }
+
+.btn-submit {
+  background: var(--ark-orange);
+  color: white;
+  box-shadow: 0 4px 18px rgba(241,90,41,0.3);
+}
+.btn-submit:hover { background: #d94f22; transform: translateY(-1px); }
+.btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-row { display: flex; gap: 10px; margin-top: 20px; }
+.btn-row .btn-ghost { flex: 1; }
+.btn-row .btn-primary, .btn-row .btn-submit { flex: 2; }
+
+/* ── CALENDAR ── */
+.cal-month-title {
+  font-size: 16px; font-weight: 800;
+  color: var(--teal-dark);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
+  letter-spacing: -0.01em;
+}
+.cal-month-title::after {
+  content: '';
+  flex: 1; height: 2px;
+  background: linear-gradient(90deg, var(--teal-light), transparent);
+  border-radius: 2px;
+}
+
+.day-card {
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: var(--white);
+}
+.day-card.has-slots {
+  border-color: var(--teal);
+  box-shadow: 0 2px 10px rgba(93,184,192,0.15);
+}
+
+.day-header {
+  display: flex; align-items: center;
+  padding: 12px 14px; cursor: pointer;
+  user-select: none; gap: 10px;
+  transition: background 0.15s;
+}
+.day-header:active { background: var(--teal-pale); }
+
+.day-dow {
+  font-size: 12px; font-weight: 800;
+  color: var(--teal-dark); min-width: 34px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.day-date-txt {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-mid); flex: 1;
+}
+.day-badge {
+  background: var(--teal); color: white;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 9px; border-radius: 20px;
+  display: none; font-family: 'Montserrat', sans-serif;
+}
+.day-card.has-slots .day-badge { display: block; }
+
+.day-chevron {
+  color: var(--text-light); font-size: 12px;
+  transition: transform 0.25s; flex-shrink: 0;
+}
+.day-card.open .day-chevron { transform: rotate(180deg); }
+
+.time-picker {
+  display: none;
+  padding: 14px;
+  border-top: 2px solid var(--border-soft);
+  background: var(--teal-bg);
+}
+.day-card.open .time-picker { display: block; }
+
+.range-block {
+  background: white;
+  border: 2px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.range-row {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.range-lbl {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-light); white-space: nowrap; min-width: 28px;
+}
+
+/* ── INLINE TIME SELECTS (native, styled) ── */
+.time-sel {
+  flex: 1;
+  padding: 10px 8px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px; font-weight: 700;
+  color: var(--text-dark);
+  background: white;
+  outline: none;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2389b5b9' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  cursor: pointer;
+  min-width: 0;
+  transition: border-color 0.2s;
+}
+.time-sel:focus { border-color: var(--teal); }
+
+.range-arrow { color: var(--teal-light); font-size: 14px; flex-shrink: 0; }
+
+.remove-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: none; border: none;
+  color: var(--text-light); font-size: 14px;
+  cursor: pointer; padding: 3px 6px;
+  border-radius: 4px; transition: all 0.15s;
+}
+.remove-btn:hover { background: #fde8e0; color: var(--ark-orange); }
+
+.slots-preview {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  margin-top: 10px; min-height: 4px;
+}
+.slot-chip {
+  background: var(--teal);
+  color: white;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 9px; border-radius: 20px;
+  font-family: 'Montserrat', sans-serif;
+  animation: pop 0.18s ease;
+}
+@keyframes pop { from { transform: scale(0.75); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.add-range-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; background: none;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-light);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px; font-weight: 700;
+  padding: 9px; cursor: pointer;
+  transition: all 0.2s; margin-top: 4px;
+}
+.add-range-btn:hover { border-color: var(--teal); color: var(--teal-dark); background: var(--teal-pale); }
+
+.day-note {
+  font-size: 10px; color: var(--text-light);
+  text-align: center; margin-top: 10px;
+  font-weight: 500; font-style: italic;
+}
+
+/* ── SUMMARY ── */
+.summary-header {
+  background: var(--teal);
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+  color: white;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.s-dj { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.s-month { font-size: 11px; font-weight: 500; opacity: 0.75; margin-top: 2px; }
+.s-hours {
+  background: var(--ark-orange);
+  color: white; border-radius: 10px;
+  padding: 8px 14px; text-align: center;
+  flex-shrink: 0;
+}
+.s-hours .num { display: block; font-size: 24px; font-weight: 900; line-height: 1; }
+.s-hours .lbl { font-size: 9px; font-weight: 700; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.1em; }
+
+.summary-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border-soft);
+}
+.summary-row:last-child { border-bottom: none; }
+.s-date { min-width: 66px; }
+.s-dow { font-size: 11px; font-weight: 800; color: var(--teal-dark); text-transform: uppercase; letter-spacing: 0.06em; }
+.s-num { font-size: 11px; color: var(--text-light); font-weight: 500; }
+.s-chips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.s-chip { background: var(--teal-pale); color: var(--teal-dark); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--teal-light); }
+
+
+
+/* ── SUCCESS ── */
+.success {
+  display: none; text-align: center;
+  padding: 48px 24px;
+  background: white; border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-top: 14px;
+  border: 1px solid var(--border-soft);
+  animation: up 0.4s ease;
+}
+.success.show { display: block; }
+.success .icon { font-size: 56px; margin-bottom: 16px; }
+.success h2 { font-size: 24px; font-weight: 800; color: var(--teal-dark); margin-bottom: 8px; letter-spacing: -0.01em; }
+.success p { font-size: 13px; font-weight: 500; color: var(--text-mid); line-height: 1.65; margin-bottom: 24px; }
+.success .reset-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 26px;
+  background: var(--teal-pale); border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px; font-weight: 700; color: var(--text-mid);
+  cursor: pointer; transition: all 0.2s;
+}
+.success .reset-btn:hover { border-color: var(--teal); color: var(--teal-dark); }
+
+/* ── ALL MONTH BUTTON ── */
+.btn-all-month {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 14px 18px;
+  background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+  border: none; border-radius: var(--radius-sm);
+  color: white; cursor: pointer;
+  text-align: left;
+  box-shadow: 0 4px 18px rgba(93,184,192,0.35);
+  transition: all 0.2s;
+  font-family: 'Montserrat', sans-serif;
+}
+.btn-all-month:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(93,184,192,0.45); }
+.btn-all-month.active {
+  background: linear-gradient(135deg, var(--ark-orange), #d94f22);
+  box-shadow: 0 4px 18px rgba(241,90,41,0.35);
+}
+.btn-all-month.active::after {
+  content: '✓ All month selected — tap to clear';
+  font-size: 10px; font-weight: 700;
+  opacity: 0.9;
+}
+
+/* ── FULL DAY BUTTON ── */
+.full-day-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 7px 12px;
+  background: var(--teal-pale);
+  border: 2px solid var(--teal-light);
+  border-radius: 20px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px; font-weight: 700;
+  color: var(--teal-dark);
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.full-day-btn:hover { background: var(--teal); color: white; border-color: var(--teal); }
+.full-day-btn.active { background: var(--teal); color: white; border-color: var(--teal); }
+
+/* ── DIVIDER ── */
+.section-divider {
+  height: 1px; background: var(--border-soft);
+  margin: 4px 0 16px;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-eyebrow">ARKbar Beach Club &amp; Love Beach Club</div>
+  <div class="header-title">DJ Roster</div>
+  <div class="header-sub">Availability Submission</div>
+</div>
+
+<div class="wrap">
+
+  <!-- STEPS -->
+  <div class="steps-wrap">
+    <div class="steps-row">
+      <div class="step-dot active" id="dot1">1</div>
+      <div class="step-line" id="line1"></div>
+      <div class="step-dot" id="dot2">2</div>
+      <div class="step-line" id="line2"></div>
+      <div class="step-dot" id="dot3">3</div>
+    </div>
+    <div class="step-labels">
+      <div class="step-lbl active" id="lbl1">Info</div>
+      <div class="step-lbl" id="lbl2">Dates</div>
+      <div class="step-lbl" id="lbl3">Submit</div>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="card active" id="step1">
+    <div class="card-title">Who are you?</div>
+    <div class="card-sub">Select your DJ name and the month you're submitting availability for.</div>
+
+    <div class="field">
+      <div class="field-label">DJ Name</div>
+      <div class="custom-select" id="cs-dj">
+        <div class="custom-select-trigger" onclick="toggleSelect('cs-dj')">
+          <span class="placeholder" id="cs-dj-label">Select your name</span>
+          <span class="arrow">
+            <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+        </div>
+        <div class="custom-select-dropdown" id="cs-dj-drop">
+          <div class="custom-option" onclick="selectOpt('cs-dj','Alex Redwhite')">Alex Redwhite</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Raffo')">Raffo</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Spice')">Spice</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Tony')">Tony</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Laina')">Laina</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Cocoa')">Cocoa</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Mostyx')">Mostyx</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Jessi')">Jessi</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Sound Bogie')">Sound Bogie</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Davoted')">Davoted</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Buba')">Buba</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Vozka')">Vozka</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Pick')">Pick</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Sky')">Sky</div>
+          <div class="custom-option" onclick="selectOpt('cs-dj','Guest DJ')">Guest DJ</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Month</div>
+      <div class="custom-select" id="cs-mo">
+        <div class="custom-select-trigger" onclick="toggleSelect('cs-mo')">
+          <span class="placeholder" id="cs-mo-label">Select month</span>
+          <span class="arrow">
+            <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+        </div>
+        <div class="custom-select-dropdown" id="cs-mo-drop">
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="goStep2()">Next — Select Dates →</button>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card" id="step2">
+    <div class="card-title">Your availability</div>
+    <div class="card-sub">Tap a date to open it, or use the quick options below.</div>
+
+    <div id="all-month-wrap" style="margin-bottom:14px;">
+      <button class="btn-all-month" id="all-month-btn" onclick="toggleAllMonth()">
+        <span style="font-size:18px;">📅</span>
+        <div>
+          <div style="font-size:13px;font-weight:800;">Available All Month</div>
+          <div style="font-size:10px;font-weight:500;opacity:0.75;">14:00 – 02:00 every day · tap again to clear</div>
+        </div>
+      </button>
+    </div>
+
+    <div id="cal"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep1()">← Back</button>
+      <button class="btn btn-primary" onclick="goStep3()">Review →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card" id="step3">
+    <div class="card-title">Review & Submit</div>
+    <div class="card-sub">Check your availability below, then submit.</div>
+    <div id="summary"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep2()">← Back</button>
+      <button class="btn btn-submit" id="sub-btn" onclick="doSubmit()">✓ Submit Availability</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="success" id="success">
+    <div class="icon">🎧</div>
+    <h2>All done!</h2>
+    <p id="suc-msg"></p>
+    <button class="reset-btn" onclick="resetAll()">↩ Submit for another month</button>
+  </div>
+
+</div>
+
+<script>
+const SLOTS = ['14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00','00:00','01:00','02:00'];
+const DS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DF=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+let st={}, djName='', moKey='', moLabel='';
+const selectVals = { 'cs-dj': '', 'cs-mo': '' };
+const selectKeys = { 'cs-mo': {} };
+
+/* ── CUSTOM SELECT ── */
+function toggleSelect(id) {
+  const el = document.getElementById(id);
+  const isOpen = el.classList.contains('open');
+  // close all
+  document.querySelectorAll('.custom-select.open').forEach(s => s.classList.remove('open'));
+  if(!isOpen) el.classList.add('open');
+}
+
+function selectOpt(id, label, key) {
+  const el    = document.getElementById(id);
+  const lbl   = document.getElementById(id+'-label');
+  lbl.textContent = label;
+  lbl.className   = 'selected-val';
+  selectVals[id]  = label;
+  if(key) selectVals[id+'_key'] = key;
+  // mark selected
+  el.querySelectorAll('.custom-option').forEach(o => {
+    o.classList.toggle('selected', o.textContent === label);
+  });
+  el.classList.remove('open');
+}
+
+// Close on outside click
+document.addEventListener('click', e => {
+  if(!e.target.closest('.custom-select')) {
+    document.querySelectorAll('.custom-select.open').forEach(s => s.classList.remove('open'));
+  }
+});
+
+/* ── STEP NAV ── */
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('step'+i).classList.toggle('active', i===n);
+    const d=document.getElementById('dot'+i), l=document.getElementById('lbl'+i);
+    d.className='step-dot'+(i===n?' active':i<n?' done':'');
+    l.className='step-lbl'+(i===n?' active':i<n?' done':'');
+    if(i<3) document.getElementById('line'+i).className='step-line'+(i<n?' done':'');
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function goStep2() {
+  djName  = selectVals['cs-dj'];
+  moKey   = selectVals['cs-mo_key'];
+  moLabel = selectVals['cs-mo'];
+  if(!djName||!moKey){alert('Please select your DJ name and month.');return;}
+  buildCal(); setStep(2);
+}
+function goStep3() { buildSummary(); setStep(3); }
+function goStep1() { setStep(1); }
+
+/* ── CALENDAR ── */
+function buildCal() {
+  const el=document.getElementById('cal'); el.innerHTML='';
+  const [y,m] = moKey.split('-').map(Number);
+  const mo = m-1;
+  const h=document.createElement('div'); h.className='cal-month-title'; h.textContent=moLabel; el.appendChild(h);
+  const days=new Date(y,mo+1,0).getDate();
+  for(let d=1;d<=days;d++){
+    const date=new Date(y,mo,d), dow=date.getDay();
+    const key=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(!st[key]) st[key]=[];
+    el.appendChild(makeDayCard(key,d,dow,mo));
+  }
+}
+
+function makeDayCard(key,d,dow,m) {
+  const card=document.createElement('div');
+  card.className='day-card'; card.id='dc-'+key;
+  card.innerHTML=`
+    <div class="day-header" onclick="toggleDay('${key}')">
+      <div class="day-dow">${DS[dow]}</div>
+      <div class="day-date-txt">${d} ${MN[m]}</div>
+      <button class="full-day-btn" id="fdb-${key}" onclick="toggleFullDay('${key}');event.stopPropagation()">⚡ Full Day</button>
+      <div class="day-badge" id="badge-${key}"></div>
+      <div class="day-chevron">▾</div>
+    </div>
+    <div class="time-picker" id="tp-${key}">
+      <div id="ranges-${key}"></div>
+      <button class="add-range-btn" onclick="addRange('${key}');event.stopPropagation()">＋ Add another time range</button>
+      <div class="day-note">Leave closed if not available this day</div>
+    </div>`;
+  return card;
+}
+
+function setFullDay(key) {
+  // Clear existing ranges
+  st[key] = [];
+  document.getElementById('ranges-'+key).innerHTML = '';
+  // Add full day range 14:00 - 02:00
+  const idx = 0;
+  st[key].push({start:'14:00', end:'02:00'});
+  const wrap = document.createElement('div');
+  wrap.className = 'range-block'; wrap.id = `rb-${key}-0`;
+  wrap.innerHTML = `
+    <div class="range-row">
+      <div class="range-lbl">From</div>
+      <select class="time-sel" id="s-${key}-0" onchange="onRC('${key}',0)"></select>
+      <div class="range-arrow">→</div>
+      <select class="time-sel" id="e-${key}-0" onchange="onRC('${key}',0)"></select>
+      <div class="range-lbl">To</div>
+    </div>
+    <div class="slots-preview" id="pv-${key}-0"></div>`;
+  document.getElementById('ranges-'+key).appendChild(wrap);
+  populateTimeSelects(key, 0);
+  // Force select values
+  const s = document.getElementById(`s-${key}-0`);
+  const e = document.getElementById(`e-${key}-0`);
+  if(s) s.value = '14:00';
+  rebuildEndOptions(key, 0);
+  if(e) e.value = '02:00';
+  st[key][0] = {start:'14:00', end:'02:00'};
+  // Update preview chips
+  const pv = document.getElementById(`pv-${key}-0`);
+  if(pv){ pv.innerHTML=''; getSlots('14:00','02:00').forEach(slot=>{ const c=document.createElement('div'); c.className='slot-chip'; c.textContent=slot; pv.appendChild(c); }); }
+  refreshBadge(key);
+}
+
+function clearDay(key) {
+  st[key] = [];
+  document.getElementById('ranges-'+key).innerHTML = '';
+  refreshBadge(key);
+}
+
+function toggleFullDay(key) {
+  const btn = document.getElementById(`fdb-${key}`);
+  const card = document.getElementById(`dc-${key}`);
+  const isFullDay = btn.classList.contains('active');
+  if(isFullDay) {
+    clearDay(key);
+    btn.classList.remove('active');
+    btn.textContent = '⚡ Full Day';
+    card.classList.remove('open');
+  } else {
+    setFullDay(key);
+    btn.classList.add('active');
+    btn.textContent = '✓ Full Day';
+    card.classList.remove('open'); // collapse after setting
+  }
+  // Sync all-month button state
+  syncAllMonthBtn();
+}
+
+let allMonthActive = false;
+function toggleAllMonth() {
+  allMonthActive = !allMonthActive;
+  const btn = document.getElementById('all-month-btn');
+  // Get all day keys from current calendar
+  const keys = Object.keys(st);
+  if(allMonthActive) {
+    btn.classList.add('active');
+    btn.querySelector('div > div:first-child').textContent = '✓ All Month Selected';
+    btn.querySelector('div > div:last-child').textContent = 'Tap again to clear all';
+    keys.forEach(k => setFullDay(k));
+    // Mark all full-day buttons active
+    keys.forEach(k => {
+      const b = document.getElementById(`fdb-${k}`);
+      if(b){ b.classList.add('active'); b.textContent='✓ Full Day'; }
+    });
+  } else {
+    btn.classList.remove('active');
+    btn.querySelector('div > div:first-child').textContent = 'Available All Month';
+    btn.querySelector('div > div:last-child').textContent = '14:00 – 02:00 every day · tap again to clear';
+    keys.forEach(k => clearDay(k));
+    keys.forEach(k => {
+      const b = document.getElementById(`fdb-${k}`);
+      if(b){ b.classList.remove('active'); b.textContent='⚡ Full Day'; }
+    });
+  }
+}
+
+function syncAllMonthBtn() {
+  const keys = Object.keys(st);
+  const allFull = keys.length > 0 && keys.every(k => {
+    const r = st[k][0];
+    return r && r.start==='14:00' && r.end==='02:00' && st[k].filter(x=>x!==null).length===1;
+  });
+  const btn = document.getElementById('all-month-btn');
+  if(!btn) return;
+  if(allFull) {
+    allMonthActive = true;
+    btn.classList.add('active');
+  } else {
+    allMonthActive = false;
+    btn.classList.remove('active');
+  }
+}
+
+
+function toggleDay(key) {
+  const c=document.getElementById('dc-'+key);
+  c.classList.toggle('open');
+  if(c.classList.contains('open')&&st[key].length===0) addRange(key);
+}
+
+function addRange(key) {
+  const idx=st[key].length; st[key].push({start:'',end:''});
+  const wrap=document.createElement('div');
+  wrap.className='range-block'; wrap.id=`rb-${key}-${idx}`;
+  wrap.innerHTML=`
+    ${idx>0?`<button class="remove-btn" onclick="removeRange('${key}',${idx});event.stopPropagation()">✕</button>`:''}
+    <div class="range-row">
+      <div class="range-lbl">From</div>
+      <select class="time-sel" id="s-${key}-${idx}" onchange="onRC('${key}',${idx})">
+        <option value="">Start</option>
+      </select>
+      <div class="range-arrow">→</div>
+      <select class="time-sel" id="e-${key}-${idx}" onchange="onRC('${key}',${idx})">
+        <option value="">End</option>
+      </select>
+      <div class="range-lbl">To</div>
+    </div>
+    <div class="slots-preview" id="pv-${key}-${idx}"></div>`;
+  document.getElementById('ranges-'+key).appendChild(wrap);
+  populateTimeSelects(key, idx);
+}
+
+function getUsedSlots(key, excludeIdx) {
+  const used = new Set();
+  (st[key]||[]).forEach((r,i) => {
+    if(i===excludeIdx || !r || !r.start || !r.end) return;
+    getSlots(r.start, r.end).forEach(s => used.add(s));
+  });
+  return used;
+}
+
+function populateTimeSelects(key, idx) {
+  const usedSlots = getUsedSlots(key, idx);
+  const usedStartTimes = new Set();
+  usedSlots.forEach(s => { usedStartTimes.add(s.split('–')[0]); usedStartTimes.add(s.split('–')[1]); });
+
+  const startEl = document.getElementById(`s-${key}-${idx}`);
+  const endEl   = document.getElementById(`e-${key}-${idx}`);
+  if(!startEl || !endEl) return;
+
+  const curStart = startEl.value;
+  const curEnd   = endEl.value;
+
+  startEl.innerHTML = '<option value="">Start</option>';
+  SLOTS.forEach(t => {
+    const blocked = [...usedSlots].some(s => {
+      const [a,b] = s.split('–');
+      const si=SLOTS.indexOf(a), ei=SLOTS.indexOf(b), ti=SLOTS.indexOf(t);
+      return ti>=si && ti<ei;
+    });
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    if(blocked){ opt.disabled=true; opt.style.color='#ccc'; opt.textContent = t+' (taken)'; }
+    if(t===curStart) opt.selected=true;
+    startEl.appendChild(opt);
+  });
+
+  // Rebuild end options based on selected start
+  rebuildEndOptions(key, idx);
+}
+
+function rebuildEndOptions(key, idx) {
+  const startEl = document.getElementById(`s-${key}-${idx}`);
+  const endEl   = document.getElementById(`e-${key}-${idx}`);
+  if(!startEl || !endEl) return;
+
+  const start = startEl.value;
+  const curEnd = endEl.value;
+  const usedSlots = getUsedSlots(key, idx);
+
+  endEl.innerHTML = '<option value="">End</option>';
+  if(!start) return;
+
+  const startIdx = SLOTS.indexOf(start);
+  for(let i=startIdx+1; i<SLOTS.length; i++){
+    const t = SLOTS[i];
+    // Check if any slot between start and this end would overlap
+    let blocked = false;
+    for(let j=startIdx; j<i; j++){
+      const slotLabel = `${SLOTS[j]}–${SLOTS[j+1]}`;
+      if(usedSlots.has(slotLabel)){ blocked=true; break; }
+    }
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    if(blocked){ opt.disabled=true; opt.style.color='#ccc'; opt.textContent = t+' (overlap)'; }
+    if(t===curEnd) opt.selected=true;
+    endEl.appendChild(opt);
+    if(blocked) break; // stop offering options past first overlap
+  }
+}
+
+function removeRange(key,idx) {
+  st[key][idx]=null;
+  const el=document.getElementById(`rb-${key}-${idx}`);
+  if(el) el.remove();
+  // Repopulate remaining ranges
+  st[key].forEach((_,i) => { if(st[key][i]!==null) populateTimeSelects(key,i); });
+  refreshBadge(key);
+}
+
+function onRC(key,idx) {
+  const s=document.getElementById(`s-${key}-${idx}`)?.value||'';
+  const e=document.getElementById(`e-${key}-${idx}`)?.value||'';
+  if(st[key][idx]!==null) st[key][idx]={start:s,end:e};
+  rebuildEndOptions(key,idx);
+  const pv=document.getElementById(`pv-${key}-${idx}`);
+  if(pv){ pv.innerHTML=''; getSlots(s,e).forEach(slot=>{ const c=document.createElement('div'); c.className='slot-chip'; c.textContent=slot; pv.appendChild(c); }); }
+  // Update other ranges in same day
+  st[key].forEach((_,i)=>{ if(i!==idx && st[key][i]!==null) populateTimeSelects(key,i); });
+  refreshBadge(key);
+}
+
+function getSlots(s,e) {
+  const si=SLOTS.indexOf(s),ei=SLOTS.indexOf(e);
+  if(si<0||ei<0||si>=ei) return [];
+  return Array.from({length:ei-si},(_,i)=>`${SLOTS[si+i]}–${SLOTS[si+i+1]}`);
+}
+
+function allSlotsForDay(key) {
+  const res=[];
+  (st[key]||[]).forEach(r=>{ if(r&&r.start&&r.end) getSlots(r.start,r.end).forEach(s=>{ if(!res.includes(s)) res.push(s); }); });
+  return res;
+}
+
+function refreshBadge(key) {
+  const slots=allSlotsForDay(key);
+  document.getElementById('dc-'+key).classList.toggle('has-slots',slots.length>0);
+  const b=document.getElementById('badge-'+key);
+  if(b) b.textContent=slots.length?`${slots.length}h`:'';
+}
+
+/* ── SUMMARY ── */
+function buildSummary() {
+  const el=document.getElementById('summary'); el.innerHTML='';
+  const entries=Object.keys(st).map(k=>({k,slots:allSlotsForDay(k)})).filter(e=>e.slots.length>0).sort((a,b)=>a.k.localeCompare(b.k));
+  const total=entries.reduce((s,e)=>s+e.slots.length,0);
+  el.innerHTML=`<div class="summary-header"><div><div class="s-dj">${djName}</div><div class="s-month">${moLabel}</div></div><div class="s-hours"><span class="num">${total}</span><span class="lbl">hours</span></div></div>`;
+  if(!entries.length){el.innerHTML+='<p style="text-align:center;color:var(--text-light);padding:20px;font-size:12px;font-weight:600">No availability selected. Go back and mark your dates.</p>';return;}
+  entries.forEach(({k,slots})=>{
+    const [y,m,d]=k.split('-');
+    const dow=new Date(+y,+m-1,+d).getDay();
+    const row=document.createElement('div'); row.className='summary-row';
+    row.innerHTML=`<div class="s-date"><div class="s-dow">${DS[dow]}</div><div class="s-num">${+d} ${MN[+m-1]}</div></div><div class="s-chips">${slots.map(s=>`<div class="s-chip">${s}</div>`).join('')}</div>`;
+    el.appendChild(row);
+  });
+}
+
+/* ── SUBMIT ── */
+const WEBHOOK = 'https://hook.eu2.make.com/45cdesq5s9kk6dd68a6sy87ir8v5zhv4';
+const MN_LONG=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// Build next 3 months dynamically
+document.addEventListener('DOMContentLoaded', function buildMonthOptions(){
+  const drop = document.getElementById('cs-mo-drop');
+  const now = new Date();
+  for(let i=1; i<=3; i++){
+    const d = new Date(now.getFullYear(), now.getMonth()+i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const label = `${MN_LONG[m]} ${y}`;
+    const key   = `${y}-${String(m+1).padStart(2,'0')}`;
+    const opt = document.createElement('div');
+    opt.className = 'custom-option';
+    opt.textContent = label;
+    opt.onclick = () => selectOpt('cs-mo', label, key);
+    if(i>1) opt.style.borderTop = '1px solid var(--border-soft)';
+    drop.appendChild(opt);
+  }
+});
+
+async function doSubmit() {
+  const btn=document.getElementById('sub-btn');
+  const entries=Object.keys(st).map(k=>({k,slots:allSlotsForDay(k)})).filter(e=>e.slots.length>0).sort((a,b)=>a.k.localeCompare(b.k));
+  if(!entries.length){alert('No availability selected. Please go back and mark your dates.');return;}
+  btn.disabled=true; btn.textContent='Submitting...';
+  const now=new Date().toISOString(), rows=[];
+  entries.forEach(({k,slots})=>{
+    const [y,m,d]=k.split('-');
+    const dow=new Date(+y,+m-1,+d).getDay();
+    slots.forEach(slot=>rows.push({timestamp:now,dj:djName,month:moLabel,date:k,day:DF[dow],slot}));
+  });
+  const payload={dj:djName,month:moLabel,submitted_at:now,total_hours:rows.length,rows};
+  try{ await fetch(WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),mode:'no-cors'}); }catch(e){}
+  showSuccess(rows.length);
+}
+
+function showSuccess(hours) {
+  document.getElementById('step3').classList.remove('active');
+  const s=document.getElementById('success'); s.classList.add('show');
+  document.getElementById('suc-msg').innerHTML=`<strong>${djName}</strong> — ${moLabel}<br>${hours} hour slot${hours!==1?'s':''} submitted successfully ✓<br><br>The team will be in touch with your schedule.`;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function resetAll() {
+  allMonthActive = false;
+  st={}; djName=''; moKey=''; moLabel='';
+  ['cs-dj','cs-mo'].forEach(id=>{
+    selectVals[id]='';
+    const lbl=document.getElementById(id+'-label');
+    lbl.className='placeholder';
+    lbl.textContent=id==='cs-dj'?'Select your name':'Select month';
+    document.querySelectorAll(`#${id}-drop .custom-option`).forEach(o=>o.classList.remove('selected'));
+  });
+  document.getElementById('cal').innerHTML='';
+  document.getElementById('summary').innerHTML='';
+  document.getElementById('success').classList.remove('show');
+  const btn=document.getElementById('sub-btn'); btn.disabled=false; btn.textContent='✓ Submit Availability';
+  setStep(1);
+}
+</script>
+</body>
+</html>
