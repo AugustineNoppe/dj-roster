@@ -190,6 +190,43 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 .grid-wrap::-webkit-scrollbar { height: 6px; }
 .grid-wrap::-webkit-scrollbar-track { background: transparent; }
 .grid-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* LOCKED STATE */
+.roster-locked .slot-select:not(.no-avail) {
+  pointer-events: none;
+  opacity: 0.95;
+}
+.roster-locked .slot-select.unassigned {
+  opacity: 0.4;
+}
+
+/* PRINT */
+@media print {
+  @page { size: A3 landscape; margin: 8mm; }
+  body { background: white; }
+  .login-wrap { display: none !important; }
+  .app-header, .venue-bar, .status-bar { display: none !important; }
+  .main-content { padding: 0 !important; overflow: visible !important; }
+  .app { display: block !important; min-height: unset; }
+  .grid-wrap { box-shadow: none; overflow: visible !important; }
+  .roster-table { font-size: 8px; }
+  .roster-table thead th { font-size: 7px; padding: 4px 2px; }
+  .td-date { font-size: 8px; padding: 4px 6px; min-width: 70px; }
+  .td-slot { min-width: 52px; padding: 2px; }
+  .slot-select { font-size: 8px; padding: 2px; min-height: 20px; border-radius: 3px; }
+  .slot-select.unassigned { display: none; }
+  .slot-select.no-avail { display: none; }
+  .empty-slot { display: none; }
+  .print-header { display: block !important; }
+}
+.print-header {
+  display: none;
+  text-align: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--navy);
+}
 </style>
 </head>
 <body>
@@ -225,6 +262,7 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
   </div>
 
   <div class="main-content" id="mainContent">
+    <div class="print-header" id="printHeader"></div>
     <div class="loading"><div class="spinner"></div>Loading...</div>
   </div>
 
@@ -233,6 +271,7 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
     <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
       <button class="btn-sm btn-suggest" onclick="suggestRoster()">Auto-suggest</button>
+      <button class="btn-sm" onclick="window.open('/hours','_blank')" style="background:var(--teal-light);color:var(--navy);border:1.5px solid var(--teal);">DJ Hours</button>
       <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:white;">Print / PDF</button>
     </div>
@@ -515,6 +554,9 @@ function buildCell(dateStr, slot, type) {
 }
 
 async function assignDJ(sel) {
+  // Blocked if published/locked
+  if (isPublished) return;
+
   const date = sel.dataset.date;
   const slot = sel.dataset.slot;
   const type = sel.dataset.type;
@@ -522,19 +564,40 @@ async function assignDJ(sel) {
   const key = `${date}|${slot}`;
   const venueParam = type === 'love' ? 'love' : 'arkbar';
 
-  // Max 6 slots per DJ per day
   if (dj) {
+    // Max 6 slots per DJ per day
     const dayAssignments = Object.entries(rosterAssignments)
       .filter(([k, v]) => k.startsWith(date) && v === dj);
     if (dayAssignments.length >= 6) {
       showToast(`${dj} already has 6 slots on this day`, 'error');
-      sel.value = assigned || '';
+      sel.value = '';
       return;
     }
-  }
 
-  // Cross-venue conflict check
-  if (dj) {
+    // Max 3 consecutive slots
+    const allSlots = type === 'love'
+      ? [...LOVE_SAT_SLOTS]
+      : [...ARKBAR_SLOTS, ...HIP_SLOTS];
+    const slotIdx = allSlots.indexOf(slot);
+    if (slotIdx >= 0) {
+      // Count consecutive slots before and after
+      let before = 0, after = 0;
+      for (let i = slotIdx - 1; i >= 0; i--) {
+        if (rosterAssignments[`${date}|${allSlots[i]}`] === dj) before++;
+        else break;
+      }
+      for (let i = slotIdx + 1; i < allSlots.length; i++) {
+        if (rosterAssignments[`${date}|${allSlots[i]}`] === dj) after++;
+        else break;
+      }
+      if (before + after >= 3) {
+        showToast(`${dj} can't play more than 3 slots in a row`, 'error');
+        sel.value = '';
+        return;
+      }
+    }
+
+    // Cross-venue conflict check
     const otherAssignments = Object.entries(type === 'love' ? arkbarAssignments : loveAssignments)
       .filter(([k, v]) => k.startsWith(date) && v === dj);
     if (otherAssignments.length > 0) {
@@ -596,7 +659,8 @@ function publishRoster() {
     document.getElementById('statusText').textContent = `Published — ${MONTHS[currentMonth]} ${currentYear}`;
     document.getElementById('btnPublish').textContent = 'Unlock Roster';
     document.getElementById('btnPrint').style.display = 'inline-block';
-    showToast('Roster published!', 'success');
+    document.getElementById('mainContent').classList.add('roster-locked');
+    showToast('Roster published — locked for editing', 'success');
   } else {
     isPublished = false;
     document.getElementById('statusPill').className = 'status-pill draft';
@@ -604,11 +668,15 @@ function publishRoster() {
     document.getElementById('statusText').textContent = 'Unsaved changes will auto-save per cell';
     document.getElementById('btnPublish').textContent = 'Publish Roster';
     document.getElementById('btnPrint').style.display = 'none';
+    document.getElementById('mainContent').classList.remove('roster-locked');
     showToast('Roster unlocked for editing', '');
   }
 }
 
 function printRoster() {
+  const venue = currentVenue === 'arkbar' ? 'ARKbar / HIP Restaurant' : 'Love Beach Club';
+  document.getElementById('printHeader').textContent =
+    `${venue} — DJ Roster — ${MONTHS[currentMonth]} ${currentYear}`;
   window.print();
 }
 
