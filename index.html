@@ -503,6 +503,45 @@ body {
 }
 .success .reset-btn:hover { border-color: var(--teal); color: var(--teal-dark); }
 
+/* ── ALL MONTH BUTTON ── */
+.btn-all-month {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 14px 18px;
+  background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+  border: none; border-radius: var(--radius-sm);
+  color: white; cursor: pointer;
+  text-align: left;
+  box-shadow: 0 4px 18px rgba(93,184,192,0.35);
+  transition: all 0.2s;
+  font-family: 'Montserrat', sans-serif;
+}
+.btn-all-month:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(93,184,192,0.45); }
+.btn-all-month.active {
+  background: linear-gradient(135deg, var(--ark-orange), #d94f22);
+  box-shadow: 0 4px 18px rgba(241,90,41,0.35);
+}
+.btn-all-month.active::after {
+  content: '✓ All month selected — tap to clear';
+  font-size: 10px; font-weight: 700;
+  opacity: 0.9;
+}
+
+/* ── FULL DAY BUTTON ── */
+.full-day-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 7px 12px;
+  background: var(--teal-pale);
+  border: 2px solid var(--teal-light);
+  border-radius: 20px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px; font-weight: 700;
+  color: var(--teal-dark);
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.full-day-btn:hover { background: var(--teal); color: white; border-color: var(--teal); }
+.full-day-btn.active { background: var(--teal); color: white; border-color: var(--teal); }
+
 /* ── DIVIDER ── */
 .section-divider {
   height: 1px; background: var(--border-soft);
@@ -591,7 +630,18 @@ body {
   <!-- STEP 2 -->
   <div class="card" id="step2">
     <div class="card-title">Your availability</div>
-    <div class="card-sub">Tap a date to open it. Set a start and end time. Add a second range if you're available day <em>and</em> night with a break in between.</div>
+    <div class="card-sub">Tap a date to open it, or use the quick options below.</div>
+
+    <div id="all-month-wrap" style="margin-bottom:14px;">
+      <button class="btn-all-month" id="all-month-btn" onclick="toggleAllMonth()">
+        <span style="font-size:18px;">📅</span>
+        <div>
+          <div style="font-size:13px;font-weight:800;">Available All Month</div>
+          <div style="font-size:10px;font-weight:500;opacity:0.75;">14:00 – 02:00 every day · tap again to clear</div>
+        </div>
+      </button>
+    </div>
+
     <div id="cal"></div>
     <div class="btn-row">
       <button class="btn btn-ghost" onclick="goStep1()">← Back</button>
@@ -705,6 +755,7 @@ function makeDayCard(key,d,dow,m) {
     <div class="day-header" onclick="toggleDay('${key}')">
       <div class="day-dow">${DS[dow]}</div>
       <div class="day-date-txt">${d} ${MN[m]}</div>
+      <button class="full-day-btn" id="fdb-${key}" onclick="toggleFullDay('${key}');event.stopPropagation()">⚡ Full Day</button>
       <div class="day-badge" id="badge-${key}"></div>
       <div class="day-chevron">▾</div>
     </div>
@@ -716,7 +767,110 @@ function makeDayCard(key,d,dow,m) {
   return card;
 }
 
-function toggleDay(key) {
+function setFullDay(key) {
+  // Clear existing ranges
+  st[key] = [];
+  document.getElementById('ranges-'+key).innerHTML = '';
+  // Add full day range 14:00 - 02:00
+  const idx = 0;
+  st[key].push({start:'14:00', end:'02:00'});
+  const wrap = document.createElement('div');
+  wrap.className = 'range-block'; wrap.id = `rb-${key}-0`;
+  wrap.innerHTML = `
+    <div class="range-row">
+      <div class="range-lbl">From</div>
+      <select class="time-sel" id="s-${key}-0" onchange="onRC('${key}',0)"></select>
+      <div class="range-arrow">→</div>
+      <select class="time-sel" id="e-${key}-0" onchange="onRC('${key}',0)"></select>
+      <div class="range-lbl">To</div>
+    </div>
+    <div class="slots-preview" id="pv-${key}-0"></div>`;
+  document.getElementById('ranges-'+key).appendChild(wrap);
+  populateTimeSelects(key, 0);
+  // Force select values
+  const s = document.getElementById(`s-${key}-0`);
+  const e = document.getElementById(`e-${key}-0`);
+  if(s) s.value = '14:00';
+  rebuildEndOptions(key, 0);
+  if(e) e.value = '02:00';
+  st[key][0] = {start:'14:00', end:'02:00'};
+  // Update preview chips
+  const pv = document.getElementById(`pv-${key}-0`);
+  if(pv){ pv.innerHTML=''; getSlots('14:00','02:00').forEach(slot=>{ const c=document.createElement('div'); c.className='slot-chip'; c.textContent=slot; pv.appendChild(c); }); }
+  refreshBadge(key);
+}
+
+function clearDay(key) {
+  st[key] = [];
+  document.getElementById('ranges-'+key).innerHTML = '';
+  refreshBadge(key);
+}
+
+function toggleFullDay(key) {
+  const btn = document.getElementById(`fdb-${key}`);
+  const card = document.getElementById(`dc-${key}`);
+  const isFullDay = btn.classList.contains('active');
+  if(isFullDay) {
+    clearDay(key);
+    btn.classList.remove('active');
+    btn.textContent = '⚡ Full Day';
+    card.classList.remove('open');
+  } else {
+    setFullDay(key);
+    btn.classList.add('active');
+    btn.textContent = '✓ Full Day';
+    card.classList.remove('open'); // collapse after setting
+  }
+  // Sync all-month button state
+  syncAllMonthBtn();
+}
+
+let allMonthActive = false;
+function toggleAllMonth() {
+  allMonthActive = !allMonthActive;
+  const btn = document.getElementById('all-month-btn');
+  // Get all day keys from current calendar
+  const keys = Object.keys(st);
+  if(allMonthActive) {
+    btn.classList.add('active');
+    btn.querySelector('div > div:first-child').textContent = '✓ All Month Selected';
+    btn.querySelector('div > div:last-child').textContent = 'Tap again to clear all';
+    keys.forEach(k => setFullDay(k));
+    // Mark all full-day buttons active
+    keys.forEach(k => {
+      const b = document.getElementById(`fdb-${k}`);
+      if(b){ b.classList.add('active'); b.textContent='✓ Full Day'; }
+    });
+  } else {
+    btn.classList.remove('active');
+    btn.querySelector('div > div:first-child').textContent = 'Available All Month';
+    btn.querySelector('div > div:last-child').textContent = '14:00 – 02:00 every day · tap again to clear';
+    keys.forEach(k => clearDay(k));
+    keys.forEach(k => {
+      const b = document.getElementById(`fdb-${k}`);
+      if(b){ b.classList.remove('active'); b.textContent='⚡ Full Day'; }
+    });
+  }
+}
+
+function syncAllMonthBtn() {
+  const keys = Object.keys(st);
+  const allFull = keys.length > 0 && keys.every(k => {
+    const r = st[k][0];
+    return r && r.start==='14:00' && r.end==='02:00' && st[k].filter(x=>x!==null).length===1;
+  });
+  const btn = document.getElementById('all-month-btn');
+  if(!btn) return;
+  if(allFull) {
+    allMonthActive = true;
+    btn.classList.add('active');
+  } else {
+    allMonthActive = false;
+    btn.classList.remove('active');
+  }
+}
+
+
   const c=document.getElementById('dc-'+key);
   c.classList.toggle('open');
   if(c.classList.contains('open')&&st[key].length===0) addRange(key);
@@ -916,6 +1070,7 @@ function showSuccess(hours) {
 }
 
 function resetAll() {
+  allMonthActive = false;
   st={}; djName=''; moKey=''; moLabel='';
   ['cs-dj','cs-mo'].forEach(id=>{
     selectVals[id]='';
