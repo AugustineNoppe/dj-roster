@@ -102,7 +102,7 @@ app.post('/api/roster/assign', async (req, res) => {
     } catch(e) {}
 
     // Match on date + slot + month
-    const rowIndex = existingRows.findIndex(r => r[0] === date && r[1] === slot && r[3] === month);
+    const normalize = s => (s || '').toString().trim().replace(/\u2013/g, '\u2013').normalize(); const rowIndex = existingRows.findIndex(r =>    normalize(r[0]) === normalize(date) &&    normalize(r[1]) === normalize(slot) &&    normalize(r[3]) === normalize(month) );
 
     if (rowIndex >= 0) {
       if (dj) {
