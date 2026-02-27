@@ -248,10 +248,11 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
   <div class="status-bar">
     <div class="status-pill draft" id="statusPill">● Draft</div>
     <span id="statusText">Unsaved changes will auto-save per cell</span>
-    <div class="status-bar-right">
-      <button class="btn-sm btn-suggest" onclick="suggestRoster()">✨ Auto-suggest</button>
-      <button class="btn-sm btn-publish" onclick="publishRoster()">🔒 Publish Roster</button>
-    </div>
+<div class="status-bar-right">
+  <button class="btn-sm btn-suggest" onclick="suggestRoster()">Auto-suggest</button>
+  <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
+  <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:white;">Print / PDF</button>
+</div>
   </div>
 </div>
 
@@ -555,12 +556,31 @@ function suggestRoster() {
   showToast('✨ Auto-suggest coming in next update!', '');
 }
 
+let isPublished = false;
+
 function publishRoster() {
-  document.getElementById('statusPill').className = 'status-pill published';
-  document.getElementById('statusPill').textContent = '● Published';
-  document.getElementById('statusText').textContent =
-    `Published — ${MONTHS[currentMonth]} ${currentYear}`;
-  showToast('🔒 Roster published!', 'success');
+  if (!isPublished) {
+    isPublished = true;
+    document.getElementById('statusPill').className = 'status-pill published';
+    document.getElementById('statusPill').textContent = '● Published';
+    document.getElementById('statusText').textContent = `Published — ${MONTHS[currentMonth]} ${currentYear}`;
+    document.getElementById('btnPublish').textContent = 'Unlock Roster';
+    document.getElementById('btnPrint').style.display = 'inline-block';
+    showToast('Roster published!', 'success');
+  } else {
+    isPublished = false;
+    document.getElementById('statusPill').className = 'status-pill draft';
+    document.getElementById('statusPill').textContent = '● Draft';
+    document.getElementById('statusText').textContent = 'Unsaved changes will auto-save per cell';
+    document.getElementById('btnPublish').textContent = 'Publish Roster';
+    document.getElementById('btnPrint').style.display = 'none';
+    showToast('Roster unlocked for editing', '');
+  }
+}
+
+function printRoster() {
+  window.print();
+}
 }
 
 let toastTimer;
