@@ -618,21 +618,7 @@ body {
           </span>
         </div>
         <div class="custom-select-dropdown" id="cs-dj-drop">
-          <div class="custom-option" onclick="selectOpt('cs-dj','Alex Redwhite')">Alex Redwhite</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Raffo')">Raffo</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Spice')">Spice</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Tony')">Tony</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Laina')">Laina</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Cocoa')">Cocoa</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Mostyx')">Mostyx</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Jessi')">Jessi</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Sound Bogie')">Sound Bogie</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Davoted')">Davoted</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Buba')">Buba</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Vozka')">Vozka</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Pick')">Pick</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Sky')">Sky</div>
-          <div class="custom-option" onclick="selectOpt('cs-dj','Guest DJ')">Guest DJ</div>
+          <div class="custom-option" style="color:#aaa">Loading...</div>
         </div>
       </div>
     </div>
@@ -707,6 +693,25 @@ const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec
 let st={}, djName='', moKey='', moLabel='';
 const selectVals = { 'cs-dj': '', 'cs-mo': '' };
 const selectKeys = { 'cs-mo': {} };
+
+// Load DJ list from Google Sheets
+fetch('/api/djs')
+  .then(r => r.json())
+  .then(data => {
+    const drop = document.getElementById('cs-dj-drop');
+    drop.innerHTML = '';
+    (data.djs || []).forEach(dj => {
+      const div = document.createElement('div');
+      div.className = 'custom-option';
+      div.textContent = dj.name;
+      div.onclick = () => selectOpt('cs-dj', dj.name);
+      drop.appendChild(div);
+    });
+  })
+  .catch(() => {
+    document.getElementById('cs-dj-drop').innerHTML =
+      '<div class="custom-option" style="color:#e53935">Failed to load DJs</div>';
+  });
 
 /* ── CUSTOM SELECT ── */
 function toggleSelect(id) {
