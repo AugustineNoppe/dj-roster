@@ -4,177 +4,572 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DJ Roster — Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Montserrat', sans-serif;
-  background: #1a1f3a;
+
+:root {
+  --navy: #2B3990;
+  --navy-dark: #1a2570;
+  --teal: #5DB8C0;
+  --teal-light: #eaf6f7;
+  --orange: #F15A29;
+  --love-pink: #e91e8c;
+  --love-dark: #880e4f;
+  --love-light: #fce4ec;
+  --white: #ffffff;
+  --bg: #f0f2f8;
+  --border: #dde2f0;
+  --text: #1c2340;
+  --text-mid: #5a6380;
+  --text-light: #9aa0b8;
+  --radius: 12px;
+  --shadow: 0 2px 16px rgba(43,57,144,0.10);
+}
+
+html, body { height: 100%; }
+body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* LOGIN */
+.login-wrap {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--navy) 0%, #1a2570 60%, #0d1540 100%);
 }
 .login-box {
-  background: white;
-  border-radius: 16px;
-  padding: 40px;
-  width: 360px;
-  text-align: center;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  background: white; border-radius: 20px; padding: 48px 40px;
+  width: 360px; text-align: center;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.35);
 }
-.login-box h1 {
-  font-size: 24px;
-  font-weight: 900;
-  color: #2B3990;
-  margin-bottom: 6px;
+.login-icon { font-size: 48px; margin-bottom: 16px; }
+.login-box h1 { font-size: 26px; font-weight: 900; color: var(--navy); margin-bottom: 4px; }
+.login-box p { font-size: 12px; color: var(--text-light); font-weight: 500; margin-bottom: 32px; }
+.login-box input {
+  width: 100%; padding: 14px 18px; border: 2px solid var(--border);
+  border-radius: 10px; font-family: 'Montserrat', sans-serif;
+  font-size: 15px; font-weight: 700; text-align: center;
+  letter-spacing: 0.15em; outline: none; margin-bottom: 12px; transition: border-color 0.2s;
 }
-.login-box p {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 28px;
+.login-box input:focus { border-color: var(--navy); }
+.login-box button {
+  width: 100%; padding: 14px; background: var(--navy); color: white;
+  border: none; border-radius: 10px; font-family: 'Montserrat', sans-serif;
+  font-size: 14px; font-weight: 800; cursor: pointer; transition: background 0.2s;
 }
-input {
-  width: 100%;
-  padding: 14px;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 14px;
-  outline: none;
-  text-align: center;
-  letter-spacing: 0.1em;
-}
-input:focus { border-color: #5DB8C0; }
-button {
-  width: 100%;
-  padding: 14px;
-  background: #2B3990;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-button:hover { background: #1a2570; }
-.error {
-  color: #F15A29;
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 10px;
-  display: none;
-}
+.login-box button:hover { background: var(--navy-dark); }
+.login-error { color: var(--orange); font-size: 12px; font-weight: 600; margin-top: 10px; display: none; }
 
-/* MAIN APP - hidden until logged in */
-.app { display: none; }
-.app.visible { display: block; }
-.login-screen { }
-.login-screen.hidden { display: none; }
+/* APP SHELL */
+.app { display: none; flex-direction: column; min-height: 100vh; }
+.app.visible { display: flex; }
 
 .app-header {
-  background: #2B3990;
-  color: white;
-  padding: 20px 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  background: var(--navy); color: white;
+  padding: 0 24px; height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; box-shadow: 0 2px 12px rgba(0,0,0,0.2);
 }
-.app-header h1 { font-size: 22px; font-weight: 900; }
-.venue-tabs {
-  display: flex;
-  gap: 12px;
-  padding: 24px 32px 0;
-  background: #f5f6fa;
-  border-bottom: 2px solid #e0e0e0;
+.app-header-left { display: flex; align-items: center; gap: 12px; }
+.app-header h1 { font-size: 17px; font-weight: 900; letter-spacing: -0.01em; }
+.header-badge {
+  background: rgba(255,255,255,0.15); padding: 3px 10px;
+  border-radius: 20px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.month-nav { display: flex; align-items: center; gap: 8px; }
+.month-nav button {
+  background: rgba(255,255,255,0.15); border: none; color: white;
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.month-nav button:hover { background: rgba(255,255,255,0.25); }
+.month-label { font-size: 13px; font-weight: 800; min-width: 130px; text-align: center; }
+
+/* VENUE TABS */
+.venue-bar {
+  background: white; border-bottom: 2px solid var(--border);
+  padding: 0 24px; display: flex; align-items: flex-end; gap: 4px; flex-shrink: 0;
 }
 .venue-tab {
-  padding: 12px 28px;
-  border-radius: 10px 10px 0 0;
-  font-family: 'Montserrat', sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-  border: none;
-  background: #e0e0e0;
-  color: #666;
+  padding: 12px 24px; border: none; background: none;
+  font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700;
+  color: var(--text-light); cursor: pointer;
+  border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s;
 }
-.venue-tab.active {
-  background: #2B3990;
-  color: white;
+.venue-tab:hover { color: var(--navy); }
+.venue-tab.active { color: var(--navy); border-bottom-color: var(--navy); }
+.venue-tab.love.active { color: var(--love-dark); border-bottom-color: var(--love-pink); }
+
+/* CONTENT */
+.main-content { flex: 1; overflow: auto; padding: 20px 24px; }
+
+/* GRID */
+.grid-wrap {
+  overflow-x: auto; border-radius: var(--radius);
+  box-shadow: var(--shadow); background: white;
 }
-.venue-tab.love.active {
-  background: #880e4f;
+.roster-table { border-collapse: collapse; min-width: 100%; font-size: 11px; }
+.roster-table thead th {
+  padding: 10px 6px; text-align: center; font-weight: 800; font-size: 10px;
+  white-space: nowrap; position: sticky; top: 0; z-index: 10;
+  border-bottom: 2px solid var(--border); letter-spacing: 0.03em;
 }
-.content {
-  padding: 32px;
-  background: #f5f6fa;
-  min-height: calc(100vh - 130px);
+.th-date {
+  background: var(--navy) !important; color: white !important;
+  min-width: 110px; text-align: left !important; padding-left: 14px !important;
+  position: sticky !important; left: 0 !important; z-index: 20 !important;
 }
-.coming-soon {
-  background: white;
-  border-radius: 12px;
-  padding: 60px;
-  text-align: center;
-  color: #999;
-  font-weight: 600;
+.th-arkbar { background: var(--teal-light); color: var(--navy); min-width: 82px; }
+.th-hip { background: var(--orange); color: white; min-width: 82px; }
+.th-love { background: var(--love-light); color: var(--love-dark); min-width: 82px; }
+
+.roster-table tbody tr:hover { background: #f8f9ff; }
+.roster-table tbody tr:nth-child(even) { background: #fafbff; }
+.roster-table tbody tr:nth-child(even):hover { background: #f4f5ff; }
+
+.td-date {
+  padding: 8px 14px; font-weight: 700; font-size: 11px; color: var(--text);
+  white-space: nowrap; border-right: 2px solid var(--border);
+  position: sticky; left: 0; background: inherit; z-index: 5; min-width: 110px;
 }
+.td-date .dow { color: var(--teal); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; display: block; }
+.td-date.weekend .dow { color: var(--orange); }
+.td-slot { padding: 4px; border: 1px solid #eef0f8; min-width: 82px; vertical-align: middle; }
+.td-slot.hip-slot { background: rgba(241,90,41,0.04); border-color: rgba(241,90,41,0.15); }
+.td-slot.love-slot { background: rgba(233,30,140,0.03); border-color: rgba(233,30,140,0.12); }
+.td-slot.empty-slot { background: #f9f9f9; }
+
+.slot-select {
+  width: 100%; padding: 5px 3px; border: 1.5px solid transparent;
+  border-radius: 6px; font-family: 'Montserrat', sans-serif;
+  font-size: 10px; font-weight: 700; color: var(--text);
+  background: transparent; cursor: pointer; outline: none;
+  transition: all 0.15s; appearance: none; -webkit-appearance: none;
+  text-align: center; min-height: 28px;
+}
+.slot-select:hover { border-color: var(--teal); background: var(--teal-light); }
+.slot-select:focus { border-color: var(--navy); background: white; box-shadow: 0 0 0 3px rgba(43,57,144,0.1); }
+.slot-select.assigned { color: white !important; font-weight: 800 !important; }
+.slot-select.unassigned { color: var(--text-light); }
+.slot-select.no-avail { background: #f5f5f5; color: #ccc; cursor: not-allowed; font-size: 10px; }
+
+/* SECTION DIVIDER in header */
+.th-section-label {
+  padding: 6px; font-size: 11px; font-weight: 800;
+  text-align: center; letter-spacing: 0.05em;
+}
+
+/* STATUS BAR */
+.status-bar {
+  background: white; border-top: 1px solid var(--border);
+  padding: 10px 24px; display: flex; align-items: center; gap: 20px;
+  flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--text-mid);
+}
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;
+}
+.status-pill.draft { background: #fff3e0; color: #e65100; }
+.status-pill.published { background: #e8f5e9; color: #2e7d32; }
+.status-bar-right { margin-left: auto; display: flex; gap: 10px; }
+.btn-sm {
+  padding: 7px 16px; border-radius: 8px; font-family: 'Montserrat', sans-serif;
+  font-size: 11px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s;
+}
+.btn-publish { background: var(--navy); color: white; }
+.btn-publish:hover { background: var(--navy-dark); }
+.btn-suggest { background: var(--teal-light); color: var(--navy); border: 1.5px solid var(--teal); }
+.btn-suggest:hover { background: var(--teal); color: white; }
+
+/* LOADING */
+.loading { text-align: center; padding: 80px 40px; color: var(--text-light); font-weight: 600; font-size: 13px; }
+.spinner {
+  width: 32px; height: 32px; border: 3px solid var(--border);
+  border-top-color: var(--navy); border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; background: var(--navy);
+  color: white; padding: 12px 20px; border-radius: 10px;
+  font-size: 12px; font-weight: 700; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  transform: translateY(80px); opacity: 0; transition: all 0.3s ease; z-index: 1000;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #2e7d32; }
+.toast.error { background: #c62828; }
+
+.grid-wrap::-webkit-scrollbar { height: 6px; }
+.grid-wrap::-webkit-scrollbar-track { background: transparent; }
+.grid-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div class="login-screen" id="loginScreen">
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
   <div class="login-box">
-    <h1>🎧 DJ Roster</h1>
-    <p>Admin access only</p>
-    <input type="password" id="pwInput" placeholder="Enter password" 
+    <div class="login-icon">🎧</div>
+    <h1>DJ Roster</h1>
+    <p>Admin — ARKbar & Love Beach Club</p>
+    <input type="password" id="pwInput" placeholder="Password"
            onkeydown="if(event.key==='Enter') doLogin()">
-    <button onclick="doLogin()">Enter</button>
-    <div class="error" id="errMsg">Incorrect password</div>
+    <button onclick="doLogin()">Enter Admin</button>
+    <div class="login-error" id="loginError">Incorrect password. Try again.</div>
   </div>
 </div>
 
-<!-- MAIN APP -->
+<!-- APP -->
 <div class="app" id="mainApp">
   <div class="app-header">
-    <h1>🎧 DJ Roster — Admin</h1>
-    <span style="font-size:12px;opacity:0.7;">ARKbar Beach Club & Love Beach Club</span>
+    <div class="app-header-left">
+      <div class="header-badge">🎧 Admin</div>
+      <h1 id="headerTitle">ARKbar / HIP Roster</h1>
+    </div>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">◀</button>
+      <div class="month-label" id="monthLabel">—</div>
+      <button onclick="changeMonth(1)">▶</button>
+    </div>
   </div>
-  <div class="venue-tabs">
-    <button class="venue-tab active" id="tabArkbar" onclick="switchVenue('arkbar')">ARKbar / HIP</button>
-    <button class="venue-tab love" id="tabLove" onclick="switchVenue('love')">Love Beach Club</button>
+
+  <div class="venue-bar">
+    <button class="venue-tab active" id="tabArkbar" onclick="switchVenue('arkbar')">⚓ ARKbar / HIP</button>
+    <button class="venue-tab love" id="tabLove" onclick="switchVenue('love')">🌸 Love Beach Club</button>
   </div>
-  <div class="content">
-    <div class="coming-soon">
-      ✅ Connected — Roster grid coming next
+
+  <div class="main-content" id="mainContent">
+    <div class="loading"><div class="spinner"></div>Loading...</div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-pill draft" id="statusPill">● Draft</div>
+    <span id="statusText">Unsaved changes will auto-save per cell</span>
+    <div class="status-bar-right">
+      <button class="btn-sm btn-suggest" onclick="suggestRoster()">✨ Auto-suggest</button>
+      <button class="btn-sm btn-publish" onclick="publishRoster()">🔒 Publish Roster</button>
     </div>
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
+let currentVenue = 'arkbar';
+let currentYear, currentMonth;
+let availability = {};
+let rosterAssignments = {};
+let djList = [];
+
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+const ARKBAR_SLOTS = [
+  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+  '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+  '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
+];
+const HIP_SLOTS = [
+  '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'
+];
+const LOVE_WEEKDAY_SLOTS = [
+  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
+  '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'
+];
+const LOVE_SAT_SLOTS = [
+  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+  '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+  '22:00\u201323:00','23:00\u201300:00'
+];
+
+const ARKBAR_ONLY = ['Alex Redwhite','Raffo','Sound Bogie'];
+
+const DJ_COLORS = {
+  'Alex Redwhite': '#1565c0',
+  'Raffo':         '#6a1b9a',
+  'Sound Bogie':   '#00695c',
+  'Tony':          '#b71c1c',
+  'Davoted':       '#e65100',
+  'D.Davoted':     '#bf360c',
+  'Pick':          '#558b2f',
+  'Jessi':         '#f57f17',
+  'Cocoa':         '#4e342e',
+  'Mostyx':        '#0277bd',
+  'Laina':         '#ad1457',
+  'Buba':          '#00838f',
+  'Vozka':         '#4527a0',
+  'Sky':           '#2e7d32',
+  'Tobi':          '#5d4037',
+  'Spice':         '#c62828',
+  'Guest DJ':      '#78909c',
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+  updateMonthLabel();
+});
+
 async function doLogin() {
   const pw = document.getElementById('pwInput').value;
-  const res = await fetch('/api/auth', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: pw })
-  });
-  const data = await res.json();
-  if (data.success) {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('mainApp').classList.add('visible');
-  } else {
-    document.getElementById('errMsg').style.display = 'block';
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('loginWrap').style.display = 'none';
+      document.getElementById('mainApp').classList.add('visible');
+      loadAll();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginError').textContent = 'Connection error.';
   }
 }
 
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
+  updateMonthLabel();
+  loadAll();
+}
+
+function updateMonthLabel() {
+  document.getElementById('monthLabel').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+}
+
+function getMonthString() {
+  return `${MONTHS[currentMonth]} ${currentYear}`;
+}
+
 function switchVenue(venue) {
+  currentVenue = venue;
   document.getElementById('tabArkbar').classList.toggle('active', venue === 'arkbar');
   document.getElementById('tabLove').classList.toggle('active', venue === 'love');
+  document.getElementById('headerTitle').textContent =
+    venue === 'arkbar' ? 'ARKbar / HIP Roster' : 'Love Beach Club Roster';
+  loadAll();
+}
+
+async function loadAll() {
+  document.getElementById('mainContent').innerHTML =
+    '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
+  const month = getMonthString();
+  try {
+    const [availRes, rosterRes, djRes] = await Promise.all([
+      fetch(`/api/availability?month=${encodeURIComponent(month)}`),
+      fetch(`/api/roster?venue=${currentVenue}&month=${encodeURIComponent(month)}`),
+      fetch('/api/djs')
+    ]);
+    const availData  = await availRes.json();
+    const rosterData = await rosterRes.json();
+    const djData     = await djRes.json();
+
+    availability = availData.availability || {};
+    rosterAssignments = {};
+    (rosterData.roster || []).forEach(row => {
+      if (row[0] && row[1] && row[2]) {
+        rosterAssignments[`${row[0]}|${row[1]}`] = row[2];
+      }
+    });
+    djList = djData.djs || [];
+    renderGrid();
+  } catch(e) {
+    document.getElementById('mainContent').innerHTML =
+      `<div class="loading">❌ Error loading data: ${e.message}</div>`;
+  }
+}
+
+function renderGrid() {
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const isLove = currentVenue === 'love';
+
+  let venueHeaderRow = '';
+  let slotHeaderRow = '<th class="th-date">Date</th>';
+
+  if (!isLove) {
+    venueHeaderRow = `
+      <tr>
+        <th class="th-date" style="border-bottom:none;"></th>
+        <th colspan="${ARKBAR_SLOTS.length}" class="th-section-label" style="background:var(--teal);color:white;">
+          ARKbar Beach Club &nbsp;·&nbsp; 14:00 – 02:00
+        </th>
+        <th colspan="${HIP_SLOTS.length}" class="th-section-label" style="background:var(--orange);color:white;">
+          HIP Restaurant &nbsp;·&nbsp; 21:00 – 01:00
+        </th>
+      </tr>`;
+    ARKBAR_SLOTS.forEach(s => slotHeaderRow += `<th class="th-arkbar">${s}</th>`);
+    HIP_SLOTS.forEach(s => slotHeaderRow += `<th class="th-hip">${s}</th>`);
+  } else {
+    venueHeaderRow = `
+      <tr>
+        <th class="th-date" style="border-bottom:none;background:var(--love-dark)!important;"></th>
+        <th colspan="${LOVE_SAT_SLOTS.length}" class="th-section-label" style="background:var(--love-pink);color:white;">
+          Love Beach Club &nbsp;·&nbsp; Weekdays 14:00–17:00 &amp; 20:00–23:00 &nbsp;|&nbsp; Saturdays 14:00–00:00
+        </th>
+      </tr>`;
+    LOVE_SAT_SLOTS.forEach(s => slotHeaderRow += `<th class="th-love">${s}</th>`);
+  }
+
+  let bodyRows = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(currentYear, currentMonth, d);
+    const dow = date.getDay();
+    const isSat = dow === 6;
+    const isSun = dow === 0;
+    const isWeekend = isSat || isSun;
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+
+    let cells = '';
+    if (!isLove) {
+      ARKBAR_SLOTS.forEach(slot => { cells += buildCell(dateStr, slot, 'arkbar'); });
+      HIP_SLOTS.forEach(slot => { cells += buildCell(dateStr, slot, 'hip'); });
+    } else {
+      LOVE_SAT_SLOTS.forEach(slot => {
+        const isActive = isSat ? true : LOVE_WEEKDAY_SLOTS.includes(slot);
+        if (isActive) {
+          cells += buildCell(dateStr, slot, 'love');
+        } else {
+          cells += `<td class="td-slot empty-slot"></td>`;
+        }
+      });
+    }
+
+    bodyRows += `
+      <tr>
+        <td class="td-date ${isWeekend ? 'weekend' : ''}">
+          <span class="dow">${DAYS[dow]}</span>
+          ${d} ${MONTHS[currentMonth].slice(0,3)}
+        </td>
+        ${cells}
+      </tr>`;
+  }
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="grid-wrap">
+      <table class="roster-table">
+        <thead>
+          ${venueHeaderRow}
+          <tr>${slotHeaderRow}</tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function buildCell(dateStr, slot, type) {
+  const key = `${dateStr}|${slot}`;
+  const assigned = rosterAssignments[key] || '';
+  const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
+
+  let filtered = type === 'love'
+    ? avail.filter(dj => !ARKBAR_ONLY.includes(dj))
+    : avail;
+
+  const isHip = type === 'hip';
+  const isLove = type === 'love';
+  const tdClass = `td-slot${isHip ? ' hip-slot' : isLove ? ' love-slot' : ''}`;
+
+  if (filtered.length === 0 && !assigned) {
+    return `<td class="${tdClass} empty-slot">
+      <select class="slot-select no-avail" disabled title="No DJs available">
+        <option>—</option>
+      </select></td>`;
+  }
+
+  const color = assigned ? (DJ_COLORS[assigned] || '#555') : '';
+  const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}`;
+  const styleAttr = assigned ? `style="background:${color};border-color:${color}"` : '';
+
+  // Escape slot for use in HTML attribute (en-dash safe)
+  const slotEsc = slot.replace(/"/g, '&quot;');
+
+  let opts = `<option value="">— assign —</option>`;
+  filtered.forEach(dj => {
+    opts += `<option value="${dj}"${dj === assigned ? ' selected' : ''}>${dj}</option>`;
+  });
+  if (assigned && !filtered.includes(assigned)) {
+    opts += `<option value="${assigned}" selected>${assigned} ⚠</option>`;
+  }
+
+  return `<td class="${tdClass}">
+    <select class="${selClass}" ${styleAttr}
+      data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}"
+      onchange="assignDJ(this)">
+      ${opts}
+    </select></td>`;
+}
+
+async function assignDJ(sel) {
+  const date = sel.dataset.date;
+  const slot = sel.dataset.slot;
+  const type = sel.dataset.type;
+  const dj = sel.value;
+  const key = `${date}|${slot}`;
+  const venueParam = type === 'love' ? 'love' : 'arkbar';
+
+  if (dj) {
+    const color = DJ_COLORS[dj] || '#555';
+    sel.className = 'slot-select assigned';
+    sel.style.background = color;
+    sel.style.borderColor = color;
+    sel.style.color = 'white';
+    rosterAssignments[key] = dj;
+  } else {
+    sel.className = 'slot-select unassigned';
+    sel.style.background = '';
+    sel.style.borderColor = '';
+    sel.style.color = '';
+    delete rosterAssignments[key];
+  }
+
+  try {
+    const res = await fetch('/api/roster/assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ venue: venueParam, date, slot, dj })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(dj ? `✓ ${dj} saved` : '✓ Cleared', 'success');
+    } else {
+      showToast('❌ Save failed', 'error');
+    }
+  } catch(e) {
+    showToast('❌ Connection error', 'error');
+  }
+}
+
+function suggestRoster() {
+  showToast('✨ Auto-suggest coming in next update!', '');
+}
+
+function publishRoster() {
+  document.getElementById('statusPill').className = 'status-pill published';
+  document.getElementById('statusPill').textContent = '● Published';
+  document.getElementById('statusText').textContent =
+    `Published — ${MONTHS[currentMonth]} ${currentYear}`;
+  showToast('🔒 Roster published!', 'success');
+}
+
+let toastTimer;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
 }
 </script>
 </body>
