@@ -6,7 +6,6 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Google Sheets auth
 function getSheets() {
   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
   const auth = new google.auth.GoogleAuth({
@@ -18,18 +17,15 @@ function getSheets() {
 
 const SHEET_ID = process.env.SPREADSHEET_ID;
 
-// Roster page
 app.get('/roster', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'roster.html'));
 });
 
-// Auth
 app.post('/api/auth', (req, res) => {
   const { password } = req.body;
   res.json({ success: password === process.env.ADMIN_PASSWORD });
 });
 
-// Get availability for a given month
 app.get('/api/availability', async (req, res) => {
   try {
     const sheets = getSheets();
@@ -54,7 +50,6 @@ app.get('/api/availability', async (req, res) => {
   }
 });
 
-// Get DJ list from DJ Rates tab
 app.get('/api/djs', async (req, res) => {
   try {
     const sheets = getSheets();
@@ -70,40 +65,70 @@ app.get('/api/djs', async (req, res) => {
   }
 });
 
-// Get roster assignments for a venue/month
 app.get('/api/roster', async (req, res) => {
   try {
     const sheets = getSheets();
-    const { venue } = req.query;
+    const { venue, month } = req.query;
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
     let values = [];
     try {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
-        range: `${tabName}!A:C`,
+        range: `${tabName}!A:D`,
       });
       values = response.data.values || [];
-    } catch (e) {
-      // Tab doesn't exist yet
-    }
-    res.json({ success: true, roster: values });
+    } catch (e) {}
+    // Filter by month (column D), skip header row
+    const filtered = values.filter(r => r[0] !== 'Date' && (!month || r[3] === month));
+    res.json({ success: true, roster: filtered });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-// Save a single cell assignment
 app.post('/api/roster/assign', async (req, res) => {
   try {
     const sheets = getSheets();
-    const { venue, date, slot, dj } = req.body;
+    const { venue, date, slot, dj, month } = req.body;
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID,
-      range: `${tabName}!A:C`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[date, slot, dj]] },
-    });
+
+    let existingRows = [];
+    try {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: `${tabName}!A:D`,
+      });
+      existingRows = response.data.values || [];
+    } catch(e) {}
+
+    // Match on date + slot + month
+    const rowIndex = existingRows.findIndex(r => r[0] === date && r[1] === slot && r[3] === month);
+
+    if (rowIndex >= 0) {
+      if (dj) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `${tabName}!A${rowIndex + 1}:D${rowIndex + 1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[date, slot, dj, month]] },
+        });
+      } else {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `${tabName}!A${rowIndex + 1}:D${rowIndex + 1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [['', '', '', '']] },
+        });
+      }
+    } else if (dj) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID,
+        range: `${tabName}!A:D`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[date, slot, dj, month]] },
+      });
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
