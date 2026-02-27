@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DJ Roster — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: #1a1f3a;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-box {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  width: 360px;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+}
+.login-box h1 {
+  font-size: 24px;
+  font-weight: 900;
+  color: #2B3990;
+  margin-bottom: 6px;
+}
+.login-box p {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 28px;
+}
+input {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  outline: none;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+input:focus { border-color: #5DB8C0; }
+button {
+  width: 100%;
+  padding: 14px;
+  background: #2B3990;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:hover { background: #1a2570; }
+.error {
+  color: #F15A29;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 10px;
+  display: none;
+}
+
+/* MAIN APP - hidden until logged in */
+.app { display: none; }
+.app.visible { display: block; }
+.login-screen { }
+.login-screen.hidden { display: none; }
+
+.app-header {
+  background: #2B3990;
+  color: white;
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.app-header h1 { font-size: 22px; font-weight: 900; }
+.venue-tabs {
+  display: flex;
+  gap: 12px;
+  padding: 24px 32px 0;
+  background: #f5f6fa;
+  border-bottom: 2px solid #e0e0e0;
+}
+.venue-tab {
+  padding: 12px 28px;
+  border-radius: 10px 10px 0 0;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  background: #e0e0e0;
+  color: #666;
+}
+.venue-tab.active {
+  background: #2B3990;
+  color: white;
+}
+.venue-tab.love.active {
+  background: #880e4f;
+}
+.content {
+  padding: 32px;
+  background: #f5f6fa;
+  min-height: calc(100vh - 130px);
+}
+.coming-soon {
+  background: white;
+  border-radius: 12px;
+  padding: 60px;
+  text-align: center;
+  color: #999;
+  font-weight: 600;
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h1>🎧 DJ Roster</h1>
+    <p>Admin access only</p>
+    <input type="password" id="pwInput" placeholder="Enter password" 
+           onkeydown="if(event.key==='Enter') doLogin()">
+    <button onclick="doLogin()">Enter</button>
+    <div class="error" id="errMsg">Incorrect password</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="mainApp">
+  <div class="app-header">
+    <h1>🎧 DJ Roster — Admin</h1>
+    <span style="font-size:12px;opacity:0.7;">ARKbar Beach Club & Love Beach Club</span>
+  </div>
+  <div class="venue-tabs">
+    <button class="venue-tab active" id="tabArkbar" onclick="switchVenue('arkbar')">ARKbar / HIP</button>
+    <button class="venue-tab love" id="tabLove" onclick="switchVenue('love')">Love Beach Club</button>
+  </div>
+  <div class="content">
+    <div class="coming-soon">
+      ✅ Connected — Roster grid coming next
+    </div>
+  </div>
+</div>
+
+<script>
+async function doLogin() {
+  const pw = document.getElementById('pwInput').value;
+  const res = await fetch('/api/auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pw })
+  });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.add('visible');
+  } else {
+    document.getElementById('errMsg').style.display = 'block';
+  }
+}
+
+function switchVenue(venue) {
+  document.getElementById('tabArkbar').classList.toggle('active', venue === 'arkbar');
+  document.getElementById('tabLove').classList.toggle('active', venue === 'love');
+}
+</script>
+</body>
+</html>
