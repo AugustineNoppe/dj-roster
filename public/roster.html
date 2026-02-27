@@ -30,7 +30,6 @@
 html, body { height: 100%; }
 body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-/* LOGIN */
 .login-wrap {
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
@@ -59,7 +58,6 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 .login-box button:hover { background: var(--navy-dark); }
 .login-error { color: var(--orange); font-size: 12px; font-weight: 600; margin-top: 10px; display: none; }
 
-/* APP SHELL */
 .app { display: none; flex-direction: column; min-height: 100vh; }
 .app.visible { display: flex; }
 
@@ -86,7 +84,6 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 .month-nav button:hover { background: rgba(255,255,255,0.25); }
 .month-label { font-size: 13px; font-weight: 800; min-width: 130px; text-align: center; }
 
-/* VENUE TABS */
 .venue-bar {
   background: white; border-bottom: 2px solid var(--border);
   padding: 0 24px; display: flex; align-items: flex-end; gap: 4px; flex-shrink: 0;
@@ -101,14 +98,9 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 .venue-tab.active { color: var(--navy); border-bottom-color: var(--navy); }
 .venue-tab.love.active { color: var(--love-dark); border-bottom-color: var(--love-pink); }
 
-/* CONTENT */
 .main-content { flex: 1; overflow: auto; padding: 20px 24px; }
 
-/* GRID */
-.grid-wrap {
-  overflow-x: auto; border-radius: var(--radius);
-  box-shadow: var(--shadow); background: white;
-}
+.grid-wrap { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); background: white; }
 .roster-table { border-collapse: collapse; min-width: 100%; font-size: 11px; }
 .roster-table thead th {
   padding: 10px 6px; text-align: center; font-weight: 800; font-size: 10px;
@@ -154,13 +146,8 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 .slot-select.unassigned { color: var(--text-light); }
 .slot-select.no-avail { background: #f5f5f5; color: #ccc; cursor: not-allowed; font-size: 10px; }
 
-/* SECTION DIVIDER in header */
-.th-section-label {
-  padding: 6px; font-size: 11px; font-weight: 800;
-  text-align: center; letter-spacing: 0.05em;
-}
+.th-section-label { padding: 6px; font-size: 11px; font-weight: 800; text-align: center; letter-spacing: 0.05em; }
 
-/* STATUS BAR */
 .status-bar {
   background: white; border-top: 1px solid var(--border);
   padding: 10px 24px; display: flex; align-items: center; gap: 20px;
@@ -182,7 +169,6 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 .btn-suggest { background: var(--teal-light); color: var(--navy); border: 1.5px solid var(--teal); }
 .btn-suggest:hover { background: var(--teal); color: white; }
 
-/* LOADING */
 .loading { text-align: center; padding: 80px 40px; color: var(--text-light); font-weight: 600; font-size: 13px; }
 .spinner {
   width: 32px; height: 32px; border: 3px solid var(--border);
@@ -191,7 +177,6 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* TOAST */
 .toast {
   position: fixed; bottom: 24px; right: 24px; background: var(--navy);
   color: white; padding: 12px 20px; border-radius: 10px;
@@ -209,7 +194,6 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 </head>
 <body>
 
-<!-- LOGIN -->
 <div class="login-wrap" id="loginWrap">
   <div class="login-box">
     <div class="login-icon">🎧</div>
@@ -222,7 +206,6 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
   </div>
 </div>
 
-<!-- APP -->
 <div class="app" id="mainApp">
   <div class="app-header">
     <div class="app-header-left">
@@ -248,11 +231,11 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
   <div class="status-bar">
     <div class="status-pill draft" id="statusPill">● Draft</div>
     <span id="statusText">Unsaved changes will auto-save per cell</span>
-<div class="status-bar-right">
-  <button class="btn-sm btn-suggest" onclick="suggestRoster()">Auto-suggest</button>
-  <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
-  <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:white;">Print / PDF</button>
-</div>
+    <div class="status-bar-right">
+      <button class="btn-sm btn-suggest" onclick="suggestRoster()">Auto-suggest</button>
+      <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
+      <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:white;">Print / PDF</button>
+    </div>
   </div>
 </div>
 
@@ -263,6 +246,8 @@ let currentVenue = 'arkbar';
 let currentYear, currentMonth;
 let availability = {};
 let rosterAssignments = {};
+let arkbarAssignments = {};
+let loveAssignments = {};
 let djList = [];
 
 const MONTHS = ['January','February','March','April','May','June',
@@ -368,27 +353,47 @@ async function loadAll() {
     '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   const month = getMonthString();
   try {
-    const [availRes, rosterRes, djRes] = await Promise.all([
+    // Load both venues for cross-venue conflict detection
+    const [availRes, rosterRes, djRes, otherRosterRes] = await Promise.all([
       fetch(`/api/availability?month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=${currentVenue}&month=${encodeURIComponent(month)}`),
-      fetch('/api/djs')
+      fetch('/api/djs'),
+      fetch(`/api/roster?venue=${currentVenue === 'arkbar' ? 'love' : 'arkbar'}&month=${encodeURIComponent(month)}`)
     ]);
-    const availData  = await availRes.json();
-    const rosterData = await rosterRes.json();
-    const djData     = await djRes.json();
+    const availData      = await availRes.json();
+    const rosterData     = await rosterRes.json();
+    const djData         = await djRes.json();
+    const otherRosterData = await otherRosterRes.json();
 
     availability = availData.availability || {};
+
     rosterAssignments = {};
     (rosterData.roster || []).forEach(row => {
       if (row[0] && row[1] && row[2]) {
         rosterAssignments[`${row[0]}|${row[1]}`] = row[2];
       }
     });
+
+    // Store both venue assignments for conflict detection
+    if (currentVenue === 'arkbar') {
+      arkbarAssignments = { ...rosterAssignments };
+      loveAssignments = {};
+      (otherRosterData.roster || []).forEach(row => {
+        if (row[0] && row[1] && row[2]) loveAssignments[`${row[0]}|${row[1]}`] = row[2];
+      });
+    } else {
+      loveAssignments = { ...rosterAssignments };
+      arkbarAssignments = {};
+      (otherRosterData.roster || []).forEach(row => {
+        if (row[0] && row[1] && row[2]) arkbarAssignments[`${row[0]}|${row[1]}`] = row[2];
+      });
+    }
+
     djList = djData.djs || [];
     renderGrid();
   } catch(e) {
     document.getElementById('mainContent').innerHTML =
-      `<div class="loading">❌ Error loading data: ${e.message}</div>`;
+      `<div class="loading">Error loading data: ${e.message}</div>`;
   }
 }
 
@@ -428,8 +433,7 @@ function renderGrid() {
     const date = new Date(currentYear, currentMonth, d);
     const dow = date.getDay();
     const isSat = dow === 6;
-    const isSun = dow === 0;
-    const isWeekend = isSat || isSun;
+    const isWeekend = isSat || dow === 0;
     const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
     let cells = '';
@@ -492,8 +496,6 @@ function buildCell(dateStr, slot, type) {
   const color = assigned ? (DJ_COLORS[assigned] || '#555') : '';
   const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}`;
   const styleAttr = assigned ? `style="background:${color};border-color:${color}"` : '';
-
-  // Escape slot for use in HTML attribute (en-dash safe)
   const slotEsc = slot.replace(/"/g, '&quot;');
 
   let opts = `<option value="">— assign —</option>`;
@@ -520,6 +522,30 @@ async function assignDJ(sel) {
   const key = `${date}|${slot}`;
   const venueParam = type === 'love' ? 'love' : 'arkbar';
 
+  // Max 6 slots per DJ per day
+  if (dj) {
+    const dayAssignments = Object.entries(rosterAssignments)
+      .filter(([k, v]) => k.startsWith(date) && v === dj);
+    if (dayAssignments.length >= 6) {
+      showToast(`${dj} already has 6 slots on this day`, 'error');
+      sel.value = assigned || '';
+      return;
+    }
+  }
+
+  // Cross-venue conflict check
+  if (dj) {
+    const otherAssignments = Object.entries(type === 'love' ? arkbarAssignments : loveAssignments)
+      .filter(([k, v]) => k.startsWith(date) && v === dj);
+    if (otherAssignments.length > 0) {
+      const otherVenue = type === 'love' ? 'ARKbar' : 'Love Beach';
+      showToast(`${dj} is already booked at ${otherVenue} on this date`, 'error');
+      sel.value = '';
+      return;
+    }
+  }
+
+  // Update UI immediately
   if (dj) {
     const color = DJ_COLORS[dj] || '#555';
     sel.className = 'slot-select assigned';
@@ -527,12 +553,16 @@ async function assignDJ(sel) {
     sel.style.borderColor = color;
     sel.style.color = 'white';
     rosterAssignments[key] = dj;
+    if (venueParam === 'arkbar') arkbarAssignments[key] = dj;
+    else loveAssignments[key] = dj;
   } else {
     sel.className = 'slot-select unassigned';
     sel.style.background = '';
     sel.style.borderColor = '';
     sel.style.color = '';
     delete rosterAssignments[key];
+    if (venueParam === 'arkbar') delete arkbarAssignments[key];
+    else delete loveAssignments[key];
   }
 
   try {
@@ -543,17 +573,17 @@ async function assignDJ(sel) {
     });
     const data = await res.json();
     if (data.success) {
-      showToast(dj ? `✓ ${dj} saved` : '✓ Cleared', 'success');
+      showToast(dj ? `${dj} saved` : 'Cleared', 'success');
     } else {
-      showToast('❌ Save failed', 'error');
+      showToast('Save failed', 'error');
     }
   } catch(e) {
-    showToast('❌ Connection error', 'error');
+    showToast('Connection error', 'error');
   }
 }
 
 function suggestRoster() {
-  showToast('✨ Auto-suggest coming in next update!', '');
+  showToast('Auto-suggest coming in next update!', '');
 }
 
 let isPublished = false;
