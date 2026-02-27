@@ -123,8 +123,11 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 .td-date {
   padding: 8px 14px; font-weight: 700; font-size: 11px; color: var(--text);
   white-space: nowrap; border-right: 2px solid var(--border);
-  position: sticky; left: 0; background: inherit; z-index: 5; min-width: 110px;
+  position: sticky; left: 0; z-index: 5; min-width: 110px;
+  background: white;
 }
+.roster-table tbody tr:nth-child(even) .td-date { background: #fafbff; }
+.roster-table tbody tr:hover .td-date { background: #f8f9ff; }
 .td-date .dow { color: var(--teal); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; display: block; }
 .td-date.weekend .dow { color: var(--orange); }
 .td-slot { padding: 4px; border: 1px solid #eef0f8; min-width: 82px; vertical-align: middle; }
