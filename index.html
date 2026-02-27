@@ -83,11 +83,6 @@ body {
   line-height: 1.05;
 }
 
-.header-title span {
-  color: rgba(255,255,255,0.5);
-  font-weight: 400;
-}
-
 .header-sub {
   font-size: 12px;
   font-weight: 600;
@@ -481,27 +476,7 @@ body {
 .s-chips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
 .s-chip { background: var(--teal-pale); color: var(--teal-dark); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--teal-light); }
 
-/* ── WEBHOOK ── */
-.wh-box {
-  background: var(--teal-pale);
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 14px 16px;
-  margin-bottom: 16px;
-}
-.wh-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--teal-dark); margin-bottom: 5px; }
-.wh-note { font-size: 11px; font-weight: 500; color: var(--text-mid); line-height: 1.55; margin-bottom: 10px; }
-.wh-box input {
-  width: 100%; padding: 11px 14px;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 12px; font-weight: 600;
-  color: var(--text-dark); background: white; outline: none;
-  transition: border-color 0.2s;
-}
-.wh-box input:focus { border-color: var(--teal); }
-.wh-box input::placeholder { color: var(--text-light); }
+
 
 /* ── SUCCESS ── */
 .success {
@@ -539,8 +514,8 @@ body {
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-eyebrow">Ark Bar · Love Beach Club · Koh Samui</div>
-  <div class="header-title">DJ<br><span>Roster</span></div>
+  <div class="header-eyebrow">ARKbar Beach Club &amp; Love Beach Club</div>
+  <div class="header-title">DJ Roster</div>
   <div class="header-sub">Availability Submission</div>
 </div>
 
@@ -606,18 +581,6 @@ body {
           </span>
         </div>
         <div class="custom-select-dropdown" id="cs-mo-drop">
-          <div class="custom-option" onclick="selectOpt('cs-mo','April 2026','2026-04')">April 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','May 2026','2026-05')">May 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','June 2026','2026-06')">June 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','July 2026','2026-07')">July 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','August 2026','2026-08')">August 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','September 2026','2026-09')">September 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','October 2026','2026-10')">October 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','November 2026','2026-11')">November 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','December 2026','2026-12')">December 2026</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','January 2027','2027-01')">January 2027</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','February 2027','2027-02')">February 2027</div>
-          <div class="custom-option" onclick="selectOpt('cs-mo','March 2027','2027-03')">March 2027</div>
         </div>
       </div>
     </div>
@@ -641,11 +604,7 @@ body {
     <div class="card-title">Review & Submit</div>
     <div class="card-sub">Check your availability below, then submit.</div>
     <div id="summary"></div>
-    <div class="wh-box">
-      <div class="wh-title">⚙ Make.com Webhook URL</div>
-      <div class="wh-note">Paste your webhook to send data directly to Google Sheets. Leave blank to download as JSON instead.</div>
-      <input type="url" id="webhook" placeholder="https://hook.eu2.make.com/xxxxxxxxx">
-    </div>
+
     <div class="btn-row">
       <button class="btn btn-ghost" onclick="goStep2()">← Back</button>
       <button class="btn btn-submit" id="sub-btn" onclick="doSubmit()">✓ Submit Availability</button>
@@ -664,14 +623,6 @@ body {
 
 <script>
 const SLOTS = ['14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00','00:00','01:00','02:00'];
-const MONTHS = {
-  '2026-04':{l:'April 2026',y:2026,m:3},'2026-05':{l:'May 2026',y:2026,m:4},
-  '2026-06':{l:'June 2026',y:2026,m:5},'2026-07':{l:'July 2026',y:2026,m:6},
-  '2026-08':{l:'August 2026',y:2026,m:7},'2026-09':{l:'September 2026',y:2026,m:8},
-  '2026-10':{l:'October 2026',y:2026,m:9},'2026-11':{l:'November 2026',y:2026,m:10},
-  '2026-12':{l:'December 2026',y:2026,m:11},'2027-01':{l:'January 2027',y:2027,m:0},
-  '2027-02':{l:'February 2027',y:2027,m:1},'2027-03':{l:'March 2027',y:2027,m:2}
-};
 const DS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DF=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -735,14 +686,15 @@ function goStep1() { setStep(1); }
 /* ── CALENDAR ── */
 function buildCal() {
   const el=document.getElementById('cal'); el.innerHTML='';
-  const {y,m,l}=MONTHS[moKey];
-  const h=document.createElement('div'); h.className='cal-month-title'; h.textContent=l; el.appendChild(h);
-  const days=new Date(y,m+1,0).getDate();
+  const [y,m] = moKey.split('-').map(Number);
+  const mo = m-1;
+  const h=document.createElement('div'); h.className='cal-month-title'; h.textContent=moLabel; el.appendChild(h);
+  const days=new Date(y,mo+1,0).getDate();
   for(let d=1;d<=days;d++){
-    const date=new Date(y,m,d), dow=date.getDay();
-    const key=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const date=new Date(y,mo,d), dow=date.getDay();
+    const key=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     if(!st[key]) st[key]=[];
-    el.appendChild(makeDayCard(key,d,dow,m));
+    el.appendChild(makeDayCard(key,d,dow,mo));
   }
 }
 
@@ -772,26 +724,101 @@ function toggleDay(key) {
 
 function addRange(key) {
   const idx=st[key].length; st[key].push({start:'',end:''});
-  const opts=SLOTS.map(t=>`<option value="${t}">${t}</option>`).join('');
   const wrap=document.createElement('div');
   wrap.className='range-block'; wrap.id=`rb-${key}-${idx}`;
   wrap.innerHTML=`
     ${idx>0?`<button class="remove-btn" onclick="removeRange('${key}',${idx});event.stopPropagation()">✕</button>`:''}
     <div class="range-row">
       <div class="range-lbl">From</div>
-      <select class="time-sel" id="s-${key}-${idx}" onchange="onRC('${key}',${idx})"><option value="">Start</option>${opts}</select>
+      <select class="time-sel" id="s-${key}-${idx}" onchange="onRC('${key}',${idx})">
+        <option value="">Start</option>
+      </select>
       <div class="range-arrow">→</div>
-      <select class="time-sel" id="e-${key}-${idx}" onchange="onRC('${key}',${idx})"><option value="">End</option>${opts}</select>
+      <select class="time-sel" id="e-${key}-${idx}" onchange="onRC('${key}',${idx})">
+        <option value="">End</option>
+      </select>
       <div class="range-lbl">To</div>
     </div>
     <div class="slots-preview" id="pv-${key}-${idx}"></div>`;
   document.getElementById('ranges-'+key).appendChild(wrap);
+  populateTimeSelects(key, idx);
+}
+
+function getUsedSlots(key, excludeIdx) {
+  const used = new Set();
+  (st[key]||[]).forEach((r,i) => {
+    if(i===excludeIdx || !r || !r.start || !r.end) return;
+    getSlots(r.start, r.end).forEach(s => used.add(s));
+  });
+  return used;
+}
+
+function populateTimeSelects(key, idx) {
+  const usedSlots = getUsedSlots(key, idx);
+  const usedStartTimes = new Set();
+  usedSlots.forEach(s => { usedStartTimes.add(s.split('–')[0]); usedStartTimes.add(s.split('–')[1]); });
+
+  const startEl = document.getElementById(`s-${key}-${idx}`);
+  const endEl   = document.getElementById(`e-${key}-${idx}`);
+  if(!startEl || !endEl) return;
+
+  const curStart = startEl.value;
+  const curEnd   = endEl.value;
+
+  startEl.innerHTML = '<option value="">Start</option>';
+  SLOTS.forEach(t => {
+    const blocked = [...usedSlots].some(s => {
+      const [a,b] = s.split('–');
+      const si=SLOTS.indexOf(a), ei=SLOTS.indexOf(b), ti=SLOTS.indexOf(t);
+      return ti>=si && ti<ei;
+    });
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    if(blocked){ opt.disabled=true; opt.style.color='#ccc'; opt.textContent = t+' (taken)'; }
+    if(t===curStart) opt.selected=true;
+    startEl.appendChild(opt);
+  });
+
+  // Rebuild end options based on selected start
+  rebuildEndOptions(key, idx);
+}
+
+function rebuildEndOptions(key, idx) {
+  const startEl = document.getElementById(`s-${key}-${idx}`);
+  const endEl   = document.getElementById(`e-${key}-${idx}`);
+  if(!startEl || !endEl) return;
+
+  const start = startEl.value;
+  const curEnd = endEl.value;
+  const usedSlots = getUsedSlots(key, idx);
+
+  endEl.innerHTML = '<option value="">End</option>';
+  if(!start) return;
+
+  const startIdx = SLOTS.indexOf(start);
+  for(let i=startIdx+1; i<SLOTS.length; i++){
+    const t = SLOTS[i];
+    // Check if any slot between start and this end would overlap
+    let blocked = false;
+    for(let j=startIdx; j<i; j++){
+      const slotLabel = `${SLOTS[j]}–${SLOTS[j+1]}`;
+      if(usedSlots.has(slotLabel)){ blocked=true; break; }
+    }
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    if(blocked){ opt.disabled=true; opt.style.color='#ccc'; opt.textContent = t+' (overlap)'; }
+    if(t===curEnd) opt.selected=true;
+    endEl.appendChild(opt);
+    if(blocked) break; // stop offering options past first overlap
+  }
 }
 
 function removeRange(key,idx) {
   st[key][idx]=null;
   const el=document.getElementById(`rb-${key}-${idx}`);
   if(el) el.remove();
+  // Repopulate remaining ranges
+  st[key].forEach((_,i) => { if(st[key][i]!==null) populateTimeSelects(key,i); });
   refreshBadge(key);
 }
 
@@ -799,8 +826,11 @@ function onRC(key,idx) {
   const s=document.getElementById(`s-${key}-${idx}`)?.value||'';
   const e=document.getElementById(`e-${key}-${idx}`)?.value||'';
   if(st[key][idx]!==null) st[key][idx]={start:s,end:e};
+  rebuildEndOptions(key,idx);
   const pv=document.getElementById(`pv-${key}-${idx}`);
   if(pv){ pv.innerHTML=''; getSlots(s,e).forEach(slot=>{ const c=document.createElement('div'); c.className='slot-chip'; c.textContent=slot; pv.appendChild(c); }); }
+  // Update other ranges in same day
+  st[key].forEach((_,i)=>{ if(i!==idx && st[key][i]!==null) populateTimeSelects(key,i); });
   refreshBadge(key);
 }
 
@@ -840,9 +870,30 @@ function buildSummary() {
 }
 
 /* ── SUBMIT ── */
+const WEBHOOK = 'https://hook.eu2.make.com/45cdesq5s9kk6dd68a6sy87ir8v5zhv4';
+const MN_LONG=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// Build next 3 months dynamically
+document.addEventListener('DOMContentLoaded', function buildMonthOptions(){
+  const drop = document.getElementById('cs-mo-drop');
+  const now = new Date();
+  for(let i=1; i<=3; i++){
+    const d = new Date(now.getFullYear(), now.getMonth()+i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const label = `${MN_LONG[m]} ${y}`;
+    const key   = `${y}-${String(m+1).padStart(2,'0')}`;
+    const opt = document.createElement('div');
+    opt.className = 'custom-option';
+    opt.textContent = label;
+    opt.onclick = () => selectOpt('cs-mo', label, key);
+    if(i>1) opt.style.borderTop = '1px solid var(--border-soft)';
+    drop.appendChild(opt);
+  }
+});
+
 async function doSubmit() {
   const btn=document.getElementById('sub-btn');
-  const webhook=document.getElementById('webhook').value.trim();
   const entries=Object.keys(st).map(k=>({k,slots:allSlotsForDay(k)})).filter(e=>e.slots.length>0).sort((a,b)=>a.k.localeCompare(b.k));
   if(!entries.length){alert('No availability selected. Please go back and mark your dates.');return;}
   btn.disabled=true; btn.textContent='Submitting...';
@@ -853,21 +904,14 @@ async function doSubmit() {
     slots.forEach(slot=>rows.push({timestamp:now,dj:djName,month:moLabel,date:k,day:DF[dow],slot}));
   });
   const payload={dj:djName,month:moLabel,submitted_at:now,total_hours:rows.length,rows};
-  if(webhook){
-    try{ await fetch(webhook,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),mode:'no-cors'}); }catch(e){}
-    showSuccess(rows.length,true);
-  } else {
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
-    a.download=`${djName.replace(/\s+/g,'-')}-${moKey}.json`; a.click();
-    showSuccess(rows.length,false);
-  }
+  try{ await fetch(WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),mode:'no-cors'}); }catch(e){}
+  showSuccess(rows.length);
 }
 
-function showSuccess(hours,sent) {
+function showSuccess(hours) {
   document.getElementById('step3').classList.remove('active');
   const s=document.getElementById('success'); s.classList.add('show');
-  document.getElementById('suc-msg').innerHTML=`<strong>${djName}</strong> — ${moLabel}<br>${hours} hour slot${hours!==1?'s':''} ${sent?'sent to the roster sheet ✓':'downloaded as JSON ✓'}<br><br>The team will be in touch with your schedule.`;
+  document.getElementById('suc-msg').innerHTML=`<strong>${djName}</strong> — ${moLabel}<br>${hours} hour slot${hours!==1?'s':''} submitted successfully ✓<br><br>The team will be in touch with your schedule.`;
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -880,7 +924,6 @@ function resetAll() {
     lbl.textContent=id==='cs-dj'?'Select your name':'Select month';
     document.querySelectorAll(`#${id}-drop .custom-option`).forEach(o=>o.classList.remove('selected'));
   });
-  document.getElementById('webhook').value='';
   document.getElementById('cal').innerHTML='';
   document.getElementById('summary').innerHTML='';
   document.getElementById('success').classList.remove('show');
