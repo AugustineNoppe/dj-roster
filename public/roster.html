@@ -539,7 +539,7 @@ async function assignDJ(sel) {
     const res = await fetch('/api/roster/assign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ venue: venueParam, date, slot, dj })
+      body: JSON.stringify({ venue: venueParam, date, slot, dj, month: getMonthString() })
     });
     const data = await res.json();
     if (data.success) {
