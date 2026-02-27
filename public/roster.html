@@ -203,7 +203,61 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
   opacity: 0.4;
 }
 
-/* MOBILE */
+.venue-tab.active[id="tabHours"] { color: #2e7d32; border-bottom-color: #2e7d32; }
+
+/* HOURS PAGE */
+.hours-wrap { display: flex; flex-direction: column; gap: 20px; }
+.summary-row {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px;
+}
+.summary-card {
+  background: white; border-radius: var(--radius); padding: 18px;
+  box-shadow: var(--shadow);
+}
+.summary-card .card-label { font-size: 10px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.summary-card .card-value { font-size: 26px; font-weight: 900; color: var(--navy); }
+.summary-card .card-sub { font-size: 11px; font-weight: 600; color: var(--text-mid); margin-top: 2px; }
+.hours-table-wrap { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.hours-table-header {
+  padding: 14px 20px; border-bottom: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.hours-table-header h2 { font-size: 14px; font-weight: 800; color: var(--navy); }
+.hours-table { width: 100%; border-collapse: collapse; }
+.hours-table thead th {
+  padding: 9px 14px; text-align: left; font-size: 10px; font-weight: 800;
+  color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em;
+  border-bottom: 2px solid var(--border); background: #fafbff;
+}
+.hours-table thead th.right { text-align: right; }
+.hours-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.hours-table tbody tr:last-child { border-bottom: none; }
+.hours-table tbody tr:hover { background: #f8f9ff; }
+.hours-table tbody td { padding: 11px 14px; font-size: 12px; font-weight: 600; }
+.hours-table tbody td.right { text-align: right; }
+.dj-name-cell { display: flex; align-items: center; gap: 10px; }
+.dj-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.dj-name { font-weight: 700; font-size: 12px; }
+.hours-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.hours-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; min-width: 60px; }
+.hours-bar-fill { height: 100%; border-radius: 3px; background: var(--teal); }
+.hours-bar-fill.resident { background: var(--navy); }
+.hours-bar-fill.zero { background: #eee; }
+.hours-val { font-size: 12px; font-weight: 800; color: var(--text); min-width: 30px; text-align: right; }
+.badge { padding: 2px 7px; border-radius: 20px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.badge-low { background: #fff3e0; color: #e65100; }
+.badge-ok { background: #e8f5e9; color: #2e7d32; }
+.target-note {
+  font-size: 11px; font-weight: 600; color: var(--text-mid);
+  padding: 10px 20px; background: var(--teal-light); border-top: 1px solid var(--border);
+}
+.totals-row { background: #f0f2f8 !important; }
+.totals-row td { font-weight: 800 !important; }
+
+@media (max-width: 600px) {
+  .summary-row { grid-template-columns: 1fr 1fr; }
+  .hours-table thead th, .hours-table tbody td { padding: 8px 10px; font-size: 11px; }
+}
 @media (max-width: 768px) {
   .app-header {
     height: auto;
@@ -311,6 +365,7 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
   <div class="venue-bar">
     <button class="venue-tab active" id="tabArkbar" onclick="switchVenue('arkbar')">ARKbar / HIP</button>
     <button class="venue-tab love" id="tabLove" onclick="switchVenue('love')">Love Beach Club</button>
+    <button class="venue-tab" id="tabHours" onclick="switchVenue('hours')">DJ Hours</button>
   </div>
 
   <div class="main-content" id="mainContent">
@@ -318,7 +373,7 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
     <div class="loading"><div class="spinner"></div>Loading...</div>
   </div>
 
-  <div class="status-bar">
+  <div class="status-bar" id="statusBarEl">
     <div class="status-pill draft" id="statusPill">● Draft</div>
     <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
@@ -434,9 +489,19 @@ function switchVenue(venue) {
   currentVenue = venue;
   document.getElementById('tabArkbar').classList.toggle('active', venue === 'arkbar');
   document.getElementById('tabLove').classList.toggle('active', venue === 'love');
+  document.getElementById('tabHours').classList.toggle('active', venue === 'hours');
   document.getElementById('headerTitle').textContent =
-    venue === 'arkbar' ? 'ARKbar / HIP Roster' : 'Love Beach Club Roster';
-  loadAll();
+    venue === 'arkbar' ? 'ARKbar / HIP Roster' :
+    venue === 'love'   ? 'Love Beach Club Roster' : 'DJ Hours';
+
+  // Show/hide status bar
+  document.getElementById('statusBarEl').style.display = venue === 'hours' ? 'none' : '';
+
+  if (venue === 'hours') {
+    loadHours();
+  } else {
+    loadAll();
+  }
 }
 
 async function loadAll() {
@@ -730,6 +795,139 @@ function printRoster() {
   document.getElementById('printHeader').textContent =
     `${venue} — DJ Roster — ${MONTHS[currentMonth]} ${currentYear}`;
   window.print();
+}
+
+const RESIDENTS = ['Alex Redwhite', 'Raffo', 'Sound Bogie'];
+const RESIDENT_TARGET = 80;
+
+async function loadHours() {
+  document.getElementById('mainContent').innerHTML =
+    '<div class="loading"><div class="spinner"></div>Loading hours...</div>';
+  const month = getMonthString();
+  try {
+    const [arkRes, loveRes, djRes] = await Promise.all([
+      fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`),
+      fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`),
+      fetch('/api/djs')
+    ]);
+    const arkData  = await arkRes.json();
+    const loveData = await loveRes.json();
+    const djData   = await djRes.json();
+
+    const arkHours = {}, loveHours = {};
+    (arkData.roster || []).forEach(r => { if (r[2]) arkHours[r[2]] = (arkHours[r[2]] || 0) + 1; });
+    (loveData.roster || []).forEach(r => { if (r[2]) loveHours[r[2]] = (loveHours[r[2]] || 0) + 1; });
+
+    renderHours(djData.djs || [], arkHours, loveHours);
+  } catch(e) {
+    document.getElementById('mainContent').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
+  }
+}
+
+function renderHours(djs, arkHours, loveHours) {
+  const totals = {};
+  djs.forEach(d => { totals[d.name] = (arkHours[d.name] || 0) + (loveHours[d.name] || 0); });
+
+  const totalHours = Object.values(totals).reduce((a, b) => a + b, 0);
+  const totalCost  = djs.reduce((sum, d) => sum + (totals[d.name] || 0) * d.rate, 0);
+  const maxHours   = Math.max(...Object.values(totals), RESIDENT_TARGET);
+
+  const sorted = [...djs].sort((a, b) => {
+    const aR = RESIDENTS.includes(a.name) ? 1 : 0;
+    const bR = RESIDENTS.includes(b.name) ? 1 : 0;
+    if (aR !== bR) return bR - aR;
+    return (totals[b.name] || 0) - (totals[a.name] || 0);
+  });
+
+  const rows = sorted.map(dj => {
+    const ark = arkHours[dj.name] || 0;
+    const love = loveHours[dj.name] || 0;
+    const total = ark + love;
+    const isResident = RESIDENTS.includes(dj.name);
+    const pct = maxHours > 0 ? Math.min(total / maxHours * 100, 100) : 0;
+    const cost = total * dj.rate;
+    const barClass = `hours-bar-fill${isResident ? ' resident' : total === 0 ? ' zero' : ''}`;
+    let badge = '';
+    if (isResident) {
+      badge = total >= RESIDENT_TARGET
+        ? `<span class="badge badge-ok">${total}/${RESIDENT_TARGET}h</span>`
+        : `<span class="badge badge-low">${total}/${RESIDENT_TARGET}h</span>`;
+    }
+    return `<tr>
+      <td><div class="dj-name-cell">
+        <div class="dj-dot" style="background:${DJ_COLORS[dj.name]||'#aaa'}"></div>
+        <div>
+          <div class="dj-name">${dj.name}</div>
+          ${isResident ? '<div style="font-size:9px;color:var(--text-light);font-weight:700;text-transform:uppercase">Resident</div>' : ''}
+        </div>
+      </div></td>
+      <td class="right">${ark > 0 ? ark + 'h' : '—'}</td>
+      <td class="right">${love > 0 ? love + 'h' : '—'}</td>
+      <td><div class="hours-bar-wrap">
+        <div class="hours-bar-bg"><div class="${barClass}" style="width:${pct}%"></div></div>
+        <div class="hours-val">${total}h</div>
+        ${badge}
+      </div></td>
+      <td class="right" style="color:var(--text-mid)">฿${dj.rate.toLocaleString()}/h</td>
+      <td class="right" style="font-weight:800;color:var(--navy)">${total > 0 ? '฿'+cost.toLocaleString() : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const arkTotal  = Object.values(arkHours).reduce((a,b)=>a+b,0);
+  const loveTotal = Object.values(loveHours).reduce((a,b)=>a+b,0);
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="hours-wrap">
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="card-label">Total Hours</div>
+          <div class="card-value">${totalHours}h</div>
+          <div class="card-sub">${getMonthString()}</div>
+        </div>
+        <div class="summary-card">
+          <div class="card-label">Total Cost</div>
+          <div class="card-value" style="font-size:20px">฿${totalCost.toLocaleString()}</div>
+          <div class="card-sub">All venues</div>
+        </div>
+        <div class="summary-card">
+          <div class="card-label">ARKbar / HIP</div>
+          <div class="card-value">${arkTotal}h</div>
+          <div class="card-sub">Hours booked</div>
+        </div>
+        <div class="summary-card">
+          <div class="card-label">Love Beach</div>
+          <div class="card-value">${loveTotal}h</div>
+          <div class="card-sub">Hours booked</div>
+        </div>
+      </div>
+      <div class="hours-table-wrap">
+        <div class="hours-table-header">
+          <h2>Hours by DJ — ${getMonthString()}</h2>
+        </div>
+        <table class="hours-table">
+          <thead><tr>
+            <th>DJ</th>
+            <th class="right">ARKbar/HIP</th>
+            <th class="right">Love Beach</th>
+            <th>Total Hours</th>
+            <th class="right">Rate</th>
+            <th class="right">Total Cost</th>
+          </tr></thead>
+          <tbody>
+            ${rows}
+            <tr class="totals-row">
+              <td>Total</td>
+              <td class="right">${arkTotal}h</td>
+              <td class="right">${loveTotal}h</td>
+              <td><div class="hours-val" style="font-size:14px;color:var(--navy)">${totalHours}h</div></td>
+              <td></td>
+              <td class="right" style="font-size:14px;color:var(--navy)">฿${totalCost.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="target-note">Residents (Alex Redwhite, Raffo, Sound Bogie) target: ${RESIDENT_TARGET} hours/month each</div>
+      </div>
+    </div>`;
 }
 
 let toastTimer;
