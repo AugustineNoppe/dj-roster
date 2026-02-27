@@ -63,4 +63,43 @@ app.get('/api/roster', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, month } = req.query;
-    const tabName = venue === 'love' ? 'Love Beach Roster' :
+    const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
+    let values = [];
+    try {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: `${tabName}!A1:Z`,
+      });
+      values = response.data.values || [];
+    } catch (e) {
+      // Tab doesn't exist yet — return empty
+    }
+    res.json({ success: true, roster: values });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// Save a single cell assignment
+app.post('/api/roster/assign', async (req, res) => {
+  try {
+    const sheets = getSheets();
+    const { venue, date, slot, dj } = req.body;
+    const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
+    // Store as: date | slot | dj
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: `${tabName}!A:C`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[date, slot, dj]],
+      },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
