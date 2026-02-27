@@ -1,4 +1,9 @@
-:8080
+{
+    admin off
+}
 
-root * /app
-file_server
+:80 {
+    root * /app
+    file_server
+    try_files {path} /index.html
+}
