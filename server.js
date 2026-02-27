@@ -3,12 +3,22 @@ const path = require('path');
 const app = express();
 
 app.use(express.json());
-
-// Serve the existing availability form at /
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Health check
-app.get('/health', (req, res) => res.send('OK'));
+// Roster admin page
+app.get('/roster', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'roster.html'));
+});
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// API: verify password
+app.post('/api/auth', (req, res) => {
+  const { password } = req.body;
+  if (password === process.env.ADMIN_PASSWORD) {
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
+});
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
