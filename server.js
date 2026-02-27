@@ -38,12 +38,8 @@ app.get('/api/availability', async (req, res) => {
       range: 'DJ Availability_Datasheet!A2:F',
     });
     const rows = response.data.values || [];
-    // Filter by month if provided
-    const month = req.query.month; // e.g. "March 2026"
-    const filtered = month
-      ? rows.filter(r => r[2] === month)
-      : rows;
-    // Build availability map: { "2026-03-01": { "14:00–15:00": ["Alex","Raffo"] } }
+    const month = req.query.month;
+    const filtered = month ? rows.filter(r => r[2] === month) : rows;
     const map = {};
     filtered.forEach(([timestamp, dj, monthLabel, date, day, slot]) => {
       if (!date || !slot) return;
@@ -58,21 +54,37 @@ app.get('/api/availability', async (req, res) => {
   }
 });
 
+// Get DJ list from DJ Rates tab
+app.get('/api/djs', async (req, res) => {
+  try {
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'DJ Rates!A2:B',
+    });
+    const rows = response.data.values || [];
+    const djs = rows.map(([name, rate]) => ({ name, rate: parseInt(rate) || 0 }));
+    res.json({ success: true, djs });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // Get roster assignments for a venue/month
 app.get('/api/roster', async (req, res) => {
   try {
     const sheets = getSheets();
-    const { venue, month } = req.query;
+    const { venue } = req.query;
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
     let values = [];
     try {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
-        range: `${tabName}!A1:Z`,
+        range: `${tabName}!A:C`,
       });
       values = response.data.values || [];
     } catch (e) {
-      // Tab doesn't exist yet — return empty
+      // Tab doesn't exist yet
     }
     res.json({ success: true, roster: values });
   } catch (err) {
@@ -86,14 +98,11 @@ app.post('/api/roster/assign', async (req, res) => {
     const sheets = getSheets();
     const { venue, date, slot, dj } = req.body;
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
-    // Store as: date | slot | dj
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: `${tabName}!A:C`,
       valueInputOption: 'RAW',
-      requestBody: {
-        values: [[date, slot, dj]],
-      },
+      requestBody: { values: [[date, slot, dj]] },
     });
     res.json({ success: true });
   } catch (err) {
