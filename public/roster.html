@@ -1049,21 +1049,42 @@ async function suggestRoster() {
   }
 
   function canAssign(djName, dateStr, slot, type) {
-    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
-    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail.filter(d => !LOVE_ONLY.includes(d));
-    if (!filtered.includes(djName)) return false;
+    // Hard rules for everyone
+    if (working[`${dateStr}|${slot}`] === djName) return false;
+    if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
     if (isLove && ARKBAR_ONLY.includes(djName)) return false;
     if (!isLove && LOVE_ONLY.includes(djName)) return false;
     if (NO_HIP.includes(djName) && type === 'hip') return false;
-    if (djName === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return false;
     if (slotsOnDay(djName, dateStr) >= 5) return false;
     if (consecutiveAround(djName, dateStr, slot, type) > 3) return false;
     if (wouldCreateGap(djName, dateStr, slot, type)) return false;
-    if (type === 'hip' && working[`${dateStr}|${slot}`] === djName) return false;
-    if (type === 'arkbar' && working[`${dateStr}|${slot}`] === djName) return false;
-    if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
-    if (djName === 'Sound Bogie' && djHours['Sound Bogie'] >= SOUND_BOGIE_TARGET) return false;
-    if (RESIDENTS_LATE_NIGHT.includes(djName) && djHours[djName] >= RESIDENT_TARGET) return false;
+
+    const isResident = RESIDENTS.includes(djName);
+
+    if (isResident) {
+      // Residents: availability is managed by blackout system on the server.
+      // They are always available for ARKbar slots unless blacked out.
+      // The server injected them into non-HIP slots only — but for auto-suggest
+      // we check the availability map which may or may not have them for late night.
+      // Instead: residents are always eligible for ARKbar non-HIP slots.
+      if (type === 'hip') return false; // never in HIP
+      if (djName === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return false;
+      if (djName === 'Sound Bogie' && djHours['Sound Bogie'] >= SOUND_BOGIE_TARGET) return false;
+      if (RESIDENTS_LATE_NIGHT.includes(djName) && djHours[djName] >= RESIDENT_TARGET) return false;
+      // Check blackout: if resident not in availability map at all for this date/slot,
+      // they may be blacked out — but the server injects them if available,
+      // so check if they appear in ANY slot for this date (not necessarily this slot)
+      // Actually: just check the avail map — server puts them in non-HIP slots when available
+      const dayAvail = availability[dateStr] || {};
+      const anySlotAvail = Object.values(dayAvail).some(arr => Array.isArray(arr) && arr.includes(djName));
+      if (!anySlotAvail) return false; // fully blacked out this day
+      return true;
+    }
+
+    // Regular DJs: must be in the availability map for this specific slot
+    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
+    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail.filter(d => !LOVE_ONLY.includes(d));
+    if (!filtered.includes(djName)) return false;
     return true;
   }
 
@@ -1100,22 +1121,13 @@ async function suggestRoster() {
   }
 
   function pickDJ(dateStr, slot, type) {
-    // Use venue-prefixed availability key
-    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
-    const filtered = isLove
-      ? avail.filter(d => !ARKBAR_ONLY.includes(d))
-      : type === 'hip'
-      ? avail.filter(d => !NO_HIP.includes(d) && !LOVE_ONLY.includes(d))
-      : avail.filter(d => !LOVE_ONLY.includes(d));
-    const candidates = filtered.filter(dj =>
-      eligibleDJs.includes(dj) &&
+    // Build candidate pool from all eligible DJs — canAssign handles all rules
+    const candidates = eligibleDJs.filter(dj =>
       canAssign(dj, dateStr, slot, type) &&
       (runCount[dj] || 0) < runCap
     );
-
     const pool = candidates.length > 0 ? candidates :
-      filtered.filter(dj => eligibleDJs.includes(dj) && canAssign(dj, dateStr, slot, type));
-
+      eligibleDJs.filter(dj => canAssign(dj, dateStr, slot, type));
     if (pool.length === 0) return null;
     pool.sort((a, b) => djScore(a, slot) - djScore(b, slot));
     return pool[0];
@@ -1147,7 +1159,7 @@ async function suggestRoster() {
       if (type === 'hip') continue;
       const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
       const eligible = residentsUnder.filter(res => {
-        if (!avail.includes(res)) return false;
+        if (type === 'hip') return false;
         if (NO_HIP.includes(res) && type === 'hip') return false;
         if (res === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return false;
         if (slotsOnDay(res, dateStr) >= 5) return false;
@@ -1155,6 +1167,10 @@ async function suggestRoster() {
         if (wouldCreateGap(res, dateStr, slot, type)) return false;
         if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === res)) return false;
         if (djHours[res] >= residentTargets[res]) return false;
+        // Check not fully blacked out this day
+        const dayAvail = availability[dateStr] || {};
+        const anySlot = Object.values(dayAvail).some(arr => Array.isArray(arr) && arr.includes(res));
+        if (!anySlot) return false;
         return true;
       });
       eligible.sort((a, b) => djScore(a, slot) - djScore(b, slot));
