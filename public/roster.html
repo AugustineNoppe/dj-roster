@@ -738,11 +738,29 @@ function buildCell(dateStr, slot, type) {
   const assigned = rosterAssignments[key] || '';
   const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
 
+  // For ARKbar slots: always include residents in the dropdown unless blacked out.
+  // Residents are available for ALL ARKbar slots — their blackouts are managed separately.
+  // For HIP slots: residents are excluded (NO_HIP rule).
   let filtered = type === 'love'
     ? avail.filter(dj => !ARKBAR_ONLY.includes(dj))
     : type === 'hip'
     ? avail.filter(dj => !LOVE_ONLY.includes(dj) && !NO_HIP.includes(dj))
     : avail.filter(dj => !LOVE_ONLY.includes(dj));
+
+  if (type === 'arkbar') {
+    // Add residents to dropdown if they are available this day (appear anywhere in avail map)
+    // and not already in filtered list
+    const dayAvail = availability[dateStr] || {};
+    const availableResidents = RESIDENTS.filter(res => {
+      if (filtered.includes(res)) return true; // already there
+      if (res === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return false;
+      // Check they appear somewhere in today's availability (not blacked out)
+      return Object.values(dayAvail).some(arr => Array.isArray(arr) && arr.includes(res));
+    });
+    availableResidents.forEach(res => {
+      if (!filtered.includes(res)) filtered.push(res);
+    });
+  }
 
   const isHip = type === 'hip';
   const isLove = type === 'love';
