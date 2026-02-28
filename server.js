@@ -41,15 +41,46 @@ app.post('/api/auth', (req, res) => {
   res.json({ success: password === process.env.ADMIN_PASSWORD });
 });
 
+// Residents are always available — their sheet only stores BLACKOUT dates
+const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
+const ARKBAR_SLOTS = [
+  '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
+  '18:00–19:00','19:00–20:00','20:00–21:00','21:00–22:00',
+  '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
+];
+
 app.get('/api/availability', async (req, res) => {
   try {
     const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'DJ Availability_Datasheet!A2:F',
-    });
-    const rows = response.data.values || [];
-    const month = req.query.month;
+    const month = req.query.month; // e.g. "March 2026"
+
+    // Parse month into year/month number for date generation
+    const MONTH_NAMES = ['January','February','March','April','May','June',
+                         'July','August','September','October','November','December'];
+    let year, monthIdx, daysInMonth;
+    if (month) {
+      const parts = month.split(' ');
+      monthIdx = MONTH_NAMES.indexOf(parts[0]);
+      year = parseInt(parts[1]);
+      daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+    }
+
+    // Fetch regular availability
+    const [availRes, blackoutRes] = await Promise.all([
+      sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: 'DJ Availability_Datasheet!A2:F',
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: 'Resident Blackouts!A2:D',
+      }).catch(() => ({ data: { values: [] } })) // graceful if sheet doesn't exist yet
+    ]);
+
+    const rows = availRes.data.values || [];
+    const blackoutRows = blackoutRes.data.values || [];
+
+    // Build regular availability map
     const filtered = month ? rows.filter(r => r[2] === month) : rows;
     const map = {};
     filtered.forEach(([timestamp, dj, monthLabel, date, day, slot]) => {
@@ -58,7 +89,72 @@ app.get('/api/availability', async (req, res) => {
       if (!map[date][slot]) map[date][slot] = [];
       if (!map[date][slot].includes(dj)) map[date][slot].push(dj);
     });
+
+    // Build resident blackout set: { "Alex RedWhite": Set(["1 Mar 2026", "5 Mar 2026"]) }
+    const blackouts = {};
+    RESIDENTS.forEach(r => { blackouts[r] = new Set(); });
+    blackoutRows.forEach(([dj, date, monthLabel]) => {
+      if (!dj || !date) return;
+      const m = monthLabel || month;
+      if (month && m !== month) return;
+      if (blackouts[dj]) blackouts[dj].add(date);
+    });
+
+    // Inject full availability for residents on non-blacked-out days
+    if (month && year !== undefined && monthIdx >= 0) {
+      const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, monthIdx, d);
+        const dateLabel = `${d} ${MONTH_NAMES[monthIdx].slice(0,3)} ${year}`;
+        RESIDENTS.forEach(resident => {
+          if (blackouts[resident].has(dateLabel)) return; // blacked out
+          if (!map[dateLabel]) map[dateLabel] = {};
+          ARKBAR_SLOTS.forEach(slot => {
+            if (!map[dateLabel][slot]) map[dateLabel][slot] = [];
+            if (!map[dateLabel][slot].includes(resident)) {
+              map[dateLabel][slot].push(resident);
+            }
+          });
+        });
+      }
+    }
+
     res.json({ success: true, availability: map });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// Submit resident blackout dates
+app.post('/api/blackout', async (req, res) => {
+  try {
+    const { dj, month, dates } = req.body;
+    if (!dj || !month || !Array.isArray(dates)) {
+      return res.json({ success: false, error: 'Missing fields' });
+    }
+    const sheets = getSheets();
+    const timestamp = new Date().toISOString();
+    const rows = dates.map(date => [dj, date, month, timestamp]);
+
+    // Clear existing blackouts for this DJ + month, then write fresh
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Resident Blackouts!A2:D',
+    }).catch(() => ({ data: { values: [] } }));
+
+    const existingRows = existing.data.values || [];
+    const keepRows = existingRows.filter(r => !(r[0] === dj && r[2] === month));
+    const newData = [...keepRows, ...rows];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: 'Resident Blackouts!A2',
+      valueInputOption: 'RAW',
+      requestBody: { values: newData.length > 0 ? newData : [['']] },
+    });
+
+    res.json({ success: true, saved: rows.length });
   } catch (err) {
     console.error(err);
     res.json({ success: false, error: err.message });
