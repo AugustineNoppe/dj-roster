@@ -410,8 +410,17 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
     <div class="login-icon" style="font-size:40px;margin-bottom:12px;">&#9835;</div>
     <h1>DJ Roster</h1>
     <p>Admin — ARKbar & Love Beach Club</p>
-    <input type="password" id="pwInput" placeholder="Password"
-           onkeydown="if(event.key==='Enter') doLogin()">
+    <div style="position:relative;width:100%;">
+      <input type="password" id="pwInput" placeholder="Password"
+             onkeydown="if(event.key==='Enter') doLogin()"
+             style="padding-right:44px;width:100%;box-sizing:border-box;">
+      <button onclick="togglePwView()" id="pwToggle"
+              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                     background:none;border:none;cursor:pointer;padding:4px;
+                     color:rgba(255,255,255,0.4);font-size:16px;line-height:1;">
+        👁
+      </button>
+    </div>
     <button onclick="doLogin()">Enter Admin</button>
     <div class="login-error" id="loginError">Incorrect password. Try again.</div>
   </div>
@@ -521,7 +530,19 @@ window.addEventListener('DOMContentLoaded', () => {
   updateMonthLabel();
 });
 
-async function doLogin() {
+async function togglePwView() {
+  const inp = document.getElementById('pwInput');
+  const btn = document.getElementById('pwToggle');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.style.opacity = '1';
+  } else {
+    inp.type = 'password';
+    btn.style.opacity = '0.4';
+  }
+}
+
+function doLogin() {
   const pw = document.getElementById('pwInput').value;
   try {
     const res = await fetch('/api/auth', {
@@ -706,7 +727,10 @@ function renderGrid() {
 function buildCell(dateStr, slot, type) {
   const key = `${dateStr}|${slot}`;
   const assigned = rosterAssignments[key] || '';
-  const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
+  // ARKbar cells for HIP-overlap slots use 'ark:slot' availability key
+  // so residents injected there are never visible to HIP cells
+  const availKey = (type === 'arkbar' && HIP_SLOTS.includes(slot)) ? `ark:${slot}` : slot;
+  const avail = (availability[dateStr] && availability[dateStr][availKey]) || [];
 
   let filtered = type === 'love'
     ? avail.filter(dj => !ARKBAR_ONLY.includes(dj))
@@ -1049,7 +1073,8 @@ async function suggestRoster() {
 
   function canAssign(djName, dateStr, slot, type) {
     // Must be in availability data for this slot
-    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
+    const availKey = (type === 'arkbar' && HIP_SLOTS.includes(slot)) ? `ark:${slot}` : slot;
+    const avail = (availability[dateStr] && availability[dateStr][availKey]) || [];
     const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail.filter(d => !LOVE_ONLY.includes(d));
     if (!filtered.includes(djName)) return false;
     // Venue restrictions
@@ -1123,11 +1148,13 @@ async function suggestRoster() {
   }
 
   function pickDJ(dateStr, slot, type) {
-    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
+    // Use ark: prefixed key for ARKbar overlap slots — separates resident availability from HIP
+    const availKey = (type === 'arkbar' && HIP_SLOTS.includes(slot)) ? `ark:${slot}` : slot;
+    const avail = (availability[dateStr] && availability[dateStr][availKey]) || [];
     const filtered = isLove
       ? avail.filter(d => !ARKBAR_ONLY.includes(d))
       : type === 'hip'
-      ? avail.filter(d => !NO_HIP.includes(d) && !LOVE_ONLY.includes(d)) // auto-suggest never puts residents in HIP
+      ? avail.filter(d => !NO_HIP.includes(d) && !LOVE_ONLY.includes(d))
       : avail.filter(d => !LOVE_ONLY.includes(d));
     const candidates = filtered.filter(dj =>
       eligibleDJs.includes(dj) &&
