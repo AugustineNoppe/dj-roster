@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARKbar × Love Beach — DJ Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Montserrat', sans-serif;
+  background: #0b1020;
+  color: white;
+  overflow: hidden;
+}
+
+.bg {
+  position: fixed; inset: 0; z-index: 0;
+}
+.bg-orb {
+  position: absolute; border-radius: 50%; filter: blur(100px);
+  animation: drift 14s ease-in-out infinite alternate;
+}
+.bg-orb:nth-child(1) {
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, #2B3990 0%, transparent 70%);
+  top: -200px; left: -200px; opacity: 0.6;
+  animation-delay: 0s;
+}
+.bg-orb:nth-child(2) {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #5DB8C0 0%, transparent 70%);
+  bottom: -150px; right: -100px; opacity: 0.35;
+  animation-delay: -5s;
+}
+.bg-orb:nth-child(3) {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, #F15A29 0%, transparent 70%);
+  top: 50%; left: 55%; opacity: 0.15;
+  animation-delay: -9s;
+}
+
+@keyframes drift {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(40px, -50px); }
+}
+
+.wrap {
+  position: relative; z-index: 1;
+  height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px 24px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 52px;
+  animation: fadeUp 0.7s ease both;
+}
+
+.venues {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-bottom: 14px;
+}
+.venue { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
+.venue.ark { color: #5DB8C0; }
+.venue.love { color: #e91e8c; }
+.venues-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+
+.title {
+  font-size: clamp(40px, 7vw, 68px);
+  font-weight: 900; letter-spacing: -0.03em; line-height: 1;
+}
+.subtitle {
+  margin-top: 10px; font-size: 12px; font-weight: 600;
+  color: rgba(255,255,255,0.3); letter-spacing: 0.12em; text-transform: uppercase;
+}
+
+.divider {
+  width: 40px; height: 1px;
+  background: rgba(255,255,255,0.15);
+  margin-bottom: 44px;
+  animation: fadeUp 0.7s ease 0.1s both;
+}
+
+.buttons {
+  display: flex; flex-direction: column;
+  gap: 14px; width: 100%; max-width: 380px;
+  animation: fadeUp 0.7s ease 0.2s both;
+}
+
+.btn {
+  width: 100%; padding: 22px 28px;
+  border-radius: 14px;
+  text-decoration: none; color: white;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.btn:hover {
+  transform: translateY(-3px);
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+}
+.btn:active { transform: translateY(0); }
+
+.btn-left { display: flex; flex-direction: column; gap: 3px; }
+.btn-tag { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.4; }
+.btn-label { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.btn-arrow { font-size: 16px; opacity: 0.25; transition: opacity 0.18s, transform 0.18s; }
+.btn:hover .btn-arrow { opacity: 0.6; transform: translateX(4px); }
+
+.btn.dj   { border-top: 2px solid rgba(93,184,192,0.7); }
+.btn.mgr  { border-top: 2px solid rgba(241,90,41,0.7); }
+
+.footer {
+  position: fixed; bottom: 28px;
+  font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,0.15);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  animation: fadeUp 0.7s ease 0.4s both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .title { font-size: 38px; }
+  .btn { padding: 18px 22px; }
+  .btn-label { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+</div>
+
+<div class="wrap">
+  <div class="header">
+    <div class="venues">
+      <span class="venue ark">ARKbar Beach Club</span>
+      <div class="venues-dot"></div>
+      <span class="venue love">Love Beach Club</span>
+    </div>
+    <div class="title">DJ Portal</div>
+    <div class="subtitle">Roster Management</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="buttons">
+    <a class="btn dj" href="/availability">
+      <div class="btn-left">
+        <div class="btn-tag">Availability</div>
+        <div class="btn-label">For DJs</div>
+      </div>
+      <div class="btn-arrow">→</div>
+    </a>
+
+    <a class="btn mgr" href="/roster">
+      <div class="btn-left">
+        <div class="btn-tag">Scheduling</div>
+        <div class="btn-label">For Management</div>
+      </div>
+      <div class="btn-arrow">→</div>
+    </a>
+  </div>
+</div>
+
+<div class="footer">ARKbar × Love Beach — Internal Use Only</div>
+
+</body>
+</html>
