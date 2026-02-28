@@ -48,6 +48,10 @@ const ARKBAR_SLOTS = [
   '18:00–19:00','19:00–20:00','20:00–21:00','21:00–22:00',
   '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
 ];
+// HIP shares these time slots with ARKbar — residents must NEVER appear in these
+const HIP_SLOTS = ['21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00'];
+// Slots exclusively for ARKbar (not shared with HIP) — residents can be injected here
+const ARKBAR_ONLY_SLOTS = ARKBAR_SLOTS.filter(s => !HIP_SLOTS.includes(s));
 // Slots blocked for 'morning' blackout (14:00–19:00 only)
 const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
 
@@ -116,7 +120,6 @@ app.get('/api/availability', async (req, res) => {
 
           if (!map[dateKey]) map[dateKey] = {};
           ARKBAR_SLOTS.forEach(slot => {
-            // Skip morning slots if morning blackout
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
             if (!map[dateKey][slot]) map[dateKey][slot] = [];
             if (!map[dateKey][slot].includes(resident)) {
