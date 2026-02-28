@@ -1046,79 +1046,94 @@ async function suggestRoster() {
   function canAssign(djName, dateStr, slot, type) {
     // Must be in availability data for this slot
     const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
-    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail;
+    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail.filter(d => !LOVE_ONLY.includes(d));
     if (!filtered.includes(djName)) return false;
-    // Venue restriction
+    // Venue restrictions
     if (isLove && ARKBAR_ONLY.includes(djName)) return false;
     if (!isLove && LOVE_ONLY.includes(djName)) return false;
-    // Max 5 slots per day across all venues
+    // Residents never play HIP
+    if (NO_HIP.includes(djName) && type === 'hip') return false;
+    // Sound Bogie never plays 14:00-17:00
+    if (djName === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return false;
+    // Max 5 slots per day
     if (slotsOnDay(djName, dateStr) >= 5) return false;
-    // Max 3 consecutive (using combined ARK+HIP timeline)
+    // Max 3 consecutive
     if (consecutiveAround(djName, dateStr, slot, type) > 3) return false;
-    // No gaps — all of a DJ's slots on a day must be one unbroken block
+    // No gaps — unbroken block
     if (wouldCreateGap(djName, dateStr, slot, type)) return false;
-    // No same time-slot overlap between ARKbar and HIP on same day
-    // If assigning to HIP, check DJ isn't already on ARKbar for that same slot
-    // If assigning to ARKbar, check DJ isn't already on HIP for that same slot
+    // No ARKbar/HIP same-slot overlap
     if (type === 'hip' && working[`${dateStr}|${slot}`] === djName) return false;
     if (type === 'arkbar' && working[`${dateStr}|${slot}`] === djName) return false;
-    // Cross-venue conflict: DJ can't play Love Beach AND ARKbar/HIP same day
-    if (!isLove) {
-      if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
-    } else {
-      if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
-    }
-    // Resident cap: don't exceed 80h unless no one else available
-    if (RESIDENTS.includes(djName) && djHours[djName] >= RESIDENT_TARGET) return false;
+    // Cross-venue conflict
+    if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
+    // Per-resident hour caps
+    if (djName === 'Sound Bogie' && djHours['Sound Bogie'] >= SOUND_BOGIE_TARGET) return false;
+    if (RESIDENTS_LATE_NIGHT.includes(djName) && djHours[djName] >= RESIDENT_TARGET) return false;
     return true;
   }
 
-  // Night slots first (residents prioritised there)
-  const NIGHT_SLOTS = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
-  const sorted = [...emptySlots].sort((a, b) => {
-    const aN = NIGHT_SLOTS.includes(a.slot) ? 0 : 1;
-    const bN = NIGHT_SLOTS.includes(b.slot) ? 0 : 1;
-    return aN - bN;
-  });
+  // Slot priority order:
+  // 1. Late night (23:00-02:00) — Alex/Raffo prioritised here
+  // 2. Evening (19:00-23:00)
+  // 3. Afternoon (14:00-19:00) — Sound Bogie excluded from 14-17, rare 17-19
+  const LATE_NIGHT_PRIORITY = ['23:00–00:00','00:00–01:00','01:00–02:00'];
+  const EVENING_SLOTS = ['19:00–20:00','20:00–21:00','21:00–22:00','22:00–23:00'];
 
-  // Per-run soft cap: no DJ gets more than ~fair share in one suggest
+  function slotPriority(slot) {
+    if (LATE_NIGHT_PRIORITY.includes(slot)) return 0; // fill first
+    if (EVENING_SLOTS.includes(slot)) return 1;
+    if (SOUND_BOGIE_RARE.includes(slot)) return 2;
+    return 3; // 14:00-17:00 — non-residents only
+  }
+
+  const sorted = [...emptySlots].sort((a, b) => slotPriority(a.slot) - slotPriority(b.slot));
+
+  // Per-run soft cap
   const fairShare = Math.ceil(emptySlots.length / Math.max(eligibleDJs.length, 1));
-  const runCap = Math.max(fairShare, 20); // at least 20, but spread fairly
-  const runCount = {}; // how many slots assigned THIS run
+  const runCap = Math.max(fairShare, 20);
+  const runCount = {};
+
+  function djScore(djName, slot) {
+    // Lower score = higher priority
+    const hours = djHours[djName] || 0;
+    const isLateNight = LATE_NIGHT_PRIORITY.includes(slot);
+    const isEvening = EVENING_SLOTS.includes(slot);
+    const isSoundBogie = djName === 'Sound Bogie';
+    const isLateNightRes = RESIDENTS_LATE_NIGHT.includes(djName);
+
+    // Sound Bogie: deprioritise rare slots (17-19), normal priority for evening/night
+    if (isSoundBogie && SOUND_BOGIE_RARE.includes(slot)) return 900 + hours;
+
+    // Alex/Raffo: boost for late night slots
+    if (isLateNightRes && isLateNight && hours < RESIDENT_TARGET) return hours - 50;
+
+    // Residents under target: prioritise evening
+    if (RESIDENTS.includes(djName)) {
+      const target = isSoundBogie ? SOUND_BOGIE_TARGET : RESIDENT_TARGET;
+      if (hours < target) return hours;
+      return 500 + hours; // over target, deprioritise
+    }
+
+    // Regular DJs
+    return 200 + hours + Math.random() * 5;
+  }
 
   function pickDJ(dateStr, slot, type) {
     const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
-    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail;
+    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail.filter(d => !LOVE_ONLY.includes(d));
     const candidates = filtered.filter(dj =>
       eligibleDJs.includes(dj) &&
       canAssign(dj, dateStr, slot, type) &&
       (runCount[dj] || 0) < runCap
     );
-    if (candidates.length === 0) {
-      // Fallback: ignore run cap
-      const fallback = filtered.filter(dj => eligibleDJs.includes(dj) && canAssign(dj, dateStr, slot, type));
-      if (fallback.length === 0) return null;
-      fallback.sort((a, b) => {
-        const aRes = RESIDENTS.includes(a) && djHours[a] < RESIDENT_TARGET;
-        const bRes = RESIDENTS.includes(b) && djHours[b] < RESIDENT_TARGET;
-        if (aRes && !bRes) return -1;
-        if (!aRes && bRes) return 1;
-        return (djHours[a] || 0) - (djHours[b] || 0);
-      });
-      return fallback[0];
-    }
 
-    // Sort: residents under target first, then fewest hours, shuffle ties
-    candidates.sort((a, b) => {
-      const aRes = RESIDENTS.includes(a) && djHours[a] < RESIDENT_TARGET;
-      const bRes = RESIDENTS.includes(b) && djHours[b] < RESIDENT_TARGET;
-      if (aRes && !bRes) return -1;
-      if (!aRes && bRes) return 1;
-      const diff = (djHours[a] || 0) - (djHours[b] || 0);
-      if (diff !== 0) return diff;
-      return Math.random() - 0.5; // shuffle equal-hour candidates
-    });
-    return candidates[0];
+    const pool = candidates.length > 0 ? candidates :
+      filtered.filter(dj => eligibleDJs.includes(dj) && canAssign(dj, dateStr, slot, type));
+
+    if (pool.length === 0) return null;
+
+    pool.sort((a, b) => djScore(a, slot) - djScore(b, slot));
+    return pool[0];
   }
 
   // Assign
@@ -1133,22 +1148,41 @@ async function suggestRoster() {
     }
   }
 
-  // If residents still under target after first pass, do a second pass ignoring cap
-  const residentsUnder = RESIDENTS.filter(r => djHours[r] < RESIDENT_TARGET && !isLove);
+  // Second pass: push residents under target into remaining empty slots (ignore run cap)
+  // Each resident uses their own target
+  const residentTargets = {
+    'Alex RedWhite': RESIDENT_TARGET,
+    'Raffo DJ': RESIDENT_TARGET,
+    'Sound Bogie': SOUND_BOGIE_TARGET,
+  };
+  const residentsUnder = RESIDENTS.filter(r => {
+    if (isLove) return false;
+    return djHours[r] < residentTargets[r];
+  });
   if (residentsUnder.length > 0) {
     const stillEmpty = sorted.filter(({ dateStr, slot }) => !working[`${dateStr}|${slot}`]);
     for (const { dateStr, slot, type } of stillEmpty) {
+      if (type === 'hip') continue; // residents never play HIP
       const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
-      for (const res of residentsUnder) {
-        if (!avail.includes(res)) continue;
-        if (slotsOnDay(res, dateStr) >= 5) continue;
-        if (consecutiveAround(res, dateStr, slot, type) > 3) continue;
-        if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === res)) continue;
+      // Sort residents by score for this slot
+      const eligible = residentsUnder.filter(res => {
+        if (!avail.includes(res)) return false;
+        if (NO_HIP.includes(res) && type === 'hip') return false;
+        if (res === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return false;
+        if (slotsOnDay(res, dateStr) >= 5) return false;
+        if (consecutiveAround(res, dateStr, slot, type) > 3) return false;
+        if (wouldCreateGap(res, dateStr, slot, type)) return false;
+        if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === res)) return false;
+        if (djHours[res] >= residentTargets[res]) return false;
+        return true;
+      });
+      eligible.sort((a, b) => djScore(a, slot) - djScore(b, slot));
+      if (eligible.length > 0) {
+        const res = eligible[0];
         working[`${dateStr}|${slot}`] = res;
         djHours[res] = (djHours[res] || 0) + 1;
         runCount[res] = (runCount[res] || 0) + 1;
         toSave.push({ dateStr, slot, type, dj: res });
-        break;
       }
     }
   }
@@ -1220,7 +1254,13 @@ function printRoster() {
 }
 
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
-const RESIDENTS_80HR = ['Alex RedWhite', 'Raffo DJ'];
+const RESIDENTS_LATE_NIGHT = ['Alex RedWhite', 'Raffo DJ']; // prioritised 23:00-02:00
+const NO_HIP = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];  // residents don't play HIP
+const SOUND_BOGIE_TARGET = 35; // 30-40h, use midpoint
+const LATE_NIGHT_SLOTS = ['23:00–00:00','00:00–01:00','01:00–02:00'];
+const SOUND_BOGIE_BLOCKED = ['14:00–15:00','15:00–16:00','16:00–17:00']; // never
+const SOUND_BOGIE_RARE = ['17:00–18:00','18:00–19:00']; // low priority only
+const RESIDENTS_80HR = ['Alex RedWhite', 'Raffo DJ']; // Sound Bogie has lower target
 const RESIDENT_TARGET = 80;
 
 async function loadHours() {
@@ -1283,12 +1323,17 @@ function renderHours(djs, arkHours, loveHours) {
     const cost = total * dj.rate;
     const barClass = `hours-bar-fill${isResident ? ' resident' : total === 0 ? ' zero' : ''}`;
     const remaining = RESIDENT_TARGET - total;
+    // Sound Bogie has 30-40h target
+    const isSoundBogie = dj.name === 'Sound Bogie';
+    const djTarget = isSoundBogie ? 35 : RESIDENT_TARGET;
+    const djTargetLabel = isSoundBogie ? '30–40' : RESIDENT_TARGET;
     let badge = '';
-    if (has80Target) {
-      if (total >= RESIDENT_TARGET) {
-        badge = `<span class="badge badge-ok">${total}/${RESIDENT_TARGET}h ✓</span>`;
+    if (has80Target || isSoundBogie) {
+      if (total >= djTarget) {
+        badge = `<span class="badge badge-ok">${total}/${djTargetLabel}h ✓</span>`;
       } else {
-        badge = `<span class="badge badge-low">${total}/${RESIDENT_TARGET}h</span><span style="margin-left:6px;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:800;background:#fff8e1;color:#f57f17;border:1px solid #ffe082">${remaining}h needed</span>`;
+        const rem = djTarget - total;
+        badge = `<span class="badge badge-low">${total}/${djTargetLabel}h</span><span style="margin-left:6px;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:800;background:#fff8e1;color:#f57f17;border:1px solid #ffe082">${rem}h needed</span>`;
       }
     }
     return `<tr>
@@ -1363,7 +1408,7 @@ function renderHours(djs, arkHours, loveHours) {
             </tr>
           </tbody>
         </table>
-        <div class="target-note">Residents target: Alex RedWhite & Raffo DJ — ${RESIDENT_TARGET} hours/month each</div>
+        <div class="target-note">Targets: Alex RedWhite & Raffo DJ — ${RESIDENT_TARGET}h/month · Sound Bogie — 30–40h/month</div>
       </div>
     </div>`;
 }
