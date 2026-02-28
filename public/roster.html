@@ -488,6 +488,7 @@ const LOVE_SAT_SLOTS = [
 ];
 
 const ARKBAR_ONLY = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
+const LOVE_ONLY = ['Laina'];
 
 const DJ_COLORS = {
   'Alex RedWhite': '#1565c0',
@@ -751,46 +752,77 @@ async function assignDJ(sel) {
   const venueParam = type === 'love' ? 'love' : 'arkbar';
 
   if (dj) {
-    // Max 6 slots per DJ per day
-    const dayAssignments = Object.entries(rosterAssignments)
-      .filter(([k, v]) => k.startsWith(date) && v === dj);
-    if (dayAssignments.length >= 6) {
-      showToast(`${dj} already has 6 slots on this day`, 'error');
-      sel.value = '';
-      return;
+    // Venue restrictions
+    if (LOVE_ONLY.includes(dj) && type !== 'love') {
+      showToast(`${dj} only plays Love Beach Club`, 'error');
+      sel.value = ''; return;
+    }
+    if (ARKBAR_ONLY.includes(dj) && type === 'love') {
+      showToast(`${dj} only plays ARKbar / HIP`, 'error');
+      sel.value = ''; return;
     }
 
-    // Max 3 consecutive slots
-    const allSlots = type === 'love'
-      ? [...LOVE_SAT_SLOTS]
-      : [...ARKBAR_SLOTS, ...HIP_SLOTS];
+    // Max 5 slots per DJ per day
+    const dayAssignments = Object.entries(rosterAssignments)
+      .filter(([k, v]) => k.startsWith(date) && v === dj);
+    if (dayAssignments.length >= 5) {
+      showToast(`${dj} already has 5 slots on this day`, 'error');
+      sel.value = ''; return;
+    }
+
+    // Build slot timeline
+    const combinedTimeline = [
+      '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+      '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+      '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
+    ];
+    const isSat = new Date(date).getDay() === 6;
+    const allSlots = type === 'love' ? (isSat ? [...LOVE_SAT_SLOTS] : [...LOVE_WEEKDAY_SLOTS]) : combinedTimeline;
     const slotIdx = allSlots.indexOf(slot);
+
+    // Max 3 consecutive slots
     if (slotIdx >= 0) {
-      // Count consecutive slots before and after
       let before = 0, after = 0;
       for (let i = slotIdx - 1; i >= 0; i--) {
-        if (rosterAssignments[`${date}|${allSlots[i]}`] === dj) before++;
-        else break;
+        if (rosterAssignments[`${date}|${allSlots[i]}`] === dj) before++; else break;
       }
       for (let i = slotIdx + 1; i < allSlots.length; i++) {
-        if (rosterAssignments[`${date}|${allSlots[i]}`] === dj) after++;
-        else break;
+        if (rosterAssignments[`${date}|${allSlots[i]}`] === dj) after++; else break;
       }
       if (before + after >= 3) {
         showToast(`${dj} can't play more than 3 slots in a row`, 'error');
-        sel.value = '';
-        return;
+        sel.value = ''; return;
       }
     }
 
-    // Cross-venue conflict check
+    // Contiguous block rule — no gaps allowed
+    if (slotIdx >= 0) {
+      const existingIdxs = allSlots
+        .map((s, i) => rosterAssignments[`${date}|${s}`] === dj ? i : -1)
+        .filter(i => i >= 0);
+      if (existingIdxs.length > 0) {
+        const min = Math.min(...existingIdxs);
+        const max = Math.max(...existingIdxs);
+        if (slotIdx !== min - 1 && slotIdx !== max + 1) {
+          showToast(`${dj}'s slots must be one unbroken block`, 'error');
+          sel.value = ''; return;
+        }
+      }
+    }
+
+    // No ARKbar/HIP same time-slot overlap
+    if (type === 'hip' && rosterAssignments[`${date}|${slot}`] === dj) {
+      showToast(`${dj} is already on ARKbar at ${slot}`, 'error');
+      sel.value = ''; return;
+    }
+
+    // Cross-venue conflict
     const otherAssignments = Object.entries(type === 'love' ? arkbarAssignments : loveAssignments)
       .filter(([k, v]) => k.startsWith(date) && v === dj);
     if (otherAssignments.length > 0) {
       const otherVenue = type === 'love' ? 'ARKbar' : 'Love Beach';
       showToast(`${dj} is already booked at ${otherVenue} on this date`, 'error');
-      sel.value = '';
-      return;
+      sel.value = ''; return;
     }
   }
 
@@ -945,6 +977,7 @@ async function suggestRoster() {
     .filter(name => {
       if (name === 'Guest DJ') return false;
       if (isLove && ARKBAR_ONLY.includes(name)) return false;
+      if (!isLove && LOVE_ONLY.includes(name)) return false;
       return true;
     });
 
@@ -966,10 +999,21 @@ async function suggestRoster() {
     return ARKBAR_SLOTS;
   }
 
+  // Combined ARKbar+HIP timeline in order (for consecutive counting across both venues)
+  const COMBINED_ARK_HIP = [
+    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+    '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+    '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
+  ];
+
   function consecutiveAround(djName, dateStr, slot, type) {
-    const slotList = type === 'love'
-      ? (new Date(dateStr).getDay() === 6 ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS)
-      : (type === 'hip' ? HIP_SLOTS : ARKBAR_SLOTS);
+    let slotList;
+    if (type === 'love') {
+      slotList = new Date(dateStr).getDay() === 6 ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
+    } else {
+      // For ARKbar/HIP use combined timeline so consecutive counts across both venues
+      slotList = COMBINED_ARK_HIP;
+    }
     const idx = slotList.indexOf(slot);
     if (idx < 0) return 1;
     let count = 1;
@@ -986,6 +1030,19 @@ async function suggestRoster() {
     return Object.entries(working).filter(([k, v]) => k.startsWith(dateStr + '|') && v === djName).length;
   }
 
+  function wouldCreateGap(djName, dateStr, slot, type) {
+    const slotList = type === 'love'
+      ? (new Date(dateStr).getDay() === 6 ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS)
+      : COMBINED_ARK_HIP;
+    const djSlots = slotList.filter(s => s === slot || working[`${dateStr}|${s}`] === djName);
+    if (djSlots.length <= 1) return false;
+    const indices = djSlots.map(s => slotList.indexOf(s)).filter(i => i >= 0).sort((a,b) => a-b);
+    for (let i = 1; i < indices.length; i++) {
+      if (indices[i] !== indices[i-1] + 1) return true;
+    }
+    return false;
+  }
+
   function canAssign(djName, dateStr, slot, type) {
     // Must be in availability data for this slot
     const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
@@ -993,12 +1050,24 @@ async function suggestRoster() {
     if (!filtered.includes(djName)) return false;
     // Venue restriction
     if (isLove && ARKBAR_ONLY.includes(djName)) return false;
-    // Max 6 per day
-    if (slotsOnDay(djName, dateStr) >= 6) return false;
-    // Max 3 consecutive
+    if (!isLove && LOVE_ONLY.includes(djName)) return false;
+    // Max 5 slots per day across all venues
+    if (slotsOnDay(djName, dateStr) >= 5) return false;
+    // Max 3 consecutive (using combined ARK+HIP timeline)
     if (consecutiveAround(djName, dateStr, slot, type) > 3) return false;
-    // No cross-venue conflict
-    if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
+    // No gaps — all of a DJ's slots on a day must be one unbroken block
+    if (wouldCreateGap(djName, dateStr, slot, type)) return false;
+    // No same time-slot overlap between ARKbar and HIP on same day
+    // If assigning to HIP, check DJ isn't already on ARKbar for that same slot
+    // If assigning to ARKbar, check DJ isn't already on HIP for that same slot
+    if (type === 'hip' && working[`${dateStr}|${slot}`] === djName) return false;
+    if (type === 'arkbar' && working[`${dateStr}|${slot}`] === djName) return false;
+    // Cross-venue conflict: DJ can't play Love Beach AND ARKbar/HIP same day
+    if (!isLove) {
+      if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
+    } else {
+      if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
+    }
     // Resident cap: don't exceed 80h unless no one else available
     if (RESIDENTS.includes(djName) && djHours[djName] >= RESIDENT_TARGET) return false;
     return true;
@@ -1072,7 +1141,7 @@ async function suggestRoster() {
       const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
       for (const res of residentsUnder) {
         if (!avail.includes(res)) continue;
-        if (slotsOnDay(res, dateStr) >= 6) continue;
+        if (slotsOnDay(res, dateStr) >= 5) continue;
         if (consecutiveAround(res, dateStr, slot, type) > 3) continue;
         if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === res)) continue;
         working[`${dateStr}|${slot}`] = res;
