@@ -413,13 +413,11 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
     <div style="position:relative;width:100%;">
       <input type="password" id="pwInput" placeholder="Password"
              onkeydown="if(event.key==='Enter') doLogin()"
-             style="padding-right:44px;width:100%;box-sizing:border-box;">
-      <button onclick="togglePwView()" id="pwToggle"
-              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
-                     background:none;border:none;cursor:pointer;padding:4px;
-                     color:rgba(255,255,255,0.4);font-size:16px;line-height:1;">
-        👁
-      </button>
+             style="padding-right:48px;width:100%;box-sizing:border-box;">
+      <span onclick="togglePwView()" id="pwToggle"
+            style="position:absolute;right:14px;top:50%;transform:translateY(-50%);
+                   cursor:pointer;font-size:18px;user-select:none;z-index:10;
+                   -webkit-tap-highlight-color:transparent;">👁</span>
     </div>
     <button onclick="doLogin()">Enter Admin</button>
     <div class="login-error" id="loginError">Incorrect password. Try again.</div>
@@ -535,10 +533,10 @@ async function togglePwView() {
   const btn = document.getElementById('pwToggle');
   if (inp.type === 'password') {
     inp.type = 'text';
-    btn.style.opacity = '1';
+    btn.textContent = '🙈';
   } else {
     inp.type = 'password';
-    btn.style.opacity = '0.4';
+    btn.textContent = '👁';
   }
 }
 
