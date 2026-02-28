@@ -4,7 +4,6 @@ const { google } = require('googleapis');
 const app = express();
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 function getSheets() {
   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
@@ -17,13 +16,25 @@ function getSheets() {
 
 const SHEET_ID = process.env.SPREADSHEET_ID;
 
-app.get('/hours', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'hours.html'));
+// Explicit routes first — before static middleware
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
+app.get('/availability', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/roster', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'roster.html'));
 });
+
+app.get('/hours', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'hours.html'));
+});
+
+// Static files after explicit routes
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/auth', (req, res) => {
   const { password } = req.body;
