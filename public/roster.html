@@ -596,6 +596,9 @@ async function loadAll() {
     rosterAssignments = {};
     (rosterData.roster || []).forEach(row => {
       if (row[0] && row[1] && row[2]) {
+        // Strip any stale resident assignments from HIP slots
+        const isHipSlot = HIP_SLOTS.includes(row[1]);
+        if (isHipSlot && NO_HIP.includes(row[2])) return;
         rosterAssignments[`${row[0]}|${row[1]}`] = row[2];
       }
     });
