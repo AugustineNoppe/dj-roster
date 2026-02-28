@@ -105,18 +105,22 @@ app.get('/api/availability', async (req, res) => {
     // Inject availability for residents — excluding blacked-out slots
     if (month && year !== undefined && monthIdx >= 0) {
       for (let d = 1; d <= daysInMonth; d++) {
-        const dateLabel = `${d} ${MONTH_NAMES[monthIdx].slice(0,3)} ${year}`;
+        // Roster looks up availability by YYYY-MM-DD key
+        const dateKey = `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        // Blackouts are stored as "1 Mar 2026" — build that label for lookup
+        const blackoutLabel = `${d} ${MONTH_NAMES[monthIdx].slice(0,3)} ${year}`;
+
         RESIDENTS.forEach(resident => {
-          const blackoutType = blackouts[resident][dateLabel]; // 'morning', 'full', or undefined
+          const blackoutType = blackouts[resident][blackoutLabel]; // 'morning', 'full', or undefined
           if (blackoutType === 'full') return; // skip entire day
 
-          if (!map[dateLabel]) map[dateLabel] = {};
+          if (!map[dateKey]) map[dateKey] = {};
           ARKBAR_SLOTS.forEach(slot => {
             // Skip morning slots if morning blackout
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
-            if (!map[dateLabel][slot]) map[dateLabel][slot] = [];
-            if (!map[dateLabel][slot].includes(resident)) {
-              map[dateLabel][slot].push(resident);
+            if (!map[dateKey][slot]) map[dateKey][slot] = [];
+            if (!map[dateKey][slot].includes(resident)) {
+              map[dateKey][slot].push(resident);
             }
           });
         });
