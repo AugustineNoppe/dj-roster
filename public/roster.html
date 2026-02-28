@@ -733,8 +733,10 @@ function buildCell(dateStr, slot, type) {
   const availKey = (type === 'arkbar' && HIP_SLOTS.includes(slot)) ? `ark:${slot}` : slot;
   const avail = (availability[dateStr] && availability[dateStr][availKey]) || [];
 
-  let filtered = type === 'love'
+let filtered = type === 'love'
     ? avail.filter(dj => !ARKBAR_ONLY.includes(dj))
+    : type === 'hip'
+    ? avail.filter(dj => !LOVE_ONLY.includes(dj) && !NO_HIP.includes(dj))
     : avail.filter(dj => !LOVE_ONLY.includes(dj));
 
   const isHip = type === 'hip';
