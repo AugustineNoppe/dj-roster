@@ -458,7 +458,7 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
     <div class="status-pill draft" id="statusPill">● Draft</div>
     <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
-      <button class="btn-sm btn-suggest" onclick="suggestRoster()">Auto-suggest</button>
+      <button class="btn-sm btn-suggest" onclick="suggestRoster()">Auto-suggest ARKbar</button>
       <button class="btn-sm" onclick="clearRoster()" style="background:#fff0f0;color:#c62828;border:1.5px solid #ef9a9a;">Clear Roster</button>
       <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:white;">Print / PDF</button>
@@ -954,7 +954,7 @@ async function suggestRoster() {
     return;
   }
 
-  showToast('Running auto-suggest...', '');
+  showToast('Auto-suggesting ARKbar slots...', '');
 
   const isLove = currentVenue === 'love';
   const month = getMonthString();
@@ -967,8 +967,8 @@ async function suggestRoster() {
     const isSat = dow === 6;
     const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     if (!isLove) {
+      // HIP is manual-only — auto-suggest fills ARKbar only
       ARKBAR_SLOTS.forEach(slot => allSlots.push({ dateStr, slot, type: 'arkbar' }));
-      HIP_SLOTS.forEach(slot => allSlots.push({ dateStr, slot, type: 'hip' }));
     } else {
       const active = isSat ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
       active.forEach(slot => allSlots.push({ dateStr, slot, type: 'love' }));
