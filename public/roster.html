@@ -980,7 +980,7 @@ async function cleanupSheet() {
     const data = await res.json();
     if (data.success) {
       showToast(`Sheet fixed — removed ${data.removed} bad rows`, 'success');
-      await loadRoster();
+      await loadAll();
     } else {
       showToast('Cleanup failed: ' + data.error, 'error');
     }
