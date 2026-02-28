@@ -16,24 +16,10 @@ function getSheets() {
 
 const SHEET_ID = process.env.SPREADSHEET_ID;
 
-// Explicit routes first — before static middleware
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
-});
-
-app.get('/availability', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/roster', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'roster.html'));
-});
-
-app.get('/hours', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'hours.html'));
-});
-
-// Static files after explicit routes
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
+app.get('/availability', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/roster', (req, res) => res.sendFile(path.join(__dirname, 'public', 'roster.html')));
+app.get('/hours', (req, res) => res.sendFile(path.join(__dirname, 'public', 'hours.html')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/auth', (req, res) => {
@@ -41,32 +27,33 @@ app.post('/api/auth', (req, res) => {
   res.json({ success: password === process.env.ADMIN_PASSWORD });
 });
 
-// Residents are always available — their sheet only stores BLACKOUT dates
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 
-// ── FIXED: 19:00–20:00 removed (dead slot) ──
+// ARKbar slots — 19:00–20:00 removed (dead slot)
 const ARKBAR_SLOTS = [
   '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
   '18:00–19:00','20:00–21:00','21:00–22:00',
   '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
 ];
 
-// HIP shares these time slots with ARKbar — residents must NEVER appear in these
+// HIP slots — residents NEVER go here
 const HIP_SLOTS = ['21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00'];
 
-// Slots exclusively for ARKbar (not shared with HIP) — residents injected here only
+// ARKbar-only slots = slots NOT shared with HIP — residents go here only
 const ARKBAR_ONLY_SLOTS = ARKBAR_SLOTS.filter(s => !HIP_SLOTS.includes(s));
+// Result: 14:00–15:00, 15:00–16:00, 16:00–17:00, 17:00–18:00, 18:00–19:00, 20:00–21:00, 01:00–02:00
 
-// Slots blocked for 'morning' blackout (14:00–19:00 only)
+// Morning blackout blocks these slots (14:00–19:00)
 const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
+
+const MONTH_NAMES = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
 
 app.get('/api/availability', async (req, res) => {
   try {
     const sheets = getSheets();
-    const month = req.query.month; // e.g. "March 2026"
+    const month = req.query.month;
 
-    const MONTH_NAMES = ['January','February','March','April','May','June',
-                         'July','August','September','October','November','December'];
     let year, monthIdx, daysInMonth;
     if (month) {
       const parts = month.split(' ');
@@ -89,7 +76,7 @@ app.get('/api/availability', async (req, res) => {
     const rows = availRes.data.values || [];
     const blackoutRows = blackoutRes.data.values || [];
 
-    // Build regular availability map
+    // Build regular DJ availability map
     const filtered = month ? rows.filter(r => r[2] === month) : rows;
     const map = {};
     filtered.forEach(([timestamp, dj, monthLabel, date, day, slot]) => {
@@ -109,8 +96,8 @@ app.get('/api/availability', async (req, res) => {
       if (blackouts[dj]) blackouts[dj][date] = type || 'full';
     });
 
-    // Inject resident availability — ARKbar only slots use plain key,
-    // HIP-overlap slots use 'ark:SLOT' key so HIP cells never see residents
+    // Inject residents into ARKBAR_ONLY_SLOTS only
+    // They never appear in HIP_SLOTS keys — HIP cells will show no residents, ever
     if (month && year !== undefined && monthIdx >= 0) {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateKey = `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -118,21 +105,16 @@ app.get('/api/availability', async (req, res) => {
 
         RESIDENTS.forEach(resident => {
           const blackoutType = blackouts[resident][blackoutLabel];
-          if (blackoutType === 'full') return; // skip entire day
+          if (blackoutType === 'full') return;
 
           if (!map[dateKey]) map[dateKey] = {};
 
-          ARKBAR_SLOTS.forEach(slot => {
-            // Skip morning slots if morning blackout
+          // Only inject into ARKBAR_ONLY_SLOTS — never HIP slots
+          ARKBAR_ONLY_SLOTS.forEach(slot => {
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
-
-            // HIP overlap slots → store under ark:SLOT so HIP cells never see residents
-            // ARKbar-only slots → store under plain slot key
-            const mapKey = HIP_SLOTS.includes(slot) ? `ark:${slot}` : slot;
-
-            if (!map[dateKey][mapKey]) map[dateKey][mapKey] = [];
-            if (!map[dateKey][mapKey].includes(resident)) {
-              map[dateKey][mapKey].push(resident);
+            if (!map[dateKey][slot]) map[dateKey][slot] = [];
+            if (!map[dateKey][slot].includes(resident)) {
+              map[dateKey][slot].push(resident);
             }
           });
         });
@@ -146,7 +128,6 @@ app.get('/api/availability', async (req, res) => {
   }
 });
 
-// Submit resident blackout dates
 app.post('/api/blackout', async (req, res) => {
   try {
     const { dj, month, dates } = req.body;
@@ -157,7 +138,6 @@ app.post('/api/blackout', async (req, res) => {
     const timestamp = new Date().toISOString();
     const rows = dates.map(({ date, type }) => [dj, date, month, timestamp, type || 'full']);
 
-    // Clear existing blackouts for this DJ + month, then write fresh
     const existing = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: 'Resident Blackouts!A2:E',
@@ -242,21 +222,12 @@ app.post('/api/roster/assign', async (req, res) => {
     const rowIndex = existingRows.findIndex(r => r[0] === date && normalizeSlot(r[1]) === normSlot && r[3] === month);
 
     if (rowIndex >= 0) {
-      if (dj) {
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: SHEET_ID,
-          range: `${tabName}!A${rowIndex + 1}:D${rowIndex + 1}`,
-          valueInputOption: 'RAW',
-          requestBody: { values: [[date, slot, dj, month]] },
-        });
-      } else {
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: SHEET_ID,
-          range: `${tabName}!A${rowIndex + 1}:D${rowIndex + 1}`,
-          valueInputOption: 'RAW',
-          requestBody: { values: [['', '', '', '']] },
-        });
-      }
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `${tabName}!A${rowIndex + 1}:D${rowIndex + 1}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [dj ? [date, slot, dj, month] : ['', '', '', '']] },
+      });
     } else if (dj) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
@@ -311,13 +282,9 @@ app.post('/api/roster/batch', async (req, res) => {
     if (updateData.length > 0) {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: SHEET_ID,
-        requestBody: {
-          valueInputOption: 'RAW',
-          data: updateData,
-        },
+        requestBody: { valueInputOption: 'RAW', data: updateData },
       });
     }
-
     if (appendRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
@@ -361,10 +328,7 @@ app.post('/api/roster/clear', async (req, res) => {
     if (clearData.length > 0) {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: SHEET_ID,
-        requestBody: {
-          valueInputOption: 'RAW',
-          data: clearData,
-        },
+        requestBody: { valueInputOption: 'RAW', data: clearData },
       });
     }
 
