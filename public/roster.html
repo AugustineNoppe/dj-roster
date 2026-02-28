@@ -596,9 +596,6 @@ async function loadAll() {
     rosterAssignments = {};
     (rosterData.roster || []).forEach(row => {
       if (row[0] && row[1] && row[2]) {
-        // Strip any stale resident assignments from HIP slots
-        const isHipSlot = HIP_SLOTS.includes(row[1]);
-        if (isHipSlot && NO_HIP.includes(row[2])) return;
         rosterAssignments[`${row[0]}|${row[1]}`] = row[2];
       }
     });
@@ -709,8 +706,6 @@ function buildCell(dateStr, slot, type) {
 
   let filtered = type === 'love'
     ? avail.filter(dj => !ARKBAR_ONLY.includes(dj))
-    : type === 'hip'
-    ? avail.filter(dj => !NO_HIP.includes(dj) && !LOVE_ONLY.includes(dj))
     : avail.filter(dj => !LOVE_ONLY.includes(dj));
 
   const isHip = type === 'hip';
@@ -1128,7 +1123,7 @@ async function suggestRoster() {
     const filtered = isLove
       ? avail.filter(d => !ARKBAR_ONLY.includes(d))
       : type === 'hip'
-      ? avail.filter(d => !NO_HIP.includes(d) && !LOVE_ONLY.includes(d))
+      ? avail.filter(d => !NO_HIP.includes(d) && !LOVE_ONLY.includes(d)) // auto-suggest never puts residents in HIP
       : avail.filter(d => !LOVE_ONLY.includes(d));
     const candidates = filtered.filter(dj =>
       eligibleDJs.includes(dj) &&
