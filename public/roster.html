@@ -1189,7 +1189,7 @@ async function suggestRoster() {
       body: JSON.stringify({
         venue: venueParam,
         month,
-        assignments: toSave.map(({ dateStr, slot, dj }) => ({ date: dateStr, slot, dj }))
+        assignments: toSave.map(({ dateStr, slot, dj, type }) => ({ date: dateStr, slot, dj, type }))
       })
     });
     const data = await res.json();
