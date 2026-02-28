@@ -82,8 +82,14 @@ app.get('/api/roster', async (req, res) => {
       });
       values = response.data.values || [];
     } catch (e) {}
-    // Filter by month (column D), skip header row
-    const filtered = values.filter(r => r[0] !== 'Date' && (!month || r[3] === month));
+    // Normalize en-dash vs hyphen in slot column, filter by month, skip header
+    const filtered = values
+      .filter(r => r[0] !== 'Date' && (!month || r[3] === month))
+      .map(r => {
+        if (r[1]) r[1] = r[1].replace(/\u2013/g, '-').replace(/-/g, '\u2013'); // normalize to en-dash
+        return r;
+      })
+      .filter(r => r[0] && r[2]); // only rows with date AND dj
     res.json({ success: true, roster: filtered });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -105,7 +111,9 @@ app.post('/api/roster/assign', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    const rowIndex = existingRows.findIndex(r => r[0] === date && r[1] === slot && r[3] === month);
+    const normalizeSlot = s => s ? s.replace(/[-\u2013]/g, '\u2013') : s;
+    const normSlot = normalizeSlot(slot);
+    const rowIndex = existingRows.findIndex(r => r[0] === date && normalizeSlot(r[1]) === normSlot && r[3] === month);
 
     if (rowIndex >= 0) {
       if (dj) {
@@ -157,16 +165,17 @@ app.post('/api/roster/batch', async (req, res) => {
     } catch(e) {}
 
     // Build a map of existing row indices: "date|slot" -> rowIndex
+    const normalizeSlot = s => s ? s.replace(/[-\u2013]/g, '\u2013') : s;
     const rowMap = {};
     existingRows.forEach((r, i) => {
-      if (r[0] && r[1] && r[3] === month) rowMap[`${r[0]}|${r[1]}`] = i;
+      if (r[0] && r[1] && r[3] === month) rowMap[`${r[0]}|${normalizeSlot(r[1])}`] = i;
     });
 
     const updateData = [];
     const appendRows = [];
 
     for (const { date, slot, dj } of assignments) {
-      const key = `${date}|${slot}`;
+      const key = `${date}|${normalizeSlot(slot)}`;
       if (rowMap[key] !== undefined) {
         updateData.push({
           range: `${tabName}!A${rowMap[key] + 1}:D${rowMap[key] + 1}`,
@@ -221,10 +230,13 @@ app.post('/api/roster/clear', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    // Find rows matching this month and blank them
+    // Find ALL rows that have any content matching this month OR are empty placeholder rows
+    // Also clear rows where month matches (col D index 3)
     const clearData = [];
     existingRows.forEach((r, i) => {
-      if (r[3] === month) {
+      const rowMonth = r[3] || '';
+      const hasContent = r[0] || r[1] || r[2] || r[3];
+      if (rowMonth === month) {
         clearData.push({
           range: `${tabName}!A${i + 1}:D${i + 1}`,
           values: [['', '', '', '']],
@@ -244,6 +256,7 @@ app.post('/api/roster/clear', async (req, res) => {
 
     res.json({ success: true, cleared: clearData.length });
   } catch (err) {
+    console.error('Clear error:', err);
     res.json({ success: false, error: err.message });
   }
 });
