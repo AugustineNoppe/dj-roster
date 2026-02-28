@@ -17,6 +17,10 @@ function getSheets() {
 
 const SHEET_ID = process.env.SPREADSHEET_ID;
 
+app.get('/hours', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'hours.html'));
+});
+
 app.get('/roster', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'roster.html'));
 });
@@ -101,8 +105,7 @@ app.post('/api/roster/assign', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    // Match on date + slot + month
-    const normalize = s => (s || '').toString().trim().replace(/\u2013/g, '\u2013').normalize(); const rowIndex = existingRows.findIndex(r =>    normalize(r[0]) === normalize(date) &&    normalize(r[1]) === normalize(slot) &&    normalize(r[3]) === normalize(month) );
+    const rowIndex = existingRows.findIndex(r => r[0] === date && r[1] === slot && r[3] === month);
 
     if (rowIndex >= 0) {
       if (dj) {
@@ -130,6 +133,116 @@ app.post('/api/roster/assign', async (req, res) => {
     }
 
     res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// Batch assign — save many slots in one request
+app.post('/api/roster/batch', async (req, res) => {
+  try {
+    const sheets = getSheets();
+    const { venue, month, assignments } = req.body;
+    // assignments = [{ date, slot, dj }, ...]
+    const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
+
+    // Read existing sheet once
+    let existingRows = [];
+    try {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: `${tabName}!A:D`,
+      });
+      existingRows = response.data.values || [];
+    } catch(e) {}
+
+    // Build a map of existing row indices: "date|slot" -> rowIndex
+    const rowMap = {};
+    existingRows.forEach((r, i) => {
+      if (r[0] && r[1] && r[3] === month) rowMap[`${r[0]}|${r[1]}`] = i;
+    });
+
+    const updateData = [];
+    const appendRows = [];
+
+    for (const { date, slot, dj } of assignments) {
+      const key = `${date}|${slot}`;
+      if (rowMap[key] !== undefined) {
+        updateData.push({
+          range: `${tabName}!A${rowMap[key] + 1}:D${rowMap[key] + 1}`,
+          values: [[date, slot, dj, month]],
+        });
+      } else {
+        appendRows.push([date, slot, dj, month]);
+      }
+    }
+
+    // Batch update existing rows
+    if (updateData.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SHEET_ID,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: updateData,
+        },
+      });
+    }
+
+    // Append new rows
+    if (appendRows.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID,
+        range: `${tabName}!A:D`,
+        valueInputOption: 'RAW',
+        requestBody: { values: appendRows },
+      });
+    }
+
+    res.json({ success: true, updated: updateData.length, appended: appendRows.length });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// Clear entire month for a venue in one shot
+app.post('/api/roster/clear', async (req, res) => {
+  try {
+    const sheets = getSheets();
+    const { venue, month } = req.body;
+    const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
+
+    // Read all rows
+    let existingRows = [];
+    try {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: `${tabName}!A:D`,
+      });
+      existingRows = response.data.values || [];
+    } catch(e) {}
+
+    // Find rows matching this month and blank them
+    const clearData = [];
+    existingRows.forEach((r, i) => {
+      if (r[3] === month) {
+        clearData.push({
+          range: `${tabName}!A${i + 1}:D${i + 1}`,
+          values: [['', '', '', '']],
+        });
+      }
+    });
+
+    if (clearData.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SHEET_ID,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: clearData,
+        },
+      });
+    }
+
+    res.json({ success: true, cleared: clearData.length });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
