@@ -706,7 +706,9 @@ function buildCell(dateStr, slot, type) {
 
   let filtered = type === 'love'
     ? avail.filter(dj => !ARKBAR_ONLY.includes(dj))
-    : avail;
+    : type === 'hip'
+    ? avail.filter(dj => !NO_HIP.includes(dj) && !LOVE_ONLY.includes(dj))
+    : avail.filter(dj => !LOVE_ONLY.includes(dj));
 
   const isHip = type === 'hip';
   const isLove = type === 'love';
@@ -1120,7 +1122,11 @@ async function suggestRoster() {
 
   function pickDJ(dateStr, slot, type) {
     const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
-    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail.filter(d => !LOVE_ONLY.includes(d));
+    const filtered = isLove
+      ? avail.filter(d => !ARKBAR_ONLY.includes(d))
+      : type === 'hip'
+      ? avail.filter(d => !NO_HIP.includes(d) && !LOVE_ONLY.includes(d))
+      : avail.filter(d => !LOVE_ONLY.includes(d));
     const candidates = filtered.filter(dj =>
       eligibleDJs.includes(dj) &&
       canAssign(dj, dateStr, slot, type) &&
