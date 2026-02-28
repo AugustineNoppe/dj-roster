@@ -392,6 +392,7 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
     <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
       <button class="btn-sm btn-suggest" onclick="suggestRoster()">Auto-suggest</button>
+      <button class="btn-sm" onclick="clearRoster()" style="background:#fff0f0;color:#c62828;border:1.5px solid #ef9a9a;">Clear Roster</button>
       <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:white;">Print / PDF</button>
     </div>
@@ -798,108 +799,53 @@ const FIXED_CONSTRAINTS = {
   },
 };
 
-// ─── DAVOTED'S FIXED MONTHLY SCHEDULE ────────────────────────────────────────
-// Returns assignments for a given month: { 'YYYY-MM-DD|slot': 'Davoted' }
-function getDavotedSchedule(year, month) {
-  // month is 0-indexed
-  const schedule = {};
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(year, month, d);
-    const dow = date.getDay(); // 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
-    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-
-    // ARKbar: Mon 2–4pm, Wed 2–5pm, Thu 2–4pm & 8–11pm, Fri 2–5pm
-    if (dow === 1) { // Monday
-      schedule[`${dateStr}|14:00\u201315:00`] = 'Davoted';
-      schedule[`${dateStr}|15:00\u201316:00`] = 'Davoted';
-    }
-    if (dow === 3) { // Wednesday
-      schedule[`${dateStr}|14:00\u201315:00`] = 'Davoted';
-      schedule[`${dateStr}|15:00\u201316:00`] = 'Davoted';
-      schedule[`${dateStr}|16:00\u201317:00`] = 'Davoted';
-    }
-    if (dow === 4) { // Thursday
-      schedule[`${dateStr}|14:00\u201315:00`] = 'Davoted';
-      schedule[`${dateStr}|15:00\u201316:00`] = 'Davoted';
-      schedule[`${dateStr}|20:00\u201321:00`] = 'Davoted';
-      schedule[`${dateStr}|21:00\u201322:00`] = 'Davoted';
-      schedule[`${dateStr}|22:00\u201323:00`] = 'Davoted';
-    }
-    if (dow === 5) { // Friday
-      schedule[`${dateStr}|14:00\u201315:00`] = 'Davoted';
-      schedule[`${dateStr}|15:00\u201316:00`] = 'Davoted';
-      schedule[`${dateStr}|16:00\u201317:00`] = 'Davoted';
-    }
+// ─── CLEAR ROSTER ────────────────────────────────────────────────────────────
+async function clearRoster() {
+  if (isPublished) {
+    showToast('Unlock roster before clearing', 'error');
+    return;
   }
-  return schedule;
+  if (currentVenue === 'hours') return;
+
+  const confirmed = confirm(`Clear ALL assignments for ${getMonthString()} — ${currentVenue === 'love' ? 'Love Beach' : 'ARKbar/HIP'}?\n\nThis cannot be undone.`);
+  if (!confirmed) return;
+
+  showToast('Clearing roster...', '');
+  const venueParam = currentVenue === 'love' ? 'love' : 'arkbar';
+  const month = getMonthString();
+
+  // Get all current assignments
+  const toRemove = Object.entries(rosterAssignments);
+  if (toRemove.length === 0) {
+    showToast('Roster is already empty', '');
+    return;
+  }
+
+  let cleared = 0;
+  for (const [key] of toRemove) {
+    const [date, slot] = key.split('|');
+    if (!date || !slot) continue;
+    try {
+      const res = await fetch('/api/roster/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venue: venueParam, date, slot, dj: '', month })
+      });
+      const data = await res.json();
+      if (data.success) cleared++;
+    } catch(e) {}
+  }
+
+  rosterAssignments = {};
+  if (venueParam === 'arkbar') arkbarAssignments = {};
+  else loveAssignments = {};
+
+  renderGrid();
+  showToast(`Roster cleared (${cleared} slots)`, 'success');
 }
 
-function getDavotedLoveSchedule(year, month) {
-  // Love Beach: Tue & Wed 8–11pm
-  const schedule = {};
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(year, month, d);
-    const dow = date.getDay();
-    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    if (dow === 2 || dow === 3) { // Tue or Wed
-      schedule[`${dateStr}|20:00\u201321:00`] = 'Davoted';
-      schedule[`${dateStr}|21:00\u201322:00`] = 'Davoted';
-      schedule[`${dateStr}|22:00\u201323:00`] = 'Davoted';
-    }
-  }
-  return schedule;
-}
-
-// ─── HISTORICAL PATTERN LEARNING ─────────────────────────────────────────────
-// Learned from Nov/Dec 2025, Jan/Feb 2026 rosters
-// djDayPreferences[dj][dow] = weight (higher = more likely)
-const DJ_PATTERNS = {
-  // Alex: heavy Mon-Fri, all day, evening/night strong
-  'Alex Redwhite': {
-    dayWeights:  [0.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.8], // Sun-Sat
-    timePreference: 'mixed', // day and night
-    preferNight: false,
-  },
-  // Raffo: Mon-Fri heavy, consistent blocks
-  'Raffo': {
-    dayWeights:  [0.4, 1.3, 1.3, 1.3, 1.2, 1.1, 0.6],
-    timePreference: 'mixed',
-    preferNight: false,
-  },
-  // Sound Bogie: evening specialist
-  'Sound Bogie': {
-    dayWeights:  [0.8, 0.9, 0.9, 0.9, 0.9, 0.9, 0.8],
-    timePreference: 'night',
-    preferNight: true,
-  },
-  // Pick: daytime weekdays, some nights
-  'Pick': {
-    dayWeights:  [0.6, 1.1, 0.9, 1.1, 1.2, 1.0, 0.7],
-    timePreference: 'day',
-    preferNight: false,
-  },
-  // Jessi: mid-week, mixed times
-  'Jessi': {
-    dayWeights:  [0.5, 0.8, 1.0, 1.1, 0.9, 1.0, 0.7],
-    timePreference: 'mixed',
-    preferNight: false,
-  },
-  // Tony: all week, mixed
-  'Tony': {
-    dayWeights:  [0.8, 0.9, 0.9, 0.9, 0.9, 0.9, 0.8],
-    timePreference: 'mixed',
-    preferNight: false,
-  },
-};
-
-// Daytime DJs - should fill 14:00-17:00 slots before residents
-const DAYTIME_PREFERRED = ['Pick', 'Davoted', 'Jessi', 'Tony'];
-const DAYTIME_SLOTS = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
-const NIGHT_SLOTS_LIST = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
-
+// ─── AUTO-SUGGEST ─────────────────────────────────────────────────────────────
 async function suggestRoster() {
   if (isPublished) {
     showToast('Unlock roster before auto-suggesting', 'error');
@@ -916,11 +862,6 @@ async function suggestRoster() {
   const month = getMonthString();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  // Step 1: Pre-fill Davoted's fixed schedule
-  const davotedSchedule = isLove
-    ? getDavotedLoveSchedule(currentYear, currentMonth)
-    : getDavotedSchedule(currentYear, currentMonth);
-
   // Build list of all slots
   const allSlots = [];
   for (let d = 1; d <= daysInMonth; d++) {
@@ -928,153 +869,139 @@ async function suggestRoster() {
     const dow = date.getDay();
     const isSat = dow === 6;
     const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-
     if (!isLove) {
       ARKBAR_SLOTS.forEach(slot => allSlots.push({ dateStr, slot, type: 'arkbar' }));
       HIP_SLOTS.forEach(slot => allSlots.push({ dateStr, slot, type: 'hip' }));
     } else {
-      const activeLoveSlots = isSat ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
-      activeLoveSlots.forEach(slot => allSlots.push({ dateStr, slot, type: 'love' }));
+      const active = isSat ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
+      active.forEach(slot => allSlots.push({ dateStr, slot, type: 'love' }));
     }
   }
 
-  // Working copy
-  const working = { ...rosterAssignments };
-
-  // Apply Davoted's fixed schedule to empty slots
-  const davotedToSave = [];
-  for (const [key, dj] of Object.entries(davotedSchedule)) {
-    if (!working[key]) {
-      const [dateStr, slot] = key.split('|');
-      // Check if slot exists in allSlots
-      const slotExists = allSlots.some(s => s.dateStr === dateStr && s.slot === slot);
-      if (slotExists) {
-        working[key] = dj;
-        davotedToSave.push({ dateStr, slot, dj });
-      }
-    }
+  // Only fill empty slots
+  const emptySlots = allSlots.filter(({ dateStr, slot }) => !rosterAssignments[`${dateStr}|${slot}`]);
+  if (emptySlots.length === 0) {
+    showToast('No empty slots to fill', '');
+    return;
   }
 
-  // Track hours
+  // Get eligible DJs for this venue (from availability data only)
+  const eligibleDJs = djList
+    .map(d => d.name)
+    .filter(name => {
+      if (name === 'Guest DJ') return false;
+      if (isLove && ARKBAR_ONLY.includes(name)) return false;
+      return true;
+    });
+
+  // Track hours per DJ — start from existing assignments
   const djHours = {};
-  djList.forEach(d => { djHours[d.name] = 0; });
-  Object.values(working).forEach(dj => {
+  eligibleDJs.forEach(name => { djHours[name] = 0; });
+  Object.values(rosterAssignments).forEach(dj => {
     if (djHours[dj] !== undefined) djHours[dj]++;
   });
 
-  const otherVenueAssignments = isLove ? { ...arkbarAssignments } : { ...loveAssignments };
+  // Working copy
+  const working = { ...rosterAssignments };
+  const otherVenue = { ...(isLove ? arkbarAssignments : loveAssignments) };
 
-  // Empty slots after Davoted pre-fill
-  const emptySlots = allSlots.filter(({ dateStr, slot }) => !working[`${dateStr}|${slot}`]);
-
-  function getSlotList(dateStr, type) {
-    if (type === 'love') {
-      return new Date(dateStr).getDay() === 6 ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
-    }
-    return type === 'hip' ? HIP_SLOTS : ARKBAR_SLOTS;
+  // Slot list for consecutive check
+  function getSlotList(type) {
+    if (type === 'love') return [...LOVE_WEEKDAY_SLOTS, ...LOVE_SAT_SLOTS.filter(s => !LOVE_WEEKDAY_SLOTS.includes(s))];
+    if (type === 'hip') return HIP_SLOTS;
+    return ARKBAR_SLOTS;
   }
 
-  function consecutiveCount(djName, dateStr, slotList, targetSlot) {
-    const idx = slotList.indexOf(targetSlot);
-    if (idx < 0) return 0;
+  function consecutiveAround(djName, dateStr, slot, type) {
+    const slotList = type === 'love'
+      ? (new Date(dateStr).getDay() === 6 ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS)
+      : (type === 'hip' ? HIP_SLOTS : ARKBAR_SLOTS);
+    const idx = slotList.indexOf(slot);
+    if (idx < 0) return 1;
     let count = 1;
     for (let i = idx - 1; i >= 0; i--) {
-      if (working[`${dateStr}|${slotList[i]}`] === djName) count++;
-      else break;
+      if (working[`${dateStr}|${slotList[i]}`] === djName) count++; else break;
     }
     for (let i = idx + 1; i < slotList.length; i++) {
-      if (working[`${dateStr}|${slotList[i]}`] === djName) count++;
-      else break;
+      if (working[`${dateStr}|${slotList[i]}`] === djName) count++; else break;
     }
     return count;
   }
 
   function slotsOnDay(djName, dateStr) {
-    return Object.entries(working).filter(([k, v]) => k.startsWith(dateStr) && v === djName).length;
+    return Object.entries(working).filter(([k, v]) => k.startsWith(dateStr + '|') && v === djName).length;
   }
 
-  function isConstraintMet(djName, dateStr, slot, type) {
-    const constraint = FIXED_CONSTRAINTS[djName];
-    if (constraint) return constraint(dateStr, slot, type);
+  function canAssign(djName, dateStr, slot, type) {
+    // Must be in availability data for this slot
+    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
+    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail;
+    if (!filtered.includes(djName)) return false;
+    // Venue restriction
+    if (isLove && ARKBAR_ONLY.includes(djName)) return false;
+    // Max 6 per day
+    if (slotsOnDay(djName, dateStr) >= 6) return false;
+    // Max 3 consecutive
+    if (consecutiveAround(djName, dateStr, slot, type) > 3) return false;
+    // No cross-venue conflict
+    if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
+    // Resident cap: don't exceed 80h unless no one else available
+    if (RESIDENTS.includes(djName) && djHours[djName] >= RESIDENT_TARGET) return false;
     return true;
   }
 
-  function getDJWeight(djName, dateStr, slot, type) {
-    const dow = new Date(dateStr).getDay();
-    const hour = parseInt(slot.split(':')[0]);
-    const isDay = hour >= 14 && hour < 18;
-    const isNight = hour >= 20 || hour < 3;
-    const pattern = DJ_PATTERNS[djName];
-    let weight = 1.0;
-
-    if (pattern) {
-      weight *= pattern.dayWeights[dow] || 1.0;
-      if (isDay && pattern.timePreference === 'night') weight *= 0.3;
-      if (isNight && pattern.timePreference === 'day') weight *= 0.4;
-    }
-
-    // Daytime preference: Pick, Davoted, Jessi, Tony preferred for 14-17 slots
-    if (isDay && DAYTIME_PREFERRED.includes(djName)) weight *= 2.5;
-    if (isDay && RESIDENTS_80HR.includes(djName)) weight *= 0.2; // Alex/Raffo rarely daytime
-
-    // Residents prioritised for nights until 80hr target
-    if (isNight && RESIDENTS_80HR.includes(djName) && djHours[djName] < RESIDENT_TARGET) weight *= 1.8;
-
-    return weight;
-  }
-
-  function pickDJ(dateStr, slot, type, availDJs) {
-    if (!availDJs || availDJs.length === 0) return null;
-    const slotList = getSlotList(dateStr, type);
-
-    const eligible = availDJs.filter(dj => {
-      if (dj === 'Guest DJ') return false;
-      if (isLove && ARKBAR_ONLY.includes(dj)) return false;
-      if (!isConstraintMet(dj, dateStr, slot, type)) return false;
-      if (slotsOnDay(dj, dateStr) >= 6) return false;
-      if (consecutiveCount(dj, dateStr, slotList, slot) >= 3) return false;
-      const hasOther = Object.entries(otherVenueAssignments)
-        .some(([k, v]) => k.startsWith(dateStr) && v === dj);
-      if (hasOther) return false;
-      return true;
-    });
-
-    if (eligible.length === 0) return null;
-
-    // Score each eligible DJ
-    const scored = eligible.map(dj => ({
-      dj,
-      score: getDJWeight(dj, dateStr, slot, type) / Math.max(1, djHours[dj] * 0.3 + 1)
-    }));
-
-    scored.sort((a, b) => b.score - a.score);
-
-    // Add slight randomness to top 2 to avoid rigid patterns
-    if (scored.length > 1 && Math.random() < 0.2) {
-      return scored[1].dj;
-    }
-    return scored[0].dj;
-  }
-
-  // Sort slots: daytime first (for daytime DJs), then night (for residents)
-  const sortedEmpty = [...emptySlots].sort((a, b) => {
-    const aHour = parseInt(a.slot.split(':')[0]);
-    const bHour = parseInt(b.slot.split(':')[0]);
-    const aDayTime = aHour >= 14 && aHour < 18 ? 0 : 1;
-    const bDayTime = bHour >= 14 && bHour < 18 ? 0 : 1;
-    return aDayTime - bDayTime;
+  // Night slots first (residents prioritised there)
+  const NIGHT_SLOTS = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
+  const sorted = [...emptySlots].sort((a, b) => {
+    const aN = NIGHT_SLOTS.includes(a.slot) ? 0 : 1;
+    const bN = NIGHT_SLOTS.includes(b.slot) ? 0 : 1;
+    return aN - bN;
   });
 
-  const toSave = [...davotedToSave];
-
-  for (const { dateStr, slot, type } of sortedEmpty) {
+  function pickDJ(dateStr, slot, type) {
     const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
-    const filtered = isLove ? avail.filter(dj => !ARKBAR_ONLY.includes(dj)) : avail;
-    const chosen = pickDJ(dateStr, slot, type, filtered);
+    const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail;
+    const candidates = filtered.filter(dj => eligibleDJs.includes(dj) && canAssign(dj, dateStr, slot, type));
+    if (candidates.length === 0) return null;
+
+    // Sort: residents first if under target, then fewest hours (spread evenly)
+    candidates.sort((a, b) => {
+      const aRes = RESIDENTS.includes(a) && djHours[a] < RESIDENT_TARGET;
+      const bRes = RESIDENTS.includes(b) && djHours[b] < RESIDENT_TARGET;
+      if (aRes && !bRes) return -1;
+      if (!aRes && bRes) return 1;
+      return (djHours[a] || 0) - (djHours[b] || 0);
+    });
+    return candidates[0];
+  }
+
+  // Assign
+  const toSave = [];
+  for (const { dateStr, slot, type } of sorted) {
+    const chosen = pickDJ(dateStr, slot, type);
     if (chosen) {
       working[`${dateStr}|${slot}`] = chosen;
       djHours[chosen] = (djHours[chosen] || 0) + 1;
       toSave.push({ dateStr, slot, type, dj: chosen });
+    }
+  }
+
+  // If residents still under target after first pass, do a second pass ignoring cap
+  const residentsUnder = RESIDENTS.filter(r => djHours[r] < RESIDENT_TARGET && !isLove);
+  if (residentsUnder.length > 0) {
+    const stillEmpty = sorted.filter(({ dateStr, slot }) => !working[`${dateStr}|${slot}`]);
+    for (const { dateStr, slot, type } of stillEmpty) {
+      const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
+      for (const res of residentsUnder) {
+        if (!avail.includes(res)) continue;
+        if (slotsOnDay(res, dateStr) >= 6) continue;
+        if (consecutiveAround(res, dateStr, slot, type) > 3) continue;
+        if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === res)) continue;
+        working[`${dateStr}|${slot}`] = res;
+        djHours[res] = (djHours[res] || 0) + 1;
+        toSave.push({ dateStr, slot, type, dj: res });
+        break;
+      }
     }
   }
 
@@ -1091,7 +1018,6 @@ async function suggestRoster() {
   // Save to server
   const venueParam = isLove ? 'love' : 'arkbar';
   let saved = 0, failed = 0;
-
   for (const { dateStr, slot, dj } of toSave) {
     try {
       const res = await fetch('/api/roster/assign', {
@@ -1100,15 +1026,12 @@ async function suggestRoster() {
         body: JSON.stringify({ venue: venueParam, date: dateStr, slot, dj, month })
       });
       const data = await res.json();
-      if (data.success) saved++;
-      else failed++;
+      if (data.success) saved++; else failed++;
     } catch(e) { failed++; }
   }
 
   showToast(
-    failed === 0
-      ? `Auto-suggest complete: ${saved} slots filled`
-      : `Done: ${saved} saved, ${failed} failed`,
+    failed === 0 ? `Done: ${saved} slots filled` : `Done: ${saved} saved, ${failed} failed`,
     failed === 0 ? 'success' : 'error'
   );
 }
