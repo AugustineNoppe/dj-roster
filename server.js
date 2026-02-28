@@ -323,11 +323,19 @@ app.post('/api/roster/batch', async (req, res) => {
   }
 });
 
+// Helper: get spreadsheet ID for a named sheet tab
+async function getSheetTabId(sheets, tabName) {
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
+  const sheet = meta.data.sheets.find(s => s.properties.title === tabName);
+  return sheet ? sheet.properties.sheetId : null;
+}
+
 app.post('/api/roster/clear', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, month } = req.body;
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
+    const sheetId = await getSheetTabId(sheets, tabName);
 
     let existingRows = [];
     try {
@@ -338,26 +346,82 @@ app.post('/api/roster/clear', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    const clearData = [];
-    existingRows.forEach((r, i) => {
-      if ((r[3] || '') === month) {
-        clearData.push({
-          range: `${tabName}!A${i + 1}:D${i + 1}`,
-          values: [['', '', '', '']],
-        });
-      }
+    // Find rows to keep (different month or header) and rows to delete
+    // We rewrite the whole sheet keeping only non-matching rows
+    const keepRows = existingRows.filter((r, i) => {
+      if (i === 0 && r[0] === 'Date') return true; // keep header
+      return (r[3] || '') !== month && r[0]; // keep other months
     });
 
-    if (clearData.length > 0) {
-      await sheets.spreadsheets.values.batchUpdate({
+    // Overwrite entire sheet with kept rows, then clear the rest
+    const writeRows = keepRows.length > 0 ? keepRows : [['', '', '', '']];
+    
+    // Clear entire range first
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: SHEET_ID,
+      range: `${tabName}!A:D`,
+    });
+
+    // Write back kept rows
+    if (keepRows.length > 0) {
+      await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        requestBody: { valueInputOption: 'RAW', data: clearData },
+        range: `${tabName}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: writeRows },
       });
     }
 
-    res.json({ success: true, cleared: clearData.length });
+    const cleared = existingRows.length - keepRows.length;
+    res.json({ success: true, cleared });
   } catch (err) {
     console.error('Clear error:', err);
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// Cleanup endpoint: remove any illegal resident→HIP rows from sheet
+app.post('/api/roster/cleanup', async (req, res) => {
+  try {
+    const sheets = getSheets();
+    const { month } = req.body;
+    const tabName = 'ARKbar Roster';
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: `${tabName}!A:D`,
+    });
+    const existingRows = response.data.values || [];
+
+    const cleanRows = existingRows.filter(r => {
+      if (!r[0] || !r[1] || !r[2]) return false; // drop blank rows
+      if (r[0] === 'Date') return true; // keep header
+      const slot = normalizeSlot(r[1]);
+      const dj = r[2];
+      const isHipSlot = HIP_SLOTS.map(normalizeSlot).includes(slot);
+      const isResident = RESIDENTS.includes(dj);
+      return !(isHipSlot && isResident); // drop illegal rows
+    });
+
+    const removed = existingRows.length - cleanRows.length;
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: SHEET_ID,
+      range: `${tabName}!A:D`,
+    });
+
+    if (cleanRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `${tabName}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: cleanRows },
+      });
+    }
+
+    res.json({ success: true, removed, kept: cleanRows.length });
+  } catch (err) {
+    console.error('Cleanup error:', err);
     res.json({ success: false, error: err.message });
   }
 });
