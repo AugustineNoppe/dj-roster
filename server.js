@@ -50,8 +50,11 @@ const MONTH_NAMES = ['January','February','March','April','May','June',
 // 'type' is passed explicitly from the client ('arkbar' | 'hip' | 'love').
 function isIllegalAssignment(slot, dj, type) {
   if (!dj || !RESIDENTS.includes(dj)) return false;
-  const isHip = type === 'hip' || (!type && HIP_SLOTS.map(normalizeSlot).includes(normalizeSlot(slot)));
-  return isHip;
+  // Block if explicitly typed as HIP OR if the slot label matches a HIP slot
+  // This double-check ensures residents never reach HIP even if type is missing
+  const hipByType = type === 'hip';
+  const hipBySlot = HIP_SLOTS.map(normalizeSlot).includes(normalizeSlot(slot));
+  return hipByType || hipBySlot;
 }
 
 app.get('/api/availability', async (req, res) => {
