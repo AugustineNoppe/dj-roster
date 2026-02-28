@@ -331,70 +331,6 @@ body {
 
 .day-note { font-size: 10px; color: rgba(255,255,255,0.25); text-align: center; margin-top: 10px; font-weight: 500; font-style: italic; }
 
-/* ── BLACKOUT CALENDAR (residents) ── */
-function buildBlackoutCal() {
-  const el = document.getElementById('blackout-cal');
-  el.innerHTML = '';
-  const [y, m] = moKey.split('-').map(Number);
-  const mo = m - 1;
-  const days = new Date(y, mo + 1, 0).getDate();
-  const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  for (let d = 1; d <= days; d++) {
-    const date = new Date(y, mo, d);
-    const dow = date.getDay();
-    const key = `${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dateLabel = `${d} ${MN[mo]} ${y}`;
-    const isOff = blackoutDates.has(dateLabel);
-    const card = document.createElement('div');
-    card.id = 'bc-' + key;
-    card.style.cssText = `
-      display:flex; align-items:center; justify-content:space-between;
-      padding:12px 16px; margin-bottom:8px; border-radius:12px; cursor:pointer;
-      border:1px solid ${isOff ? 'rgba(241,90,41,0.5)' : 'rgba(255,255,255,0.08)'};
-      background:${isOff ? 'rgba(241,90,41,0.15)' : 'rgba(255,255,255,0.04)'};
-      transition:all 0.15s;
-    `;
-    card.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:10px;font-weight:800;color:${dow===0||dow===6?'var(--ark-orange)':'var(--teal)'};text-transform:uppercase;letter-spacing:0.08em;min-width:28px;">${DAYS_SHORT[dow]}</div>
-        <div style="font-size:14px;font-weight:700;color:${isOff?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.6)'};">${d} ${MN[mo]}</div>
-      </div>
-      <div style="font-size:11px;font-weight:800;color:${isOff?'#ff8a65':'rgba(255,255,255,0.2)'};">
-        ${isOff ? '✕ NOT AVAILABLE' : 'Available'}
-      </div>`;
-    card.onclick = () => toggleBlackout(key, dateLabel, mo, y);
-    el.appendChild(card);
-  }
-}
-
-function toggleBlackout(key, dateLabel, mo, y) {
-  if (blackoutDates.has(dateLabel)) {
-    blackoutDates.delete(dateLabel);
-  } else {
-    blackoutDates.add(dateLabel);
-  }
-  // Re-render just this card
-  const d = parseInt(key.split('-')[2]);
-  const date = new Date(+key.split('-')[0], mo, d);
-  const dow = date.getDay();
-  const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const isOff = blackoutDates.has(dateLabel);
-  const card = document.getElementById('bc-' + key);
-  if (card) {
-    card.style.borderColor = isOff ? 'rgba(241,90,41,0.5)' : 'rgba(255,255,255,0.08)';
-    card.style.background = isOff ? 'rgba(241,90,41,0.15)' : 'rgba(255,255,255,0.04)';
-    card.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:10px;font-weight:800;color:${dow===0||dow===6?'var(--ark-orange)':'var(--teal)'};text-transform:uppercase;letter-spacing:0.08em;min-width:28px;">${DAYS_SHORT[dow]}</div>
-        <div style="font-size:14px;font-weight:700;color:${isOff?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.6)'};">${d} ${MN[mo]}</div>
-      </div>
-      <div style="font-size:11px;font-weight:800;color:${isOff?'#ff8a65':'rgba(255,255,255,0.2)'};">
-        ${isOff ? '✕ NOT AVAILABLE' : 'Available'}
-      </div>`;
-    card.onclick = () => toggleBlackout(key, dateLabel, mo, parseInt(key.split('-')[0]));
-  }
-}
-
 /* ── CALENDAR ── */
 .cal-month-title {
   font-size: 16px; font-weight: 800; color: white;
@@ -614,7 +550,7 @@ const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec
 
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 let isResident = false;
-let blackoutDates = new Set(); // dates resident marked as NOT available
+let blackoutDates = new Map(); // dateLabel -> 'morning' | 'full'
 let st={}, djName='', moKey='', moLabel='';
 const selectVals = { 'cs-dj': '', 'cs-mo': '' };
 const selectKeys = { 'cs-mo': {} };
@@ -686,7 +622,7 @@ function goStep2() {
   moLabel = selectVals['cs-mo'];
   if(!djName||!moKey){alert('Please select your DJ name and month.');return;}
   isResident = RESIDENTS.includes(djName);
-  blackoutDates = new Set();
+  blackoutDates = new Map();
 
   if (isResident) {
     // Show resident blackout UI
@@ -709,66 +645,83 @@ function goStep3() { buildSummary(); setStep(3); }
 function goStep1() { setStep(1); }
 
 /* ── BLACKOUT CALENDAR (residents) ── */
+// blackoutDates stores: { "1 Mar 2026": "morning" | "full" }
+// "morning" = 14:00-19:00 off (still available nights 19:00+)
+// "full"    = entire day off
+
+const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
+const NIGHT_SLOTS_RES = ['19:00–20:00','20:00–21:00','21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'];
+
 function buildBlackoutCal() {
   const el = document.getElementById('blackout-cal');
   el.innerHTML = '';
   const [y, m] = moKey.split('-').map(Number);
   const mo = m - 1;
   const days = new Date(y, mo + 1, 0).getDate();
-  const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   for (let d = 1; d <= days; d++) {
-    const date = new Date(y, mo, d);
-    const dow = date.getDay();
+    const dow = new Date(y, mo, d).getDay();
     const key = `${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dateLabel = `${d} ${MN[mo]} ${y}`;
-    const isOff = blackoutDates.has(dateLabel);
-    const card = document.createElement('div');
-    card.id = 'bc-' + key;
-    card.style.cssText = `
-      display:flex; align-items:center; justify-content:space-between;
-      padding:12px 16px; margin-bottom:8px; border-radius:12px; cursor:pointer;
-      border:1px solid ${isOff ? 'rgba(241,90,41,0.5)' : 'rgba(255,255,255,0.08)'};
-      background:${isOff ? 'rgba(241,90,41,0.15)' : 'rgba(255,255,255,0.04)'};
-      transition:all 0.15s;
-    `;
-    card.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:10px;font-weight:800;color:${dow===0||dow===6?'var(--ark-orange)':'var(--teal)'};text-transform:uppercase;letter-spacing:0.08em;min-width:28px;">${DAYS_SHORT[dow]}</div>
-        <div style="font-size:14px;font-weight:700;color:${isOff?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.6)'};">${d} ${MN[mo]}</div>
-      </div>
-      <div style="font-size:11px;font-weight:800;color:${isOff?'#ff8a65':'rgba(255,255,255,0.2)'};">
-        ${isOff ? '✕ NOT AVAILABLE' : 'Available'}
-      </div>`;
-    card.onclick = () => toggleBlackout(key, dateLabel, mo, y);
-    el.appendChild(card);
+    el.appendChild(makeBlackoutCard(key, dateLabel, d, mo, dow));
   }
 }
 
-function toggleBlackout(key, dateLabel, mo, y) {
-  if (blackoutDates.has(dateLabel)) {
+function makeBlackoutCard(key, dateLabel, d, mo, dow) {
+  const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const state = blackoutDates.get(dateLabel) || null; // null | 'morning' | 'full'
+  const dowColor = (dow===0||dow===6) ? 'var(--ark-orange)' : 'var(--teal)';
+
+  const card = document.createElement('div');
+  card.id = 'bc-' + key;
+  card.style.cssText = `
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 14px; margin-bottom:8px; border-radius:12px;
+    border:1px solid ${state ? 'rgba(241,90,41,0.35)' : 'rgba(255,255,255,0.07)'};
+    background:${state === 'full' ? 'rgba(241,90,41,0.12)' : state === 'morning' ? 'rgba(255,165,0,0.08)' : 'rgba(255,255,255,0.03)'};
+    transition:all 0.15s;
+  `;
+
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+      <div style="font-size:10px;font-weight:800;color:${dowColor};text-transform:uppercase;letter-spacing:0.08em;min-width:28px;">${DAYS_SHORT[dow]}</div>
+      <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.75);">${d} ${MN[mo]}</div>
+      ${state === 'full' ? '<div style="font-size:10px;font-weight:800;color:#ff8a65;margin-left:4px;">✕ FULL DAY OFF</div>' : ''}
+      ${state === 'morning' ? '<div style="font-size:10px;font-weight:800;color:#ffb74d;margin-left:4px;">☀ MORNING OFF · nights available</div>' : ''}
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      <button onclick="setBlackout('${key}','${dateLabel}',${mo},'morning')" style="
+        padding:5px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;
+        border:1px solid ${state==='morning' ? 'rgba(255,165,0,0.7)' : 'rgba(255,255,255,0.15)'};
+        background:${state==='morning' ? 'rgba(255,165,0,0.25)' : 'rgba(255,255,255,0.06)'};
+        color:${state==='morning' ? '#ffb74d' : 'rgba(255,255,255,0.4)'};
+        transition:all 0.15s;
+      ">☀ Morning off</button>
+      <button onclick="setBlackout('${key}','${dateLabel}',${mo},'full')" style="
+        padding:5px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;
+        border:1px solid ${state==='full' ? 'rgba(241,90,41,0.7)' : 'rgba(255,255,255,0.15)'};
+        background:${state==='full' ? 'rgba(241,90,41,0.25)' : 'rgba(255,255,255,0.06)'};
+        color:${state==='full' ? '#ff8a65' : 'rgba(255,255,255,0.4)'};
+        transition:all 0.15s;
+      ">✕ Full day off</button>
+    </div>`;
+  return card;
+}
+
+function setBlackout(key, dateLabel, mo, type) {
+  const current = blackoutDates.get(dateLabel) || null;
+  // Tap same button again = clear (toggle off)
+  if (current === type) {
     blackoutDates.delete(dateLabel);
   } else {
-    blackoutDates.add(dateLabel);
+    blackoutDates.set(dateLabel, type);
   }
-  // Re-render just this card
-  const d = parseInt(key.split('-')[2]);
-  const date = new Date(+key.split('-')[0], mo, d);
-  const dow = date.getDay();
-  const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const isOff = blackoutDates.has(dateLabel);
+  // Re-render this card
+  const [y, , d] = key.split('-');
+  const dow = new Date(parseInt(y), mo, parseInt(d)).getDay();
   const card = document.getElementById('bc-' + key);
   if (card) {
-    card.style.borderColor = isOff ? 'rgba(241,90,41,0.5)' : 'rgba(255,255,255,0.08)';
-    card.style.background = isOff ? 'rgba(241,90,41,0.15)' : 'rgba(255,255,255,0.04)';
-    card.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:10px;font-weight:800;color:${dow===0||dow===6?'var(--ark-orange)':'var(--teal)'};text-transform:uppercase;letter-spacing:0.08em;min-width:28px;">${DAYS_SHORT[dow]}</div>
-        <div style="font-size:14px;font-weight:700;color:${isOff?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.6)'};">${d} ${MN[mo]}</div>
-      </div>
-      <div style="font-size:11px;font-weight:800;color:${isOff?'#ff8a65':'rgba(255,255,255,0.2)'};">
-        ${isOff ? '✕ NOT AVAILABLE' : 'Available'}
-      </div>`;
-    card.onclick = () => toggleBlackout(key, dateLabel, mo, parseInt(key.split('-')[0]));
+    const newCard = makeBlackoutCard(key, dateLabel, parseInt(d), mo, dow);
+    card.replaceWith(newCard);
   }
 }
 
@@ -1052,21 +1005,25 @@ function buildSummary() {
   const el=document.getElementById('summary'); el.innerHTML='';
 
   if (isResident) {
-    // Resident summary: show days off
-    const offDays = [...blackoutDates].sort();
-    const offCount = offDays.length;
+    const entries = [...blackoutDates.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+    const offCount = entries.length;
     el.innerHTML = `<div class="summary-header"><div><div class="s-dj">${djName}</div><div class="s-month">${moLabel}</div></div><div class="s-hours"><span class="num">${offCount}</span><span class="lbl">days off</span></div></div>`;
     if (offCount === 0) {
       el.innerHTML += '<p style="text-align:center;padding:20px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.4)">No days off — available all month ✓</p>';
       return;
     }
-    offDays.forEach(dateLabel => {
+    entries.forEach(([dateLabel, type]) => {
       const parts = dateLabel.split(' ');
       const d = parseInt(parts[0]);
       const mo = MN.indexOf(parts[1]);
       const dow = new Date(parseInt(parts[2]), mo, d).getDay();
+      const isFull = type === 'full';
+      const chipLabel = isFull ? '✕ FULL DAY OFF' : '☀ MORNING OFF · nights available';
+      const chipStyle = isFull
+        ? 'background:rgba(241,90,41,0.3);border:1px solid rgba(241,90,41,0.5);color:#ff8a65;'
+        : 'background:rgba(255,165,0,0.2);border:1px solid rgba(255,165,0,0.4);color:#ffb74d;';
       const row = document.createElement('div'); row.className='summary-row';
-      row.innerHTML = `<div class="s-date"><div class="s-dow">${DS[dow]}</div><div class="s-num">${d} ${MN[mo]}</div></div><div class="s-chips"><div class="s-chip" style="background:rgba(241,90,41,0.3);border:1px solid rgba(241,90,41,0.5);">NOT AVAILABLE</div></div>`;
+      row.innerHTML = `<div class="s-date"><div class="s-dow">${DS[dow]}</div><div class="s-num">${d} ${MN[mo]}</div></div><div class="s-chips"><div class="s-chip" style="${chipStyle}">${chipLabel}</div></div>`;
       el.appendChild(row);
     });
     return;
@@ -1114,8 +1071,9 @@ async function doSubmit() {
   btn.disabled=true; btn.textContent='Submitting...';
 
   if (isResident) {
-    // Resident: POST blackout dates directly to our server
-    const dates = [...blackoutDates];
+    // Resident: POST blackout entries {date, type} to server
+    // type = 'morning' (14:00-19:00 off) or 'full' (entire day off)
+    const dates = [...blackoutDates.entries()].map(([date, type]) => ({ date, type }));
     try {
       const res = await fetch('/api/blackout', {
         method: 'POST',
@@ -1172,7 +1130,7 @@ function showSuccess(count, isBlackout) {
 function resetAll() {
   allMonthActive = false;
   isResident = false;
-  blackoutDates = new Set();
+  blackoutDates = new Map();
   st={}; djName=''; moKey=''; moLabel='';
   ['cs-dj','cs-mo'].forEach(id=>{
     selectVals[id]='';
