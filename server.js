@@ -121,9 +121,11 @@ app.get('/api/availability', async (req, res) => {
           if (!map[dateKey]) map[dateKey] = {};
           ARKBAR_SLOTS.forEach(slot => {
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
-            if (!map[dateKey][slot]) map[dateKey][slot] = [];
-            if (!map[dateKey][slot].includes(resident)) {
-              map[dateKey][slot].push(resident);
+            // Use 'ark:SLOT' key for overlap slots so HIP cells never see residents
+            const mapKey = HIP_SLOTS.includes(slot) ? `ark:${slot}` : slot;
+            if (!map[dateKey][mapKey]) map[dateKey][mapKey] = [];
+            if (!map[dateKey][mapKey].includes(resident)) {
+              map[dateKey][mapKey].push(resident);
             }
           });
         });
