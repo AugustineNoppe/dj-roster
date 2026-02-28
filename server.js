@@ -109,8 +109,8 @@ app.get('/api/availability', async (req, res) => {
 
           if (!map[dateKey]) map[dateKey] = {};
 
-          // Only inject into ARKBAR_ONLY_SLOTS — never HIP slots
-          ARKBAR_ONLY_SLOTS.forEach(slot => {
+          // Inject into all ARKbar slots — HIP auto-suggest is disabled so no overlap risk
+          ARKBAR_SLOTS.forEach(slot => {
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
             if (!map[dateKey][slot]) map[dateKey][slot] = [];
             if (!map[dateKey][slot].includes(resident)) {
