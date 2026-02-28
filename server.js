@@ -36,32 +36,23 @@ const ARKBAR_SLOTS = [
   '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
 ];
 
-// HIP slots — residents NEVER go here, enforced at save time
+// HIP slots — residents NEVER go here
 const HIP_SLOTS = ['21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00'];
 
-// Helper: normalize slot string for comparison
 const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
 
-// Guard: returns true if this assignment is illegal
-// type = 'arkbar' | 'hip' | 'love' — passed explicitly from client
-function isIllegalAssignment(venue, slot, dj, type) {
-  if (!dj) return false;
-  const isResident = RESIDENTS.includes(dj);
-  // Block residents from HIP — use explicit type if provided, else infer from slot
-  const isHip = type === 'hip' || (!type && HIP_SLOTS.map(normalizeSlot).includes(normalizeSlot(slot)));
-  if (isHip && isResident) return true;
-  return false;
-}
-
-// ARKbar-only slots = slots NOT shared with HIP — residents go here only
-const ARKBAR_ONLY_SLOTS = ARKBAR_SLOTS.filter(s => !HIP_SLOTS.includes(s));
-// Result: 14:00–15:00, 15:00–16:00, 16:00–17:00, 17:00–18:00, 18:00–19:00, 20:00–21:00, 01:00–02:00
-
-// Morning blackout blocks these slots (14:00–19:00)
 const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
 
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
+
+// Server-side guard: block residents from being saved into HIP slots.
+// 'type' is passed explicitly from the client ('arkbar' | 'hip' | 'love').
+function isIllegalAssignment(slot, dj, type) {
+  if (!dj || !RESIDENTS.includes(dj)) return false;
+  const isHip = type === 'hip' || (!type && HIP_SLOTS.map(normalizeSlot).includes(normalizeSlot(slot)));
+  return isHip;
+}
 
 app.get('/api/availability', async (req, res) => {
   try {
@@ -90,34 +81,24 @@ app.get('/api/availability', async (req, res) => {
     const rows = availRes.data.values || [];
     const blackoutRows = blackoutRes.data.values || [];
 
-    // ── AVAILABILITY MAP ─────────────────────────────────────────────────────
-    // KEY DESIGN: every slot is prefixed by venue to prevent collision.
-    //   ARKbar cells read 'ark:SLOT'
-    //   HIP cells    read 'hip:SLOT'
-    //   21:00–01:00 exists in BOTH venues — different keys, never bleed.
-    //
-    // Regular DJs: submitted slots go into ark: keys (and hip: if it's a HIP slot)
-    // Residents:   injected into ALL ark: slots — they never touch hip: keys
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── REGULAR DJ AVAILABILITY ───────────────────────────────────────────────
+    // Plain slot keys — exactly as stored in the sheet. No prefixing.
+    // Regular DJs appear in both ARKbar and HIP dropdowns for overlapping slots.
+    // The client-side NO_HIP filter removes residents from HIP dropdowns.
     const filtered = month ? rows.filter(r => r[2] === month) : rows;
     const map = {};
 
     filtered.forEach(([timestamp, dj, monthLabel, date, day, slot]) => {
       if (!date || !slot) return;
       if (!map[date]) map[date] = {};
-      // All regular DJ availability goes into ark: keys
-      const arkKey = `ark:${slot}`;
-      if (!map[date][arkKey]) map[date][arkKey] = [];
-      if (!map[date][arkKey].includes(dj)) map[date][arkKey].push(dj);
-      // Also add to hip: key if it's a HIP time slot
-      if (HIP_SLOTS.includes(slot)) {
-        const hipKey = `hip:${slot}`;
-        if (!map[date][hipKey]) map[date][hipKey] = [];
-        if (!map[date][hipKey].includes(dj)) map[date][hipKey].push(dj);
-      }
+      if (!map[date][slot]) map[date][slot] = [];
+      if (!map[date][slot].includes(dj)) map[date][slot].push(dj);
     });
 
-    // Build resident blackout map
+    // ── RESIDENT AVAILABILITY ─────────────────────────────────────────────────
+    // Residents are injected into ALL ARKbar slots (14:00–02:00).
+    // They are NOT injected into HIP_SLOTS — client NO_HIP filter is the
+    // first line of defence, server isIllegalAssignment is the hard block.
     const blackouts = {};
     RESIDENTS.forEach(r => { blackouts[r] = {}; });
     blackoutRows.forEach(([dj, date, monthLabel, timestamp, type]) => {
@@ -127,8 +108,6 @@ app.get('/api/availability', async (req, res) => {
       if (blackouts[dj]) blackouts[dj][date] = type || 'full';
     });
 
-    // Inject residents into ALL ark: slot keys (full ARKbar coverage 14:00–02:00)
-    // Residents never touch hip: keys — HIP cells will never show residents
     if (month && year !== undefined && monthIdx >= 0) {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateKey = `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -141,10 +120,12 @@ app.get('/api/availability', async (req, res) => {
 
           ARKBAR_SLOTS.forEach(slot => {
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
-            const arkKey = `ark:${slot}`;
-            if (!map[dateKey][arkKey]) map[dateKey][arkKey] = [];
-            if (!map[dateKey][arkKey].includes(resident)) {
-              map[dateKey][arkKey].push(resident);
+            // Only inject resident into this slot if it's NOT a HIP slot
+            // (HIP_SLOTS overlap with ARKbar — injecting residents there causes bleed)
+            if (HIP_SLOTS.includes(slot)) return;
+            if (!map[dateKey][slot]) map[dateKey][slot] = [];
+            if (!map[dateKey][slot].includes(resident)) {
+              map[dateKey][slot].push(resident);
             }
           });
         });
@@ -235,10 +216,9 @@ app.get('/api/roster', async (req, res) => {
 app.post('/api/roster/assign', async (req, res) => {
   try {
     const sheets = getSheets();
-    const { venue, date, slot, dj, month } = req.body;
+    const { venue, date, slot, dj, month, type } = req.body;
 
-    // Server-side guard: block residents from HIP slots
-    if (isIllegalAssignment(venue, slot, dj, req.body.type)) {
+    if (isIllegalAssignment(slot, dj, type)) {
       return res.json({ success: false, error: `${dj} cannot be assigned to HIP slot ${slot}` });
     }
 
@@ -252,7 +232,6 @@ app.post('/api/roster/assign', async (req, res) => {
       });
       existingRows = response.data.values || [];
     } catch(e) {}
-
 
     const normSlot = normalizeSlot(slot);
     const rowIndex = existingRows.findIndex(r => r[0] === date && normalizeSlot(r[1]) === normSlot && r[3] === month);
@@ -284,8 +263,8 @@ app.post('/api/roster/batch', async (req, res) => {
     const sheets = getSheets();
     const { venue, month, assignments } = req.body;
 
-    // Server-side guard: strip any illegal resident→HIP assignments before saving
-    const safeAssignments = assignments.filter(({ slot, dj, type }) => !isIllegalAssignment(venue, slot, dj, type));
+    // Hard block: strip any resident→HIP assignments before saving
+    const safeAssignments = assignments.filter(({ slot, dj, type }) => !isIllegalAssignment(slot, dj, type));
     const blocked = assignments.length - safeAssignments.length;
     if (blocked > 0) console.warn(`Blocked ${blocked} illegal resident→HIP assignments`);
 
@@ -299,7 +278,6 @@ app.post('/api/roster/batch', async (req, res) => {
       });
       existingRows = response.data.values || [];
     } catch(e) {}
-
 
     const rowMap = {};
     existingRows.forEach((r, i) => {
