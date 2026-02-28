@@ -489,7 +489,7 @@ const ARKBAR_SLOTS = [
 const HIP_SLOTS = [
   '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'
 ];
-// Full ARKbar 14:00–02:00 — venue-prefixed keys (ark:/hip:) prevent HIP collision
+// Full ARKbar 14:00–02:00 — all slots auto-suggested, server blocks residents from HIP
 const ARKBAR_AUTOSUGGEST_SLOTS = [
   '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
   '18:00–19:00','20:00–21:00','21:00–22:00',
@@ -736,9 +736,7 @@ function renderGrid() {
 function buildCell(dateStr, slot, type) {
   const key = `${dateStr}|${slot}`;
   const assigned = rosterAssignments[key] || '';
-  // Use venue-prefixed key — ark: for ARKbar, hip: for HIP — prevents collision
-  const availKey = type === 'hip' ? `hip:${slot}` : `ark:${slot}`;
-  const avail = (availability[dateStr] && availability[dateStr][availKey]) || [];
+  const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
 
   let filtered = type === 'love'
     ? avail.filter(dj => !ARKBAR_ONLY.includes(dj))
@@ -1051,8 +1049,7 @@ async function suggestRoster() {
   }
 
   function canAssign(djName, dateStr, slot, type) {
-    const availKey = type === 'hip' ? `hip:${slot}` : `ark:${slot}`;
-    const avail = (availability[dateStr] && availability[dateStr][availKey]) || [];
+    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
     const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail.filter(d => !LOVE_ONLY.includes(d));
     if (!filtered.includes(djName)) return false;
     if (isLove && ARKBAR_ONLY.includes(djName)) return false;
@@ -1104,8 +1101,7 @@ async function suggestRoster() {
 
   function pickDJ(dateStr, slot, type) {
     // Use venue-prefixed availability key
-    const availKey = isLove ? `ark:${slot}` : type === 'hip' ? `hip:${slot}` : `ark:${slot}`;
-    const avail = (availability[dateStr] && availability[dateStr][availKey]) || [];
+    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
     const filtered = isLove
       ? avail.filter(d => !ARKBAR_ONLY.includes(d))
       : type === 'hip'
