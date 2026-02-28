@@ -257,6 +257,9 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 @media (max-width: 600px) {
   .summary-row { grid-template-columns: 1fr 1fr; }
   .hours-table thead th, .hours-table tbody td { padding: 8px 10px; font-size: 11px; }
+  .hours-table-wrap { overflow-x: auto; }
+  .hours-table { min-width: 520px; }
+  .hours-wrap { padding-right: 4px; }
 }
 @media (max-width: 768px) {
   .app-header {
@@ -308,22 +311,26 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 
 /* PRINT */
 @media print {
-  @page { size: A3 landscape; margin: 8mm; }
-  body { background: white; }
+  @page { size: A2 landscape; margin: 10mm; }
+  body { background: white; font-size: 10px; }
   .login-wrap { display: none !important; }
   .app-header, .venue-bar, .status-bar { display: none !important; }
-  .main-content { padding: 0 !important; overflow: visible !important; }
+  .print-header { display: block !important; padding: 0 0 8px 0; margin-bottom: 8px; border-bottom: 2px solid #2B3990; }
+  .main-content { padding: 0 !important; overflow: visible !important; flex: none; }
   .app { display: block !important; min-height: unset; }
-  .grid-wrap { box-shadow: none; overflow: visible !important; }
-  .roster-table { font-size: 8px; }
-  .roster-table thead th { font-size: 7px; padding: 4px 2px; }
-  .td-date { font-size: 8px; padding: 4px 6px; min-width: 70px; }
-  .td-slot { min-width: 52px; padding: 2px; }
-  .slot-select { font-size: 8px; padding: 2px; min-height: 20px; border-radius: 3px; }
-  .slot-select.unassigned { display: none; }
-  .slot-select.no-avail { display: none; }
-  .empty-slot { display: none; }
-  .print-header { display: block !important; }
+  .grid-wrap { box-shadow: none; overflow: visible !important; border-radius: 0; }
+  .roster-table { font-size: 7.5px; table-layout: fixed; }
+  .roster-table thead th { font-size: 7px; padding: 4px 2px; position: static; background: white !important; }
+  .th-arkbar { background: #eaf6f7 !important; }
+  .th-hip { background: #F15A29 !important; color: white !important; }
+  .th-love { background: #fce4ec !important; }
+  .td-date { font-size: 7.5px; padding: 3px 5px; min-width: 55px; position: static; border-right: 1px solid #ccc; }
+  .td-date .dow { font-size: 7px; }
+  .td-slot { min-width: 48px; padding: 1px; border: 0.5px solid #eee; }
+  .slot-select { font-size: 7.5px; padding: 2px 1px; min-height: 18px; border-radius: 2px; border: none; width: 100%; }
+  .slot-select.unassigned, .slot-select.no-avail { display: none; }
+  td.empty-slot, td.td-slot:has(.no-avail) { background: #f9f9f9; }
+  .hours-wrap, .summary-row { display: none !important; }
 }
 .print-header {
   display: none;
@@ -368,8 +375,8 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
     <button class="venue-tab" id="tabHours" onclick="switchVenue('hours')">DJ Hours</button>
   </div>
 
+  <div class="print-header" id="printHeader"></div>
   <div class="main-content" id="mainContent">
-    <div class="print-header" id="printHeader"></div>
     <div class="loading"><div class="spinner"></div>Loading...</div>
   </div>
 
@@ -792,9 +799,11 @@ function publishRoster() {
 
 function printRoster() {
   const venue = currentVenue === 'arkbar' ? 'ARKbar / HIP Restaurant' : 'Love Beach Club';
-  document.getElementById('printHeader').textContent =
-    `${venue} — DJ Roster — ${MONTHS[currentMonth]} ${currentYear}`;
-  window.print();
+  const header = document.getElementById('printHeader');
+  if (header) {
+    header.textContent = `${venue}  —  DJ Roster  —  ${MONTHS[currentMonth]} ${currentYear}`;
+  }
+  setTimeout(() => window.print(), 100);
 }
 
 const RESIDENTS = ['Alex Redwhite', 'Raffo', 'Sound Bogie'];
