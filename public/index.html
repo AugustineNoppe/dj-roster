@@ -934,7 +934,9 @@ async function doSubmit() {
   entries.forEach(({k,slots})=>{
     const [y,m,d]=k.split('-');
     const dow=new Date(+y,+m-1,+d).getDay();
-    slots.forEach(slot=>rows.push({timestamp:now,dj:djName,month:moLabel,date:k,day:DF[dow],slot}));
+    // Format date as "1 Mar 2026" — avoids Google Sheets auto-converting to serial number
+    const dateLabel=`${+d} ${MN[+m-1]} ${y}`;
+    slots.forEach(slot=>rows.push({timestamp:now,dj:djName,month:moLabel,date:dateLabel,day:DF[dow],slot}));
   });
   const payload={dj:djName,month:moLabel,submitted_at:now,total_hours:rows.length,rows};
   try{ await fetch(WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),mode:'no-cors'}); }catch(e){}
