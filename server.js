@@ -90,14 +90,31 @@ app.get('/api/availability', async (req, res) => {
     const rows = availRes.data.values || [];
     const blackoutRows = blackoutRes.data.values || [];
 
-    // Build regular DJ availability map
+    // ── AVAILABILITY MAP ─────────────────────────────────────────────────────
+    // KEY DESIGN: every slot is prefixed by venue to prevent collision.
+    //   ARKbar cells read 'ark:SLOT'
+    //   HIP cells    read 'hip:SLOT'
+    //   21:00–01:00 exists in BOTH venues — different keys, never bleed.
+    //
+    // Regular DJs: submitted slots go into ark: keys (and hip: if it's a HIP slot)
+    // Residents:   injected into ALL ark: slots — they never touch hip: keys
+    // ─────────────────────────────────────────────────────────────────────────
     const filtered = month ? rows.filter(r => r[2] === month) : rows;
     const map = {};
+
     filtered.forEach(([timestamp, dj, monthLabel, date, day, slot]) => {
       if (!date || !slot) return;
       if (!map[date]) map[date] = {};
-      if (!map[date][slot]) map[date][slot] = [];
-      if (!map[date][slot].includes(dj)) map[date][slot].push(dj);
+      // All regular DJ availability goes into ark: keys
+      const arkKey = `ark:${slot}`;
+      if (!map[date][arkKey]) map[date][arkKey] = [];
+      if (!map[date][arkKey].includes(dj)) map[date][arkKey].push(dj);
+      // Also add to hip: key if it's a HIP time slot
+      if (HIP_SLOTS.includes(slot)) {
+        const hipKey = `hip:${slot}`;
+        if (!map[date][hipKey]) map[date][hipKey] = [];
+        if (!map[date][hipKey].includes(dj)) map[date][hipKey].push(dj);
+      }
     });
 
     // Build resident blackout map
@@ -110,8 +127,8 @@ app.get('/api/availability', async (req, res) => {
       if (blackouts[dj]) blackouts[dj][date] = type || 'full';
     });
 
-    // Inject residents into ARKBAR_ONLY_SLOTS only
-    // They never appear in HIP_SLOTS keys — HIP cells will show no residents, ever
+    // Inject residents into ALL ark: slot keys (full ARKbar coverage 14:00–02:00)
+    // Residents never touch hip: keys — HIP cells will never show residents
     if (month && year !== undefined && monthIdx >= 0) {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateKey = `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -120,15 +137,14 @@ app.get('/api/availability', async (req, res) => {
         RESIDENTS.forEach(resident => {
           const blackoutType = blackouts[resident][blackoutLabel];
           if (blackoutType === 'full') return;
-
           if (!map[dateKey]) map[dateKey] = {};
 
-          // Inject into all ARKbar slots — HIP auto-suggest is disabled so no overlap risk
           ARKBAR_SLOTS.forEach(slot => {
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
-            if (!map[dateKey][slot]) map[dateKey][slot] = [];
-            if (!map[dateKey][slot].includes(resident)) {
-              map[dateKey][slot].push(resident);
+            const arkKey = `ark:${slot}`;
+            if (!map[dateKey][arkKey]) map[dateKey][arkKey] = [];
+            if (!map[dateKey][arkKey].includes(resident)) {
+              map[dateKey][arkKey].push(resident);
             }
           });
         });
