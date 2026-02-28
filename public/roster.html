@@ -815,34 +815,33 @@ async function clearRoster() {
   const venueParam = currentVenue === 'love' ? 'love' : 'arkbar';
   const month = getMonthString();
 
-  // Get all current assignments
-  const toRemove = Object.entries(rosterAssignments);
-  if (toRemove.length === 0) {
-    showToast('Roster is already empty', '');
-    return;
+  try {
+    const res = await fetch('/api/roster/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ venue: venueParam, month })
+    });
+    const data = await res.json();
+
+    // Always clear local state regardless
+    rosterAssignments = {};
+    if (venueParam === 'arkbar') arkbarAssignments = {};
+    else loveAssignments = {};
+
+    renderGrid();
+    if (data.success) {
+      showToast(`Roster cleared (${data.cleared} rows)`, 'success');
+    } else {
+      showToast('Cleared locally — sheet sync failed', 'error');
+    }
+  } catch(e) {
+    // Still clear locally even if server fails
+    rosterAssignments = {};
+    if (venueParam === 'arkbar') arkbarAssignments = {};
+    else loveAssignments = {};
+    renderGrid();
+    showToast('Cleared locally — check connection', 'error');
   }
-
-  let cleared = 0;
-  for (const [key] of toRemove) {
-    const [date, slot] = key.split('|');
-    if (!date || !slot) continue;
-    try {
-      const res = await fetch('/api/roster/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ venue: venueParam, date, slot, dj: '', month })
-      });
-      const data = await res.json();
-      if (data.success) cleared++;
-    } catch(e) {}
-  }
-
-  rosterAssignments = {};
-  if (venueParam === 'arkbar') arkbarAssignments = {};
-  else loveAssignments = {};
-
-  renderGrid();
-  showToast(`Roster cleared (${cleared} slots)`, 'success');
 }
 
 // ─── AUTO-SUGGEST ─────────────────────────────────────────────────────────────
@@ -958,19 +957,42 @@ async function suggestRoster() {
     return aN - bN;
   });
 
+  // Per-run soft cap: no DJ gets more than ~fair share in one suggest
+  const fairShare = Math.ceil(emptySlots.length / Math.max(eligibleDJs.length, 1));
+  const runCap = Math.max(fairShare, 20); // at least 20, but spread fairly
+  const runCount = {}; // how many slots assigned THIS run
+
   function pickDJ(dateStr, slot, type) {
     const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
     const filtered = isLove ? avail.filter(d => !ARKBAR_ONLY.includes(d)) : avail;
-    const candidates = filtered.filter(dj => eligibleDJs.includes(dj) && canAssign(dj, dateStr, slot, type));
-    if (candidates.length === 0) return null;
+    const candidates = filtered.filter(dj =>
+      eligibleDJs.includes(dj) &&
+      canAssign(dj, dateStr, slot, type) &&
+      (runCount[dj] || 0) < runCap
+    );
+    if (candidates.length === 0) {
+      // Fallback: ignore run cap
+      const fallback = filtered.filter(dj => eligibleDJs.includes(dj) && canAssign(dj, dateStr, slot, type));
+      if (fallback.length === 0) return null;
+      fallback.sort((a, b) => {
+        const aRes = RESIDENTS.includes(a) && djHours[a] < RESIDENT_TARGET;
+        const bRes = RESIDENTS.includes(b) && djHours[b] < RESIDENT_TARGET;
+        if (aRes && !bRes) return -1;
+        if (!aRes && bRes) return 1;
+        return (djHours[a] || 0) - (djHours[b] || 0);
+      });
+      return fallback[0];
+    }
 
-    // Sort: residents first if under target, then fewest hours (spread evenly)
+    // Sort: residents under target first, then fewest hours, shuffle ties
     candidates.sort((a, b) => {
       const aRes = RESIDENTS.includes(a) && djHours[a] < RESIDENT_TARGET;
       const bRes = RESIDENTS.includes(b) && djHours[b] < RESIDENT_TARGET;
       if (aRes && !bRes) return -1;
       if (!aRes && bRes) return 1;
-      return (djHours[a] || 0) - (djHours[b] || 0);
+      const diff = (djHours[a] || 0) - (djHours[b] || 0);
+      if (diff !== 0) return diff;
+      return Math.random() - 0.5; // shuffle equal-hour candidates
     });
     return candidates[0];
   }
@@ -982,6 +1004,7 @@ async function suggestRoster() {
     if (chosen) {
       working[`${dateStr}|${slot}`] = chosen;
       djHours[chosen] = (djHours[chosen] || 0) + 1;
+      runCount[chosen] = (runCount[chosen] || 0) + 1;
       toSave.push({ dateStr, slot, type, dj: chosen });
     }
   }
@@ -999,6 +1022,7 @@ async function suggestRoster() {
         if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === res)) continue;
         working[`${dateStr}|${slot}`] = res;
         djHours[res] = (djHours[res] || 0) + 1;
+        runCount[res] = (runCount[res] || 0) + 1;
         toSave.push({ dateStr, slot, type, dj: res });
         break;
       }
@@ -1010,30 +1034,32 @@ async function suggestRoster() {
     return;
   }
 
-  // Update UI
+  // Update UI immediately
   rosterAssignments = { ...working };
   renderGrid();
-  showToast(`Filling ${toSave.length} slots...`, 'success');
+  showToast(`Saving ${toSave.length} slots...`, 'success');
 
-  // Save to server
+  // Save to server in ONE batch request
   const venueParam = isLove ? 'love' : 'arkbar';
-  let saved = 0, failed = 0;
-  for (const { dateStr, slot, dj } of toSave) {
-    try {
-      const res = await fetch('/api/roster/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ venue: venueParam, date: dateStr, slot, dj, month })
-      });
-      const data = await res.json();
-      if (data.success) saved++; else failed++;
-    } catch(e) { failed++; }
+  try {
+    const res = await fetch('/api/roster/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        venue: venueParam,
+        month,
+        assignments: toSave.map(({ dateStr, slot, dj }) => ({ date: dateStr, slot, dj }))
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Done: ${toSave.length} slots filled`, 'success');
+    } else {
+      showToast(`UI updated — sheet sync failed: ${data.error}`, 'error');
+    }
+  } catch(e) {
+    showToast('UI updated — check connection', 'error');
   }
-
-  showToast(
-    failed === 0 ? `Done: ${saved} slots filled` : `Done: ${saved} saved, ${failed} failed`,
-    failed === 0 ? 'success' : 'error'
-  );
 }
 
 let isPublished = false;
