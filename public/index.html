@@ -50,6 +50,19 @@ body {
 /* All content above the orbs */
 .header, .wrap { position: relative; z-index: 1; }
 
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-bottom: 16px;
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.back-btn:hover { color: white; background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
+
 /* ── HEADER ── */
 .header {
   background: rgba(255,255,255,0.06);
@@ -412,6 +425,7 @@ body {
 
 <!-- HEADER -->
 <div class="header">
+  <a href="/" class="back-btn">← Portal</a>
   <div class="header-eyebrow">ARKbar Beach Club &amp; Love Beach Club</div>
   <div class="header-title">DJ Roster</div>
   <div class="header-sub">Availability Submission</div>
