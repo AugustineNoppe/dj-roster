@@ -990,10 +990,9 @@ async function suggestRoster() {
     const isSat = dow === 6;
     const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     if (!isLove) {
-      // Full ARKbar coverage 14:00–02:00 — venue-prefixed keys prevent HIP collision
+      // ARKbar only — HIP is MANUAL ONLY (HIP and ARKbar share slot labels,
+      // auto-suggest cannot distinguish them safely, so HIP is never auto-filled)
       ARKBAR_AUTOSUGGEST_SLOTS.forEach(slot => allSlots.push({ dateStr, slot, type: 'arkbar' }));
-      // HIP slots also auto-suggested for non-resident DJs
-      HIP_SLOTS.forEach(slot => allSlots.push({ dateStr, slot, type: 'hip' }));
     } else {
       const active = isSat ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
       active.forEach(slot => allSlots.push({ dateStr, slot, type: 'love' }));
