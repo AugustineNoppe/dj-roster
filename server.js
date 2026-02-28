@@ -43,15 +43,20 @@ app.post('/api/auth', (req, res) => {
 
 // Residents are always available — their sheet only stores BLACKOUT dates
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
+
+// ── FIXED: 19:00–20:00 removed (dead slot) ──
 const ARKBAR_SLOTS = [
   '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
-  '18:00–19:00','19:00–20:00','20:00–21:00','21:00–22:00',
+  '18:00–19:00','20:00–21:00','21:00–22:00',
   '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
 ];
+
 // HIP shares these time slots with ARKbar — residents must NEVER appear in these
 const HIP_SLOTS = ['21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00'];
-// Slots exclusively for ARKbar (not shared with HIP) — residents can be injected here
+
+// Slots exclusively for ARKbar (not shared with HIP) — residents injected here only
 const ARKBAR_ONLY_SLOTS = ARKBAR_SLOTS.filter(s => !HIP_SLOTS.includes(s));
+
 // Slots blocked for 'morning' blackout (14:00–19:00 only)
 const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
 
@@ -60,7 +65,6 @@ app.get('/api/availability', async (req, res) => {
     const sheets = getSheets();
     const month = req.query.month; // e.g. "March 2026"
 
-    // Parse month into year/month number for date generation
     const MONTH_NAMES = ['January','February','March','April','May','June',
                          'July','August','September','October','November','December'];
     let year, monthIdx, daysInMonth;
@@ -71,7 +75,6 @@ app.get('/api/availability', async (req, res) => {
       daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
     }
 
-    // Fetch regular availability
     const [availRes, blackoutRes] = await Promise.all([
       sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
@@ -79,8 +82,8 @@ app.get('/api/availability', async (req, res) => {
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
-        range: 'Resident Blackouts!A2:D',
-      }).catch(() => ({ data: { values: [] } })) // graceful if sheet doesn't exist yet
+        range: 'Resident Blackouts!A2:E',
+      }).catch(() => ({ data: { values: [] } }))
     ]);
 
     const rows = availRes.data.values || [];
@@ -96,33 +99,37 @@ app.get('/api/availability', async (req, res) => {
       if (!map[date][slot].includes(dj)) map[date][slot].push(dj);
     });
 
-    // Build resident blackout map: { "Alex RedWhite": { "1 Mar 2026": "morning"|"full" } }
+    // Build resident blackout map
     const blackouts = {};
     RESIDENTS.forEach(r => { blackouts[r] = {}; });
     blackoutRows.forEach(([dj, date, monthLabel, timestamp, type]) => {
       if (!dj || !date) return;
       const m = monthLabel || month;
       if (month && m !== month) return;
-      if (blackouts[dj]) blackouts[dj][date] = type || 'full'; // default full if old data
+      if (blackouts[dj]) blackouts[dj][date] = type || 'full';
     });
 
-    // Inject availability for residents — excluding blacked-out slots
+    // Inject resident availability — ARKbar only slots use plain key,
+    // HIP-overlap slots use 'ark:SLOT' key so HIP cells never see residents
     if (month && year !== undefined && monthIdx >= 0) {
       for (let d = 1; d <= daysInMonth; d++) {
-        // Roster looks up availability by YYYY-MM-DD key
         const dateKey = `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        // Blackouts are stored as "1 Mar 2026" — build that label for lookup
         const blackoutLabel = `${d} ${MONTH_NAMES[monthIdx].slice(0,3)} ${year}`;
 
         RESIDENTS.forEach(resident => {
-          const blackoutType = blackouts[resident][blackoutLabel]; // 'morning', 'full', or undefined
+          const blackoutType = blackouts[resident][blackoutLabel];
           if (blackoutType === 'full') return; // skip entire day
 
           if (!map[dateKey]) map[dateKey] = {};
+
           ARKBAR_SLOTS.forEach(slot => {
+            // Skip morning slots if morning blackout
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
-            // Use 'ark:SLOT' key for overlap slots so HIP cells never see residents
+
+            // HIP overlap slots → store under ark:SLOT so HIP cells never see residents
+            // ARKbar-only slots → store under plain slot key
             const mapKey = HIP_SLOTS.includes(slot) ? `ark:${slot}` : slot;
+
             if (!map[dateKey][mapKey]) map[dateKey][mapKey] = [];
             if (!map[dateKey][mapKey].includes(resident)) {
               map[dateKey][mapKey].push(resident);
@@ -148,13 +155,12 @@ app.post('/api/blackout', async (req, res) => {
     }
     const sheets = getSheets();
     const timestamp = new Date().toISOString();
-    // dates is array of { date, type } — type = 'morning' | 'full'
     const rows = dates.map(({ date, type }) => [dj, date, month, timestamp, type || 'full']);
 
     // Clear existing blackouts for this DJ + month, then write fresh
     const existing = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Resident Blackouts!A2:D',
+      range: 'Resident Blackouts!A2:E',
     }).catch(() => ({ data: { values: [] } }));
 
     const existingRows = existing.data.values || [];
@@ -203,14 +209,13 @@ app.get('/api/roster', async (req, res) => {
       });
       values = response.data.values || [];
     } catch (e) {}
-    // Normalize en-dash vs hyphen in slot column, filter by month, skip header
     const filtered = values
       .filter(r => r[0] !== 'Date' && (!month || r[3] === month))
       .map(r => {
-        if (r[1]) r[1] = r[1].replace(/\u2013/g, '-').replace(/-/g, '\u2013'); // normalize to en-dash
+        if (r[1]) r[1] = r[1].replace(/\u2013/g, '-').replace(/-/g, '\u2013');
         return r;
       })
-      .filter(r => r[0] && r[2]); // only rows with date AND dj
+      .filter(r => r[0] && r[2]);
     res.json({ success: true, roster: filtered });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -267,15 +272,12 @@ app.post('/api/roster/assign', async (req, res) => {
   }
 });
 
-// Batch assign — save many slots in one request
 app.post('/api/roster/batch', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, month, assignments } = req.body;
-    // assignments = [{ date, slot, dj }, ...]
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
 
-    // Read existing sheet once
     let existingRows = [];
     try {
       const response = await sheets.spreadsheets.values.get({
@@ -285,7 +287,6 @@ app.post('/api/roster/batch', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    // Build a map of existing row indices: "date|slot" -> rowIndex
     const normalizeSlot = s => s ? s.replace(/[-\u2013]/g, '\u2013') : s;
     const rowMap = {};
     existingRows.forEach((r, i) => {
@@ -307,7 +308,6 @@ app.post('/api/roster/batch', async (req, res) => {
       }
     }
 
-    // Batch update existing rows
     if (updateData.length > 0) {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: SHEET_ID,
@@ -318,7 +318,6 @@ app.post('/api/roster/batch', async (req, res) => {
       });
     }
 
-    // Append new rows
     if (appendRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
@@ -334,14 +333,12 @@ app.post('/api/roster/batch', async (req, res) => {
   }
 });
 
-// Clear entire month for a venue in one shot
 app.post('/api/roster/clear', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, month } = req.body;
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
 
-    // Read all rows
     let existingRows = [];
     try {
       const response = await sheets.spreadsheets.values.get({
@@ -351,13 +348,9 @@ app.post('/api/roster/clear', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    // Find ALL rows that have any content matching this month OR are empty placeholder rows
-    // Also clear rows where month matches (col D index 3)
     const clearData = [];
     existingRows.forEach((r, i) => {
-      const rowMonth = r[3] || '';
-      const hasContent = r[0] || r[1] || r[2] || r[3];
-      if (rowMonth === month) {
+      if ((r[3] || '') === month) {
         clearData.push({
           range: `${tabName}!A${i + 1}:D${i + 1}`,
           values: [['', '', '', '']],
