@@ -48,6 +48,8 @@ const ARKBAR_SLOTS = [
   '18:00–19:00','19:00–20:00','20:00–21:00','21:00–22:00',
   '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
 ];
+// Slots blocked for 'morning' blackout (14:00–19:00 only)
+const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
 
 app.get('/api/availability', async (req, res) => {
   try {
@@ -90,26 +92,28 @@ app.get('/api/availability', async (req, res) => {
       if (!map[date][slot].includes(dj)) map[date][slot].push(dj);
     });
 
-    // Build resident blackout set: { "Alex RedWhite": Set(["1 Mar 2026", "5 Mar 2026"]) }
+    // Build resident blackout map: { "Alex RedWhite": { "1 Mar 2026": "morning"|"full" } }
     const blackouts = {};
-    RESIDENTS.forEach(r => { blackouts[r] = new Set(); });
-    blackoutRows.forEach(([dj, date, monthLabel]) => {
+    RESIDENTS.forEach(r => { blackouts[r] = {}; });
+    blackoutRows.forEach(([dj, date, monthLabel, timestamp, type]) => {
       if (!dj || !date) return;
       const m = monthLabel || month;
       if (month && m !== month) return;
-      if (blackouts[dj]) blackouts[dj].add(date);
+      if (blackouts[dj]) blackouts[dj][date] = type || 'full'; // default full if old data
     });
 
-    // Inject full availability for residents on non-blacked-out days
+    // Inject availability for residents — excluding blacked-out slots
     if (month && year !== undefined && monthIdx >= 0) {
-      const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
       for (let d = 1; d <= daysInMonth; d++) {
-        const dateObj = new Date(year, monthIdx, d);
         const dateLabel = `${d} ${MONTH_NAMES[monthIdx].slice(0,3)} ${year}`;
         RESIDENTS.forEach(resident => {
-          if (blackouts[resident].has(dateLabel)) return; // blacked out
+          const blackoutType = blackouts[resident][dateLabel]; // 'morning', 'full', or undefined
+          if (blackoutType === 'full') return; // skip entire day
+
           if (!map[dateLabel]) map[dateLabel] = {};
           ARKBAR_SLOTS.forEach(slot => {
+            // Skip morning slots if morning blackout
+            if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
             if (!map[dateLabel][slot]) map[dateLabel][slot] = [];
             if (!map[dateLabel][slot].includes(resident)) {
               map[dateLabel][slot].push(resident);
@@ -135,7 +139,8 @@ app.post('/api/blackout', async (req, res) => {
     }
     const sheets = getSheets();
     const timestamp = new Date().toISOString();
-    const rows = dates.map(date => [dj, date, month, timestamp]);
+    // dates is array of { date, type } — type = 'morning' | 'full'
+    const rows = dates.map(({ date, type }) => [dj, date, month, timestamp, type || 'full']);
 
     // Clear existing blackouts for this DJ + month, then write fresh
     const existing = await sheets.spreadsheets.values.get({
