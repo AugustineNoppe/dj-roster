@@ -43,13 +43,13 @@ const HIP_SLOTS = ['21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:0
 const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
 
 // Guard: returns true if this assignment is illegal
-function isIllegalAssignment(venue, slot, dj) {
+// type = 'arkbar' | 'hip' | 'love' — passed explicitly from client
+function isIllegalAssignment(venue, slot, dj, type) {
   if (!dj) return false;
-  const normSlot = normalizeSlot(slot);
-  const isHipSlot = HIP_SLOTS.map(normalizeSlot).includes(normSlot);
   const isResident = RESIDENTS.includes(dj);
-  // Residents cannot be assigned to HIP slots ever
-  if (venue === 'arkbar' && isHipSlot && isResident) return true;
+  // Block residents from HIP — use explicit type if provided, else infer from slot
+  const isHip = type === 'hip' || (!type && HIP_SLOTS.map(normalizeSlot).includes(normalizeSlot(slot)));
+  if (isHip && isResident) return true;
   return false;
 }
 
@@ -238,7 +238,7 @@ app.post('/api/roster/assign', async (req, res) => {
     const { venue, date, slot, dj, month } = req.body;
 
     // Server-side guard: block residents from HIP slots
-    if (isIllegalAssignment(venue, slot, dj)) {
+    if (isIllegalAssignment(venue, slot, dj, req.body.type)) {
       return res.json({ success: false, error: `${dj} cannot be assigned to HIP slot ${slot}` });
     }
 
@@ -285,7 +285,7 @@ app.post('/api/roster/batch', async (req, res) => {
     const { venue, month, assignments } = req.body;
 
     // Server-side guard: strip any illegal resident→HIP assignments before saving
-    const safeAssignments = assignments.filter(({ slot, dj }) => !isIllegalAssignment(venue, slot, dj));
+    const safeAssignments = assignments.filter(({ slot, dj, type }) => !isIllegalAssignment(venue, slot, dj, type));
     const blocked = assignments.length - safeAssignments.length;
     if (blocked > 0) console.warn(`Blocked ${blocked} illegal resident→HIP assignments`);
 
