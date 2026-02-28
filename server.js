@@ -36,8 +36,22 @@ const ARKBAR_SLOTS = [
   '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
 ];
 
-// HIP slots — residents NEVER go here
+// HIP slots — residents NEVER go here, enforced at save time
 const HIP_SLOTS = ['21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00'];
+
+// Helper: normalize slot string for comparison
+const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
+
+// Guard: returns true if this assignment is illegal
+function isIllegalAssignment(venue, slot, dj) {
+  if (!dj) return false;
+  const normSlot = normalizeSlot(slot);
+  const isHipSlot = HIP_SLOTS.map(normalizeSlot).includes(normSlot);
+  const isResident = RESIDENTS.includes(dj);
+  // Residents cannot be assigned to HIP slots ever
+  if (venue === 'arkbar' && isHipSlot && isResident) return true;
+  return false;
+}
 
 // ARKbar-only slots = slots NOT shared with HIP — residents go here only
 const ARKBAR_ONLY_SLOTS = ARKBAR_SLOTS.filter(s => !HIP_SLOTS.includes(s));
@@ -206,6 +220,12 @@ app.post('/api/roster/assign', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, date, slot, dj, month } = req.body;
+
+    // Server-side guard: block residents from HIP slots
+    if (isIllegalAssignment(venue, slot, dj)) {
+      return res.json({ success: false, error: `${dj} cannot be assigned to HIP slot ${slot}` });
+    }
+
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
 
     let existingRows = [];
@@ -217,7 +237,7 @@ app.post('/api/roster/assign', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    const normalizeSlot = s => s ? s.replace(/[-\u2013]/g, '\u2013') : s;
+
     const normSlot = normalizeSlot(slot);
     const rowIndex = existingRows.findIndex(r => r[0] === date && normalizeSlot(r[1]) === normSlot && r[3] === month);
 
@@ -247,6 +267,12 @@ app.post('/api/roster/batch', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, month, assignments } = req.body;
+
+    // Server-side guard: strip any illegal resident→HIP assignments before saving
+    const safeAssignments = assignments.filter(({ slot, dj }) => !isIllegalAssignment(venue, slot, dj));
+    const blocked = assignments.length - safeAssignments.length;
+    if (blocked > 0) console.warn(`Blocked ${blocked} illegal resident→HIP assignments`);
+
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
 
     let existingRows = [];
@@ -258,7 +284,7 @@ app.post('/api/roster/batch', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    const normalizeSlot = s => s ? s.replace(/[-\u2013]/g, '\u2013') : s;
+
     const rowMap = {};
     existingRows.forEach((r, i) => {
       if (r[0] && r[1] && r[3] === month) rowMap[`${r[0]}|${normalizeSlot(r[1])}`] = i;
@@ -267,7 +293,7 @@ app.post('/api/roster/batch', async (req, res) => {
     const updateData = [];
     const appendRows = [];
 
-    for (const { date, slot, dj } of assignments) {
+    for (const { date, slot, dj } of safeAssignments) {
       const key = `${date}|${normalizeSlot(slot)}`;
       if (rowMap[key] !== undefined) {
         updateData.push({
