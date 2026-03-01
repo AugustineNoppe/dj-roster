@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DJ Roster — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#0b1020">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -53,7 +54,7 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
   backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 24px; padding: 48px 40px;
-  width: 360px; text-align: center;
+  width: min(360px, calc(100vw - 32px)); text-align: center;
   box-shadow: 0 32px 80px rgba(0,0,0,0.5);
   animation: fadeUp 0.7s ease both;
 }
@@ -141,9 +142,8 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
 .venue-tab.love.active { color: white; border-bottom-color: var(--love-pink); }
 .venue-tab.active[id="tabHours"] { color: white; border-bottom-color: #4caf50; }
 
-.main-content { flex: 1; overflow: auto; padding: 20px 24px; }
+.main-content { flex: 1; overflow: auto; padding: 20px 24px; -webkit-overflow-scrolling: touch; }
 
-.grid-wrap { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); background: white; }
 .roster-table { border-collapse: collapse; min-width: 100%; font-size: 11px; }
 .roster-table thead th {
   padding: 10px 6px; text-align: center; font-weight: 800; font-size: 10px;
@@ -244,7 +244,7 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
 .toast.success { background: rgba(27,94,32,0.95); border-color: rgba(105,240,174,0.3); }
 .toast.error { background: rgba(183,28,28,0.95); border-color: rgba(255,100,100,0.3); }
 
-.grid-wrap { overflow-x: auto; border-radius: var(--radius); background: white; box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
+.grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius); background: white; box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
 .grid-wrap::-webkit-scrollbar { height: 6px; }
 .grid-wrap::-webkit-scrollbar-track { background: transparent; }
 .grid-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
@@ -300,14 +300,16 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
 .totals-row { background: rgba(255,255,255,0.05) !important; }
 .totals-row td { font-weight: 800 !important; color: white !important; }
 
-@media (max-width: 600px) {
-  .summary-row { grid-template-columns: 1fr 1fr; }
-  .hours-table thead th, .hours-table tbody td { padding: 8px 10px; font-size: 11px; }
-  .hours-table-wrap { overflow-x: auto; }
-  .hours-table { min-width: 520px; }
-  .hours-wrap { padding-right: 4px; }
+/* ── REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .bg-orb { animation: none !important; }
 }
+
+/* ── MOBILE: TABLETS & PHONES ── */
 @media (max-width: 768px) {
+  .bg-orb { animation: none; opacity: 0.3; }
+
   .app-header {
     height: auto;
     padding: 10px 14px;
@@ -324,35 +326,42 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
   .header-badge { font-size: 9px; padding: 2px 7px; }
   .month-nav { width: 100%; justify-content: center; }
   .month-label { font-size: 12px; min-width: 110px; }
-  .month-nav button { width: 32px; height: 32px; font-size: 16px; }
+  .month-nav button { width: 36px; height: 36px; font-size: 16px; min-height: 44px; }
 
-  .venue-bar { padding: 0 12px; }
-  .venue-tab { padding: 10px 14px; font-size: 12px; }
+  .venue-bar { padding: 0 8px; gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .venue-tab { padding: 10px 12px; font-size: 11px; white-space: nowrap; min-height: 44px; }
 
-  .main-content { padding: 10px; }
+  .main-content { padding: 8px; }
 
-  .td-date { min-width: 72px; padding: 5px 8px; font-size: 10px; }
+  .td-date { min-width: 66px; padding: 4px 6px; font-size: 10px; }
   .td-date .dow { font-size: 8px; }
-  .td-slot { min-width: 70px; padding: 3px; }
-  .slot-select { font-size: 9px; min-height: 26px; padding: 3px 2px; }
-  .roster-table thead th { font-size: 9px; padding: 7px 3px; }
-  .th-section-label { font-size: 9px; padding: 5px; }
+  .td-slot { min-width: 66px; padding: 2px; }
+  .slot-select { font-size: 9px; min-height: 32px; padding: 4px 2px; }
+  .roster-table thead th { font-size: 8px; padding: 6px 2px; }
+  .th-section-label { font-size: 8px; padding: 4px; }
 
   .status-bar {
-    padding: 8px 12px;
+    padding: 8px 10px;
     flex-wrap: wrap;
     gap: 8px;
   }
+  .status-bar > span { display: none; }
   .status-bar-right {
     width: 100%;
-    justify-content: flex-end;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
   }
-  .btn-sm { padding: 6px 12px; font-size: 10px; }
+  .btn-sm { padding: 8px 10px; font-size: 10px; min-height: 40px; text-align: center; justify-content: center; display: flex; align-items: center; }
   .status-pill { font-size: 10px; }
 
   .toast { bottom: 12px; right: 12px; left: 12px; font-size: 11px; }
+
+  .summary-row { grid-template-columns: 1fr 1fr; }
+  .hours-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .hours-table { min-width: 520px; }
+  .hours-table thead th, .hours-table tbody td { padding: 8px 8px; font-size: 11px; }
+  .hours-wrap { padding-right: 4px; }
 }
 
 /* PRINT */
@@ -491,12 +500,7 @@ const ARKBAR_SLOTS = [
 const HIP_SLOTS = [
   '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'
 ];
-// Full ARKbar 14:00–02:00 — all slots auto-suggested, server blocks residents from HIP
-const ARKBAR_AUTOSUGGEST_SLOTS = [
-  '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
-  '18:00–19:00','20:00–21:00','21:00–22:00',
-  '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
-];
+// Full ARKbar 14:00–02:00
 const LOVE_WEEKDAY_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
   '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'
@@ -508,13 +512,21 @@ const LOVE_SAT_SLOTS = [
 ];
 
 const ARKBAR_ONLY = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
+const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 const LOVE_ONLY = ['Laina'];
 const NO_HIP = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 const RESIDENTS_LATE_NIGHT = ['Alex RedWhite', 'Raffo DJ'];
 const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
 const SOUND_BOGIE_BLOCKED = ['14:00–15:00','15:00–16:00','16:00–17:00'];
-
 const SOUND_BOGIE_RARE = ['17:00–18:00','18:00–19:00'];
+const RESIDENT_TARGET = 80;
+const SOUND_BOGIE_TARGET = 35;
+const RESIDENTS_80HR = ['Alex RedWhite', 'Raffo DJ'];
+const LATE_NIGHT_SLOTS = ['23:00–00:00','00:00–01:00','01:00–02:00'];
+
+// Helpers
+const pad2 = n => String(n).padStart(2, '0');
+const makeDateStr = (y, m, d) => `${y}-${pad2(m+1)}-${pad2(d)}`;
 
 const DJ_COLORS = {
   'Alex RedWhite': '#1565c0',
@@ -700,7 +712,7 @@ function renderGrid() {
     const dow = date.getDay();
     const isSat = dow === 6;
     const isWeekend = isSat || dow === 0;
-    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dateStr = makeDateStr(currentYear, currentMonth, d);
 
     let cells = '';
     if (!isLove) {
@@ -948,24 +960,6 @@ async function assignDJ(sel) {
   }
 }
 
-const FIXED_CONSTRAINTS = {
-  'Tobi':  (dateStr, slot, type) => {
-    const dow = new Date(dateStr).getDay();
-    return type === 'hip' && dow === 4;
-  },
-  'Buba':  (dateStr, slot, type) => {
-    const dow = new Date(dateStr).getDay();
-    const hour = parseInt(slot.split(':')[0]);
-    if (dow === 0) return false;
-    if (dow === 1 && hour < 18) return false;
-    return true;
-  },
-  'Vozka': (dateStr, slot, type) => {
-    const dow = new Date(dateStr).getDay();
-    return type === 'hip' && [1, 2, 5].includes(dow);
-  },
-};
-
 async function clearRoster() {
   if (isPublished) {
     showToast('Unlock roster before clearing', 'error');
@@ -1007,279 +1001,233 @@ async function clearRoster() {
 }
 
 async function suggestRoster() {
-  if (isPublished) {
-    showToast('Unlock roster before auto-suggesting', 'error');
-    return;
-  }
-  if (currentVenue === 'hours') {
-    showToast('Switch to a venue tab first', 'error');
-    return;
-  }
+  if (isPublished) { showToast('Unlock roster before auto-suggesting', 'error'); return; }
+  if (currentVenue === 'hours') { showToast('Switch to a venue tab first', 'error'); return; }
 
-  showToast('Auto-suggesting slots...', '');
+  showToast('Auto-suggesting resident slots...', '');
 
   const isLove = currentVenue === 'love';
   const month = getMonthString();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  // ── ZONE DEFINITIONS ──
-  // Each zone has a pool of DJs that rotate through it evenly
-  const ZONES = {
-    afternoon: {
-      slots: ['14:00–15:00','15:00–16:00','16:00–17:00'],
-      pool: ['D.Davoted','Alex RedWhite','Pick','Jessi','Tony'],
-      label: 'Afternoon Main'
-    },
-    cooldown: {
-      slots: ['17:00–18:00','18:00–19:00'],
-      pool: ['Sound Bogie','Raffo DJ'],
-      label: 'Cooldown'
-    },
-    warmup: {
-      slots: ['20:00–21:00','21:00–22:00','22:00–23:00'],
-      pool: ['Tony','Pick','Sound Bogie','D.Davoted','Jessi'],
-      label: 'Warmup'
-    },
-    latenight: {
-      slots: ['23:00–00:00','00:00–01:00','01:00–02:00'],
-      pool: ['Alex RedWhite','Raffo DJ','Sound Bogie','Guest DJ'],
-      label: 'Late Night Main'
-    }
-  };
+  // ── CONFIGURATION ─────────────────────────────────────────────────────
+  // Based on February reference roster pattern
+  const TARGETS = { 'Alex RedWhite': 80, 'Raffo DJ': 80, 'Sound Bogie': 40 };
+  const MAX_CONSECUTIVE = 3; // max 3 consecutive slots
+  const MAX_DAY_HOURS = 6;   // max 6h per day (but with gap — not 6 consecutive)
 
-  // All ARKbar slots in order
+  // Sound Bogie: never auto-assigned to 14:00-17:00
+  const SOUND_BLOCKED = new Set(['14:00–15:00','15:00–16:00','16:00–17:00']);
+
   const ALL_ARKBAR_SLOTS = [
     '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
     '18:00–19:00','20:00–21:00','21:00–22:00',
     '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
   ];
 
-  // Sound Bogie never plays 14:00-17:00
-  const SOUND_NEVER = ['14:00–15:00','15:00–16:00','16:00–17:00'];
+  // ── ZONE DEFINITIONS ──────────────────────────────────────────────────
+  // Afternoon: 14:00-17:00 (3 slots) — Alex & Raffo rotate, leave gaps for Pick/D.Davoted
+  // Cooldown: 17:00-19:00 (2 slots) — Raffo & Sound rotate, leave gaps for others
+  // Evening: 20:00-23:00 (3 slots) — leave mostly empty for regular DJs (Pick, Tony, Sound, etc)
+  // Late Night: 23:00-02:00 (3 slots) — Alex, Raffo, Sound rotate in strict 3-day cycle
 
-  // Build the list of all slots to fill
-  const allSlots = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(currentYear, currentMonth, d);
-    const dow = date.getDay();
-    const isSat = dow === 6;
-    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    if (!isLove) {
-      ALL_ARKBAR_SLOTS.forEach(slot => allSlots.push({ dateStr, slot, type: 'arkbar' }));
-    } else {
-      const active = isSat ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
-      active.forEach(slot => allSlots.push({ dateStr, slot, type: 'love' }));
-    }
-  }
+  const ZONE_AFTERNOON = ['14:00–15:00','15:00–16:00','16:00–17:00'];
+  const ZONE_COOLDOWN  = ['17:00–18:00','18:00–19:00'];
+  const ZONE_EVENING   = ['20:00–21:00','21:00–22:00','22:00–23:00'];
+  const ZONE_LATENIGHT = ['23:00–00:00','00:00–01:00','01:00–02:00'];
 
-  const emptySlots = allSlots.filter(({ dateStr, slot }) => !rosterAssignments[`${dateStr}|${slot}`]);
-  if (emptySlots.length === 0) {
-    showToast('No empty slots to fill', '');
-    return;
-  }
+  // Late night: strict 3-day rotation — Alex, Raffo, Sound
+  const LATENIGHT_ROTATION = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 
-  // Working copy of assignments
+  // Afternoon: Alex & Raffo alternate, with gaps (every other day, not consecutive)
+  // Pattern: Alex, gap, Raffo, gap, Alex, gap, Raffo...
+  const AFTERNOON_ROTATION = ['Alex RedWhite', null, 'Raffo DJ', null];
+
+  // Cooldown: Raffo & Sound alternate with gaps
+  const COOLDOWN_ROTATION = ['Raffo DJ', null, 'Sound Bogie', null];
+
+  // Working copy
   const working = { ...rosterAssignments };
-  const otherVenue = { ...(isLove ? arkbarAssignments : loveAssignments) };
+  const otherVenueMap = isLove ? arkbarAssignments : loveAssignments;
 
-  // Track hours per DJ
-  const djHours = {};
-  const djDayHours = {}; // { "dj|date": count }
-  (djList || []).forEach(d => { djHours[d.name] = 0; });
-  djHours['Guest DJ'] = 0;
-  Object.entries(working).forEach(([k, dj]) => {
-    if (djHours[dj] !== undefined) djHours[dj]++;
-    const date = k.split('|')[0];
-    const dayKey = `${dj}|${date}`;
-    djDayHours[dayKey] = (djDayHours[dayKey] || 0) + 1;
+  // Pre-build other venue lookup
+  const otherVenueDJs = {};
+  Object.entries(otherVenueMap).forEach(([k, dj]) => {
+    const d = k.split('|')[0];
+    (otherVenueDJs[d] ??= new Set()).add(dj);
   });
 
-  function getDayHours(dj, dateStr) {
-    return djDayHours[`${dj}|${dateStr}`] || 0;
-  }
-  function addDayHour(dj, dateStr) {
-    const k = `${dj}|${dateStr}`;
-    djDayHours[k] = (djDayHours[k] || 0) + 1;
-  }
+  // Track hours
+  const djHours = {};
+  RESIDENTS.forEach(r => { djHours[r] = 0; });
+  const djDaySlots = {}; // "dj|date" -> [slot, slot, ...]
 
-  // Check if DJ is available for this date (not blacked out, not at other venue)
-  function isAvailable(dj, dateStr, slot) {
-    // Guest DJ is always available
-    if (dj === 'Guest DJ') return true;
-
-    const isRes = RESIDENTS.includes(dj);
-    const maxPerDay = isRes ? 6 : 5;
-
-    // Max hours per day
-    if (getDayHours(dj, dateStr) >= maxPerDay) return false;
-
-    // Sound Bogie never plays afternoon
-    if (dj === 'Sound Bogie' && SOUND_NEVER.includes(slot)) return false;
-
-    // Not at other venue same day
-    if (Object.entries(otherVenue).some(([k, v]) => k.startsWith(dateStr + '|') && v === dj)) return false;
-
-    // Already assigned this exact slot
-    if (working[`${dateStr}|${slot}`] === dj) return false;
-
-    if (isRes) {
-      // Check blackouts
-      const bo = residentBlackouts[dj] && residentBlackouts[dj][dateStr];
-      if (bo === 'full') return false;
-      if (bo === 'morning' && ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'].includes(slot)) return false;
-      // Residents are available by default
-      return true;
+  // Count existing assignments
+  Object.entries(working).forEach(([k, dj]) => {
+    if (RESIDENTS.includes(dj)) {
+      djHours[dj] = (djHours[dj] || 0) + 1;
+      const date = k.split('|')[0];
+      const dayKey = `${dj}|${date}`;
+      (djDaySlots[dayKey] ??= []).push(k.split('|')[1]);
     }
+  });
 
-    // Regular DJs: check availability map
-    const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
-    return avail.includes(dj);
+  function getDaySlotCount(dj, dateStr) {
+    return (djDaySlots[`${dj}|${dateStr}`] || []).length;
+  }
+  function addSlot(dj, dateStr, slot) {
+    const dayKey = `${dj}|${dateStr}`;
+    (djDaySlots[dayKey] ??= []).push(slot);
+    djHours[dj] = (djHours[dj] || 0) + 1;
   }
 
-  // Check consecutive slots constraint (max 3 in a row)
-  function wouldExceedConsecutive(dj, dateStr, slot) {
-    const idx = ALL_ARKBAR_SLOTS.indexOf(slot);
-    if (idx < 0) return false;
-    let count = 1;
-    for (let i = idx - 1; i >= 0; i--) {
-      if (working[`${dateStr}|${ALL_ARKBAR_SLOTS[i]}`] === dj) count++; else break;
-    }
-    for (let i = idx + 1; i < ALL_ARKBAR_SLOTS.length; i++) {
-      if (working[`${dateStr}|${ALL_ARKBAR_SLOTS[i]}`] === dj) count++; else break;
-    }
-    return count > 3;
+  // Check if DJ is available
+  function canAssign(dj, dateStr, slot) {
+    if ((djHours[dj] || 0) >= (TARGETS[dj] || 999)) return false;
+    if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
+    if (working[`${dateStr}|${slot}`]) return false;
+    if (otherVenueDJs[dateStr]?.has(dj)) return false;
+    if (dj === 'Sound Bogie' && SOUND_BLOCKED.has(slot)) return false;
+
+    // Check blackouts
+    const bo = residentBlackouts[dj]?.[dateStr];
+    if (bo === 'full') return false;
+    if (bo === 'morning' && MORNING_SLOTS.includes(slot)) return false;
+
+    return true;
   }
 
-  // ── ZONE-BASED ROTATION ASSIGNMENT (ARKbar only) ──
+  // Check if assigning a zone would create >3 consecutive
+  function wouldBreakConsecutive(dj, dateStr, zoneSlots) {
+    // Simulate assignment
+    const allSlotIdx = new Set();
+    const existingSlots = djDaySlots[`${dj}|${dateStr}`] || [];
+    existingSlots.forEach(s => { const i = ALL_ARKBAR_SLOTS.indexOf(s); if (i >= 0) allSlotIdx.add(i); });
+    zoneSlots.forEach(s => { const i = ALL_ARKBAR_SLOTS.indexOf(s); if (i >= 0) allSlotIdx.add(i); });
+
+    // Check longest consecutive run
+    const sorted = [...allSlotIdx].sort((a,b) => a - b);
+    let maxRun = 1, run = 1;
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] === sorted[i-1] + 1) { run++; maxRun = Math.max(maxRun, run); }
+      else run = 1;
+    }
+    return maxRun > MAX_CONSECUTIVE;
+  }
+
+  // Check same-zone-consecutive-day rule
+  // Returns true if this DJ played the same zone yesterday
+  function playedZoneYesterday(dj, dateStr, zoneSlots) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() - 1);
+    const yesterday = makeDateStr(d.getFullYear(), d.getMonth(), d.getDate());
+    return zoneSlots.every(slot => working[`${yesterday}|${slot}`] === dj);
+  }
+
   if (!isLove) {
     const toSave = [];
 
-    // For each zone, rotate DJs day by day
-    Object.entries(ZONES).forEach(([zoneName, zone]) => {
-      const { slots, pool } = zone;
-      let rotationIdx = 0; // which DJ starts today
-
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-
-        // Find the first available DJ from the rotated pool for this day+zone
-        let assigned = false;
-        for (let attempt = 0; attempt < pool.length; attempt++) {
-          const djIdx = (rotationIdx + attempt) % pool.length;
-          const dj = pool[djIdx];
-
-          // Check if this DJ can do ALL slots in the zone today
-          const canDoAll = slots.every(slot => {
-            const key = `${dateStr}|${slot}`;
-            if (working[key]) return working[key] === dj; // already assigned to this DJ is ok
-            return isAvailable(dj, dateStr, slot);
-          });
-
-          if (canDoAll) {
-            // Check day hour limit won't be exceeded
-            const currentDayH = getDayHours(dj, dateStr);
-            const slotsToFill = slots.filter(s => !working[`${dateStr}|${s}`]);
-            const isRes = RESIDENTS.includes(dj);
-            const maxH = isRes ? 6 : 5;
-            if (currentDayH + slotsToFill.length > maxH) continue;
-
-            // Assign this DJ to all empty slots in this zone for today
-            slotsToFill.forEach(slot => {
-              const key = `${dateStr}|${slot}`;
-              working[key] = dj;
-              djHours[dj] = (djHours[dj] || 0) + 1;
-              addDayHour(dj, dateStr);
-              toSave.push({ dateStr, slot, type: 'arkbar', dj });
-            });
-            assigned = true;
-            break;
-          }
-        }
-
-        // Advance rotation regardless (so next day starts with next DJ)
-        rotationIdx = (rotationIdx + 1) % pool.length;
-      }
-    });
-
-    // ── RESIDENT TARGET PASS ──
-    // If residents are under target, try to fill remaining empty slots
-    const residentTargets = {
-      'Alex RedWhite': RESIDENT_TARGET,
-      'Raffo DJ': RESIDENT_TARGET,
-      'Sound Bogie': SOUND_BOGIE_TARGET,
-    };
-
-    RESIDENTS.forEach(res => {
-      const target = residentTargets[res];
-      if ((djHours[res] || 0) >= target) return;
-
-      // Find empty slots this resident could fill
-      for (let d = 1; d <= daysInMonth; d++) {
-        if ((djHours[res] || 0) >= target) break;
-        const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        
-        ALL_ARKBAR_SLOTS.forEach(slot => {
-          if ((djHours[res] || 0) >= target) return;
-          const key = `${dateStr}|${slot}`;
-          if (working[key]) return;
-          if (!isAvailable(res, dateStr, slot)) return;
-          if (wouldExceedConsecutive(res, dateStr, slot)) return;
-
-          working[key] = res;
-          djHours[res] = (djHours[res] || 0) + 1;
-          addDayHour(res, dateStr);
-          toSave.push({ dateStr, slot, type: 'arkbar', dj: res });
-        });
-      }
-    });
-
-    // ── FALLBACK PASS ──
-    // Fill any remaining empty slots with any available DJ
+    // ── PASS 1: LATE NIGHT (23:00-02:00) — strict 3-day rotation ────────
+    // Alex day 1, Raffo day 2, Sound day 3, repeat
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      ALL_ARKBAR_SLOTS.forEach(slot => {
+      const dateStr = makeDateStr(currentYear, currentMonth, d);
+      const rotIdx = (d - 1) % LATENIGHT_ROTATION.length;
+      const dj = LATENIGHT_ROTATION[rotIdx];
+
+      if (!canAssign(dj, dateStr, ZONE_LATENIGHT[0])) continue;
+      if (wouldBreakConsecutive(dj, dateStr, ZONE_LATENIGHT)) continue;
+
+      // Check all 3 slots available
+      const canDoAll = ZONE_LATENIGHT.every(slot =>
+        !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot)
+      );
+      if (!canDoAll) continue;
+
+      ZONE_LATENIGHT.forEach(slot => {
         const key = `${dateStr}|${slot}`;
-        if (working[key]) return;
-
-        // Try all DJs sorted by fewest hours
-        const candidates = [...(djList || []).map(d => d.name), 'Guest DJ']
-          .filter(dj => isAvailable(dj, dateStr, slot) && !wouldExceedConsecutive(dj, dateStr, slot))
-          .sort((a, b) => (djHours[a] || 0) - (djHours[b] || 0));
-
-        if (candidates.length > 0) {
-          const dj = candidates[0];
-          working[key] = dj;
-          djHours[dj] = (djHours[dj] || 0) + 1;
-          addDayHour(dj, dateStr);
-          toSave.push({ dateStr, slot, type: 'arkbar', dj });
-        }
+        working[key] = dj;
+        addSlot(dj, dateStr, slot);
+        toSave.push({ dateStr, slot, type: 'arkbar', dj });
       });
     }
 
+    // ── PASS 2: AFTERNOON (14:00-17:00) — Alex & Raffo alternate with gaps
+    // Pattern: Alex, skip, Raffo, skip — leaving gaps for Pick/D.Davoted
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = makeDateStr(currentYear, currentMonth, d);
+      const rotIdx = (d - 1) % AFTERNOON_ROTATION.length;
+      const dj = AFTERNOON_ROTATION[rotIdx];
+
+      if (!dj) continue; // gap day — leave for manual assignment
+      if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
+      if (wouldBreakConsecutive(dj, dateStr, ZONE_AFTERNOON)) continue;
+      if (playedZoneYesterday(dj, dateStr, ZONE_AFTERNOON)) continue;
+
+      const canDoAll = ZONE_AFTERNOON.every(slot =>
+        !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot)
+      );
+      if (!canDoAll) continue;
+
+      ZONE_AFTERNOON.forEach(slot => {
+        const key = `${dateStr}|${slot}`;
+        working[key] = dj;
+        addSlot(dj, dateStr, slot);
+        toSave.push({ dateStr, slot, type: 'arkbar', dj });
+      });
+    }
+
+    // ── PASS 3: COOLDOWN (17:00-19:00) — Raffo & Sound alternate with gaps
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = makeDateStr(currentYear, currentMonth, d);
+      const rotIdx = (d - 1) % COOLDOWN_ROTATION.length;
+      const dj = COOLDOWN_ROTATION[rotIdx];
+
+      if (!dj) continue;
+      if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
+      if (wouldBreakConsecutive(dj, dateStr, ZONE_COOLDOWN)) continue;
+      if (playedZoneYesterday(dj, dateStr, ZONE_COOLDOWN)) continue;
+
+      const canDoAll = ZONE_COOLDOWN.every(slot =>
+        !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot)
+      );
+      if (!canDoAll) continue;
+
+      ZONE_COOLDOWN.forEach(slot => {
+        const key = `${dateStr}|${slot}`;
+        working[key] = dj;
+        addSlot(dj, dateStr, slot);
+        toSave.push({ dateStr, slot, type: 'arkbar', dj });
+      });
+    }
+
+    // ── EVENING (20:00-23:00) — LEFT EMPTY for manual/regular DJs ───────
+    // This zone is intentionally not auto-filled
+
+    // ── SUMMARY ─────────────────────────────────────────────────────────
     if (toSave.length === 0) {
-      showToast('No available DJs found for empty slots', 'error');
+      showToast('No slots could be auto-assigned', 'error');
       return;
     }
 
-    // Update local state and render
     rosterAssignments = { ...working };
     arkbarAssignments = { ...working };
     renderGrid();
-    showToast(`Saving ${toSave.length} slots...`, 'success');
+
+    const summary = RESIDENTS.map(r => `${r}: ${djHours[r] || 0}h`).join(' · ');
+    showToast(`Saving ${toSave.length} slots... ${summary}`, 'success');
 
     try {
       const res = await fetch('/api/roster/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          venue: 'arkbar',
-          month,
+          venue: 'arkbar', month,
           assignments: toSave.map(({ dateStr, slot, dj }) => ({ date: dateStr, slot, dj }))
         })
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`Done: ${toSave.length} slots filled`, 'success');
+        showToast(`Done: ${toSave.length} slots · ${summary}`, 'success');
       } else {
         showToast(`UI updated — sheet sync failed: ${data.error}`, 'error');
       }
@@ -1289,75 +1237,10 @@ async function suggestRoster() {
     return;
   }
 
-  // ── LOVE BEACH CLUB — simpler rotation ──
-  const toSaveLove = [];
-  const loveDJs = (djList || []).map(d => d.name).filter(n => !ARKBAR_ONLY.includes(n));
-  let loveRotIdx = 0;
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(currentYear, currentMonth, d);
-    const dow = date.getDay();
-    const isSat = dow === 6;
-    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const activeSlots = isSat ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
-
-    // Group love slots into afternoon and evening
-    const loveAfternoon = activeSlots.filter(s => s.startsWith('14:') || s.startsWith('15:') || s.startsWith('16:') || s.startsWith('17:') || s.startsWith('18:'));
-    const loveEvening = activeSlots.filter(s => !loveAfternoon.includes(s));
-
-    [loveAfternoon, loveEvening].forEach(slotGroup => {
-      if (slotGroup.length === 0) return;
-      for (let attempt = 0; attempt < loveDJs.length; attempt++) {
-        const dj = loveDJs[(loveRotIdx + attempt) % loveDJs.length];
-        const emptyInGroup = slotGroup.filter(s => !working[`${dateStr}|${s}`]);
-        if (emptyInGroup.length === 0) break;
-
-        const canDoAll = emptyInGroup.every(slot => isAvailable(dj, dateStr, slot));
-        if (canDoAll) {
-          emptyInGroup.forEach(slot => {
-            const key = `${dateStr}|${slot}`;
-            working[key] = dj;
-            djHours[dj] = (djHours[dj] || 0) + 1;
-            addDayHour(dj, dateStr);
-            toSaveLove.push({ dateStr, slot, type: 'love', dj });
-          });
-          break;
-        }
-      }
-      loveRotIdx++;
-    });
-  }
-
-  if (toSaveLove.length === 0) {
-    showToast('No available DJs found for Love Beach', 'error');
-    return;
-  }
-
-  rosterAssignments = { ...working };
-  loveAssignments = { ...working };
-  renderGrid();
-  showToast(`Saving ${toSaveLove.length} slots...`, 'success');
-
-  try {
-    const res = await fetch('/api/roster/batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        venue: 'love',
-        month,
-        assignments: toSaveLove.map(({ dateStr, slot, dj }) => ({ date: dateStr, slot, dj }))
-      })
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast(`Done: ${toSaveLove.length} slots filled`, 'success');
-    } else {
-      showToast(`UI updated — sheet sync failed: ${data.error}`, 'error');
-    }
-  } catch(e) {
-    showToast('UI updated — check connection', 'error');
-  }
+  // ── LOVE BEACH — left for manual assignment ───────────────────────────
+  showToast('Love Beach auto-suggest is not available — assign manually', '');
 }
+
 
 let isPublished = false;
 
@@ -1391,12 +1274,6 @@ function printRoster() {
   }
   setTimeout(() => window.print(), 100);
 }
-
-const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
-const SOUND_BOGIE_TARGET = 35;
-const LATE_NIGHT_SLOTS = ['23:00–00:00','00:00–01:00','01:00–02:00'];
-const RESIDENTS_80HR = ['Alex RedWhite', 'Raffo DJ'];
-const RESIDENT_TARGET = 80;
 
 async function loadHours() {
   document.getElementById('mainContent').innerHTML =
@@ -1551,8 +1428,12 @@ function showToast(msg, type) {
   t.textContent = msg;
   t.className = `toast ${type} show`;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+  toastTimer = setTimeout(() => t.classList.remove('show'), type === 'error' ? 4000 : 2500);
 }
+
+// Debounce for assignDJ saves
+let _assignQueue = new Map();
+let _assignTimer = null;
 </script>
 </body>
 </html>
