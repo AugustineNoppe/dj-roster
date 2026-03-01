@@ -460,7 +460,6 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
     <div class="status-bar-right">
       <button class="btn-sm btn-suggest" onclick="suggestRoster()">Auto-suggest ARKbar</button>
       <button class="btn-sm" onclick="clearRoster()" style="background:#fff0f0;color:#c62828;border:1.5px solid #ef9a9a;">Clear Roster</button>
-      <button class="btn-sm" onclick="cleanupSheet()" style="background:#fff8e1;color:#e65100;border:1.5px solid #ffb74d;" title="Remove resident→HIP rows from sheet">Fix Sheet</button>
       <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:white;">Print / PDF</button>
     </div>
@@ -475,7 +474,9 @@ let currentYear, currentMonth;
 let availability = {};
 let rosterAssignments = {};
 let arkbarAssignments = {};
-let loveAssignments = {};
+let hipAssignments    = {};
+let loveAssignments   = {};
+let residentBlackouts = {}; // { djName: { "2026-03-01": "full"|"morning" } }
 let djList = [];
 
 const MONTHS = ['January','February','March','April','May','June',
@@ -616,39 +617,41 @@ async function loadAll() {
     '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   const month = getMonthString();
   try {
-    const [availRes, rosterRes, djRes, otherRosterRes] = await Promise.all([
+    // Load everything in parallel — ARKbar, HIP, Love all separate rosters
+    const [availRes, arkbarRes, hipRes, loveRes, djRes] = await Promise.all([
       fetch(`/api/availability?month=${encodeURIComponent(month)}`),
-      fetch(`/api/roster?venue=${currentVenue}&month=${encodeURIComponent(month)}`),
+      fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`),
+      fetch(`/api/roster?venue=hip&month=${encodeURIComponent(month)}`),
+      fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`),
       fetch('/api/djs'),
-      fetch(`/api/roster?venue=${currentVenue === 'arkbar' ? 'love' : 'arkbar'}&month=${encodeURIComponent(month)}`)
     ]);
-    const availData       = await availRes.json();
-    const rosterData      = await rosterRes.json();
-    const djData          = await djRes.json();
-    const otherRosterData = await otherRosterRes.json();
+    const availData  = await availRes.json();
+    const arkbarData = await arkbarRes.json();
+    const hipData    = await hipRes.json();
+    const loveData   = await loveRes.json();
+    const djData     = await djRes.json();
 
+    // availability map: { "2026-03-01": { "21:00–22:00": ["Pick", ...] } }
     availability = availData.availability || {};
+    // blackouts from server: { "Alex RedWhite": { "2026-03-01": "full"|"morning" } }
+    residentBlackouts = availData.blackouts || {};
 
-    rosterAssignments = {};
-    (rosterData.roster || []).forEach(row => {
-      if (row[0] && row[1] && row[2]) {
-        rosterAssignments[`${row[0]}|${row[1]}`] = row[2];
-      }
-    });
-
-    if (currentVenue === 'arkbar') {
-      arkbarAssignments = { ...rosterAssignments };
-      loveAssignments = {};
-      (otherRosterData.roster || []).forEach(row => {
-        if (row[0] && row[1] && row[2]) loveAssignments[`${row[0]}|${row[1]}`] = row[2];
+    // Parse each venue roster into a flat key→dj map
+    function parseRoster(rows) {
+      const map = {};
+      (rows || []).forEach(row => {
+        if (row[0] && row[1] && row[2]) map[`${row[0]}|${row[1]}`] = row[2];
       });
-    } else {
-      loveAssignments = { ...rosterAssignments };
-      arkbarAssignments = {};
-      (otherRosterData.roster || []).forEach(row => {
-        if (row[0] && row[1] && row[2]) arkbarAssignments[`${row[0]}|${row[1]}`] = row[2];
-      });
+      return map;
     }
+
+    arkbarAssignments = parseRoster(arkbarData.roster);
+    hipAssignments    = parseRoster(hipData.roster);
+    loveAssignments   = parseRoster(loveData.roster);
+
+    // rosterAssignments points to the current venue being viewed
+    if (currentVenue === 'arkbar') rosterAssignments = arkbarAssignments;
+    else if (currentVenue === 'love') rosterAssignments = loveAssignments;
 
     djList = djData.djs || [];
     renderGrid();
@@ -735,31 +738,49 @@ function renderGrid() {
 }
 
 function buildCell(dateStr, slot, type) {
+  // Each venue uses its own assignment map
+  const assignMap = type === 'hip' ? hipAssignments : rosterAssignments;
   const key = `${dateStr}|${slot}`;
-  const assigned = rosterAssignments[key] || '';
+  const assigned = assignMap[key] || '';
+
+  // Availability from the server map (regular DJs who submitted the form)
   const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
 
-  // For ARKbar slots: always include residents in the dropdown unless blacked out.
-  // Residents are available for ALL ARKbar slots — their blackouts are managed separately.
-  // For HIP slots: residents are excluded (NO_HIP rule).
-  let filtered = type === 'love'
-    ? avail.filter(dj => !ARKBAR_ONLY.includes(dj))
-    : type === 'hip'
-    ? avail.filter(dj => !LOVE_ONLY.includes(dj) && !NO_HIP.includes(dj))
-    : avail.filter(dj => !LOVE_ONLY.includes(dj));
+  let options = [];
 
   if (type === 'arkbar') {
-    // Add residents to dropdown if they are available this day (appear anywhere in avail map)
-    // and not already in filtered list
-    const dayAvail = availability[dateStr] || {};
-    const availableResidents = RESIDENTS.filter(res => {
-      if (filtered.includes(res)) return true; // already there
-      if (res === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return false;
-      // Check they appear somewhere in today's availability (not blacked out)
-      return Object.values(dayAvail).some(arr => Array.isArray(arr) && arr.includes(res));
+    // ARKbar: regular DJs from avail map + residents (unless blacked out)
+    const regularDJs = avail.filter(dj => !LOVE_ONLY.includes(dj) && !RESIDENTS.includes(dj));
+    options = [...regularDJs];
+    // Add residents if not fully blacked out today
+    RESIDENTS.forEach(res => {
+      if (res === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return;
+      const blackout = residentBlackouts[res] && residentBlackouts[res][dateStr];
+      if (blackout === 'full') return;
+      if (blackout === 'morning' && MORNING_SLOTS.includes(slot)) return;
+      if (!options.includes(res)) options.push(res);
     });
-    availableResidents.forEach(res => {
-      if (!filtered.includes(res)) filtered.push(res);
+
+  } else if (type === 'hip') {
+    // HIP: regular DJs from avail map + residents (with conflict warning if double-booked)
+    // Residents CAN play HIP but we flag if they're already at ARKbar that slot
+    const regularDJs = avail.filter(dj => !LOVE_ONLY.includes(dj));
+    options = [...regularDJs];
+    // Add residents — they may be assigned here even if at ARKbar (manager decides)
+    RESIDENTS.forEach(res => {
+      const blackout = residentBlackouts[res] && residentBlackouts[res][dateStr];
+      if (blackout === 'full') return;
+      if (!options.includes(res)) options.push(res);
+    });
+
+  } else if (type === 'love') {
+    // Love: regular DJs from avail map (no ARKBAR_ONLY) + residents
+    const regularDJs = avail.filter(dj => !ARKBAR_ONLY.includes(dj) && !RESIDENTS.includes(dj));
+    options = [...regularDJs];
+    RESIDENTS.forEach(res => {
+      const blackout = residentBlackouts[res] && residentBlackouts[res][dateStr];
+      if (blackout === 'full') return;
+      if (!options.includes(res)) options.push(res);
     });
   }
 
@@ -767,7 +788,7 @@ function buildCell(dateStr, slot, type) {
   const isLove = type === 'love';
   const tdClass = `td-slot${isHip ? ' hip-slot' : isLove ? ' love-slot' : ''}`;
 
-  if (filtered.length === 0 && !assigned) {
+  if (options.length === 0 && !assigned) {
     return `<td class="${tdClass} empty-slot">
       <select class="slot-select no-avail" disabled title="No DJs available">
         <option>—</option>
@@ -780,10 +801,15 @@ function buildCell(dateStr, slot, type) {
   const slotEsc = slot.replace(/"/g, '&quot;');
 
   let opts = `<option value="">— assign —</option>`;
-  filtered.forEach(dj => {
-    opts += `<option value="${dj}"${dj === assigned ? ' selected' : ''}>${dj}</option>`;
+  options.forEach(dj => {
+    // For HIP/Love: flag if resident is already booked at ARKbar this slot
+    const arkKey = `${dateStr}|${slot}`;
+    const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love')
+      && arkbarAssignments[arkKey] === dj;
+    const label = arkBooked ? `${dj} ⚠ ARKbar` : dj;
+    opts += `<option value="${dj}"${dj === assigned ? ' selected' : ''}>${label}</option>`;
   });
-  if (assigned && !filtered.includes(assigned)) {
+  if (assigned && !options.includes(assigned)) {
     opts += `<option value="${assigned}" selected>${assigned} ⚠</option>`;
   }
 
@@ -803,7 +829,7 @@ async function assignDJ(sel) {
   const type = sel.dataset.type;
   const dj = sel.value;
   const key = `${date}|${slot}`;
-  const venueParam = type === 'love' ? 'love' : 'arkbar';
+  const venueParam = type === 'hip' ? 'hip' : type === 'love' ? 'love' : 'arkbar';
 
   if (dj) {
     if (LOVE_ONLY.includes(dj) && type !== 'love') {
@@ -880,7 +906,8 @@ async function assignDJ(sel) {
     sel.style.borderColor = color;
     sel.style.color = 'white';
     rosterAssignments[key] = dj;
-    if (venueParam === 'arkbar') arkbarAssignments[key] = dj;
+    if (venueParam === 'hip') hipAssignments[key] = dj;
+    else if (venueParam === 'arkbar') arkbarAssignments[key] = dj;
     else loveAssignments[key] = dj;
   } else {
     sel.className = 'slot-select unassigned';
@@ -888,7 +915,8 @@ async function assignDJ(sel) {
     sel.style.borderColor = '';
     sel.style.color = '';
     delete rosterAssignments[key];
-    if (venueParam === 'arkbar') delete arkbarAssignments[key];
+    if (venueParam === 'hip') delete hipAssignments[key];
+    else if (venueParam === 'arkbar') delete arkbarAssignments[key];
     else delete loveAssignments[key];
   }
 
@@ -942,50 +970,28 @@ async function clearRoster() {
   const month = getMonthString();
 
   try {
-    const res = await fetch('/api/roster/clear', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ venue: venueParam, month })
-    });
-    const data = await res.json();
+    // ARKbar view clears both ARKbar and HIP tabs (separate sheets, same view)
+    const venuesToClear = venueParam === 'arkbar' ? ['arkbar', 'hip'] : [venueParam];
+    await Promise.all(venuesToClear.map(v =>
+      fetch('/api/roster/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venue: v, month })
+      })
+    ));
 
     rosterAssignments = {};
-    if (venueParam === 'arkbar') arkbarAssignments = {};
+    if (venueParam === 'arkbar') { arkbarAssignments = {}; hipAssignments = {}; }
     else loveAssignments = {};
 
     renderGrid();
-    if (data.success) {
-      showToast(`Roster cleared (${data.cleared} rows)`, 'success');
-    } else {
-      showToast('Cleared locally — sheet sync failed', 'error');
-    }
+    showToast('Roster cleared', 'success');
   } catch(e) {
     rosterAssignments = {};
-    if (venueParam === 'arkbar') arkbarAssignments = {};
+    if (venueParam === 'arkbar') { arkbarAssignments = {}; hipAssignments = {}; }
     else loveAssignments = {};
     renderGrid();
     showToast('Cleared locally — check connection', 'error');
-  }
-}
-
-async function cleanupSheet() {
-  const month = getMonthString();
-  showToast('Cleaning illegal rows from sheet...', '');
-  try {
-    const res = await fetch('/api/roster/cleanup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month })
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast(`Sheet fixed — removed ${data.removed} bad rows`, 'success');
-      await loadAll();
-    } else {
-      showToast('Cleanup failed: ' + data.error, 'error');
-    }
-  } catch(e) {
-    showToast('Cleanup error: ' + e.message, 'error');
   }
 }
 
