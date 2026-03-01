@@ -511,6 +511,7 @@ const ARKBAR_ONLY = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
 const LOVE_ONLY = ['Laina'];
 const NO_HIP = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 const RESIDENTS_LATE_NIGHT = ['Alex RedWhite', 'Raffo DJ'];
+const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
 const SOUND_BOGIE_BLOCKED = ['14:00–15:00','15:00–16:00','16:00–17:00'];
 const SOUND_BOGIE_RARE = ['17:00–18:00','18:00–19:00'];
 
@@ -1036,7 +1037,6 @@ async function suggestRoster() {
   const eligibleDJs = djList
     .map(d => d.name)
     .filter(name => {
-      if (name === 'Guest DJ') return false;
       if (isLove && ARKBAR_ONLY.includes(name)) return false;
       if (!isLove && LOVE_ONLY.includes(name)) return false;
       return true;
@@ -1133,18 +1133,14 @@ async function suggestRoster() {
     return true;
   }
 
-  const LATE_NIGHT_SLOTS = ['23:00–00:00','00:00–01:00','01:00–02:00'];
+  const LATE_NIGHT_PRIORITY = ['23:00–00:00','00:00–01:00','01:00–02:00'];
   const EVENING_SLOTS = ['20:00–21:00','21:00–22:00','22:00–23:00'];
-  const DAY_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
 
-  // Fill daytime first → residents hit hour caps before reaching 21:00 overlap slots
-  // This prevents residents spilling into HIP-overlap time naturally
   function slotPriority(slot) {
-    if (DAY_SLOTS.includes(slot)) return 0;           // fill first
-    if (SOUND_BOGIE_RARE.includes(slot)) return 1;    // Sound Bogie rare slots
-    if (EVENING_SLOTS.includes(slot)) return 2;       // evening next
-    if (LATE_NIGHT_SLOTS.includes(slot)) return 3;    // late night last
-    return 4;
+    if (LATE_NIGHT_PRIORITY.includes(slot)) return 0;
+    if (EVENING_SLOTS.includes(slot)) return 1;
+    if (SOUND_BOGIE_RARE.includes(slot)) return 2;
+    return 3;
   }
 
   const sorted = [...emptySlots].sort((a, b) => slotPriority(a.slot) - slotPriority(b.slot));
@@ -1155,20 +1151,17 @@ async function suggestRoster() {
 
   function djScore(djName, slot) {
     const hours = djHours[djName] || 0;
+    const isLateNight = LATE_NIGHT_PRIORITY.includes(slot);
     const isSoundBogie = djName === 'Sound Bogie';
+    const isLateNightRes = RESIDENTS_LATE_NIGHT.includes(djName);
 
-    // Sound Bogie: strongly prefer his rare slots (17:00-19:00)
-    if (isSoundBogie && SOUND_BOGIE_RARE.includes(slot)) return hours - 100;
-    
-    // Residents: score by hours only — lower hours = higher priority
-    // No late-night bonus; daytime slots are filled first by slotPriority
+    if (isSoundBogie && SOUND_BOGIE_RARE.includes(slot)) return 900 + hours;
+    if (isLateNightRes && isLateNight && hours < RESIDENT_TARGET) return hours - 50;
     if (RESIDENTS.includes(djName)) {
       const target = isSoundBogie ? SOUND_BOGIE_TARGET : RESIDENT_TARGET;
-      if (hours < target) return hours; // prioritize underbooked residents
-      return 500 + hours; // deprioritize once target reached
+      if (hours < target) return hours;
+      return 500 + hours;
     }
-
-    // Regular DJs: fill in around residents
     return 200 + hours + Math.random() * 5;
   }
 
