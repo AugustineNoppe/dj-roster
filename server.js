@@ -2,7 +2,6 @@ const express = require('express');
 const path = require('path');
 const { google } = require('googleapis');
 const app = express();
-
 app.use(express.json());
 
 function getSheets() {
@@ -28,39 +27,39 @@ app.post('/api/auth', (req, res) => {
 });
 
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
-
-// ARKbar slots — 19:00–20:00 removed (dead slot)
 const ARKBAR_SLOTS = [
   '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
   '18:00–19:00','20:00–21:00','21:00–22:00',
   '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
 ];
-
-// HIP slots — residents NEVER go here
 const HIP_SLOTS = ['21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00'];
-
-const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
-
 const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
-
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 
-// Server-side guard: block residents from being saved into HIP slots.
-// 'type' is passed explicitly from the client ('arkbar' | 'hip' | 'love').
-function isIllegalAssignment(slot, dj, type) {
-  if (!dj || !RESIDENTS.includes(dj)) return false;
-  // Block if explicitly typed as HIP OR if the slot label matches a HIP slot
-  // This double-check ensures residents never reach HIP even if type is missing
-  const hipByType = type === 'hip';
-  const hipBySlot = HIP_SLOTS.map(normalizeSlot).includes(normalizeSlot(slot));
-  return hipByType || hipBySlot;
+const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
+
+// Convert sheet date format "1 Mar 2026" → "2026-03-01"
+function parseDateKey(dateStr) {
+  if (!dateStr) return null;
+  // Already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  // Format: "1 Mar 2026" or "01 Mar 2026"
+  const months = { Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,
+                   Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12 };
+  const m = dateStr.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+  if (m) {
+    const day = String(m[1]).padStart(2,'0');
+    const mon = String(months[m[2]] || 0).padStart(2,'0');
+    return `${m[3]}-${mon}-${day}`;
+  }
+  return null;
 }
 
 app.get('/api/availability', async (req, res) => {
   try {
     const sheets = getSheets();
-    const month = req.query.month;
+    const month = req.query.month; // e.g. "March 2026"
 
     let year, monthIdx, daysInMonth;
     if (month) {
@@ -85,57 +84,65 @@ app.get('/api/availability', async (req, res) => {
     const blackoutRows = blackoutRes.data.values || [];
 
     // ── REGULAR DJ AVAILABILITY ───────────────────────────────────────────────
-    // Plain slot keys — exactly as stored in the sheet. No prefixing.
-    // Regular DJs appear in both ARKbar and HIP dropdowns for overlapping slots.
-    // The client-side NO_HIP filter removes residents from HIP dropdowns.
+    // Sheet columns: timestamp(A), dj(B), month(C), date(D), day(E), slot(F)
+    // Date in column D may be "1 Mar 2026" — convert to YYYY-MM-DD
     const filtered = month ? rows.filter(r => r[2] === month) : rows;
-    const map = {};
+    const map = {}; // { "2026-03-01": { "21:00–22:00": ["Pick", ...] } }
 
-    filtered.forEach(([timestamp, dj, monthLabel, date, day, slot]) => {
-      if (!date || !slot) return;
-      if (!map[date]) map[date] = {};
-      if (!map[date][slot]) map[date][slot] = [];
-      if (!map[date][slot].includes(dj)) map[date][slot].push(dj);
+    filtered.forEach(([timestamp, dj, monthLabel, dateRaw, day, slot]) => {
+      if (!dateRaw || !slot || !dj) return;
+      const dateKey = parseDateKey(dateRaw);
+      if (!dateKey) return;
+      const normSlot = normalizeSlot(slot);
+      if (!map[dateKey]) map[dateKey] = {};
+      if (!map[dateKey][normSlot]) map[dateKey][normSlot] = [];
+      if (!map[dateKey][normSlot].includes(dj)) map[dateKey][normSlot].push(dj);
     });
 
-    // ── RESIDENT AVAILABILITY ─────────────────────────────────────────────────
-    // Residents are injected into ALL ARKbar slots (14:00–02:00).
-    // They are NOT injected into HIP_SLOTS — client NO_HIP filter is the
-    // first line of defence, server isIllegalAssignment is the hard block.
-    const blackouts = {};
+    // ── RESIDENT BLACKOUTS ────────────────────────────────────────────────────
+    // Blackout sheet: dj(A), date(B), month(C), timestamp(D), type(E)
+    // date in column B is like "1 Mar 2026"
+    const blackouts = {}; // { "Alex RedWhite": { "2026-03-01": "full"|"morning" } }
     RESIDENTS.forEach(r => { blackouts[r] = {}; });
-    blackoutRows.forEach(([dj, date, monthLabel, timestamp, type]) => {
-      if (!dj || !date) return;
+    blackoutRows.forEach(([dj, dateRaw, monthLabel, timestamp, type]) => {
+      if (!dj || !dateRaw) return;
       const m = monthLabel || month;
       if (month && m !== month) return;
-      if (blackouts[dj]) blackouts[dj][date] = type || 'full';
+      if (!blackouts[dj]) return;
+      const dateKey = parseDateKey(dateRaw);
+      if (dateKey) blackouts[dj][dateKey] = type || 'full';
     });
 
+    // ── INJECT RESIDENTS ──────────────────────────────────────────────────────
+    // Residents are available for ALL ARKbar slots unless blacked out.
+    // They are NOT pre-injected into HIP slots.
+    // HIP cells will still show residents for manual assignment — 
+    // the client checks cross-venue conflicts at render time.
     if (month && year !== undefined && monthIdx >= 0) {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateKey = `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const blackoutLabel = `${d} ${MONTH_NAMES[monthIdx].slice(0,3)} ${year}`;
 
         RESIDENTS.forEach(resident => {
-          const blackoutType = blackouts[resident][blackoutLabel];
-          if (blackoutType === 'full') return;
+          const blackoutType = blackouts[resident][dateKey];
+          if (blackoutType === 'full') return; // fully blacked out
+
           if (!map[dateKey]) map[dateKey] = {};
 
           ARKBAR_SLOTS.forEach(slot => {
             if (blackoutType === 'morning' && MORNING_SLOTS.includes(slot)) return;
-            // Only inject resident into this slot if it's NOT a HIP slot
-            // (HIP_SLOTS overlap with ARKbar — injecting residents there causes bleed)
-            if (HIP_SLOTS.includes(slot)) return;
-            if (!map[dateKey][slot]) map[dateKey][slot] = [];
-            if (!map[dateKey][slot].includes(resident)) {
-              map[dateKey][slot].push(resident);
+            const normSlot = normalizeSlot(slot);
+            if (!map[dateKey][normSlot]) map[dateKey][normSlot] = [];
+            if (!map[dateKey][normSlot].includes(resident)) {
+              map[dateKey][normSlot].push(resident);
             }
           });
         });
       }
     }
 
-    res.json({ success: true, availability: map });
+    // Return both the availability map and the blackout map
+    // Client uses blackouts to show resident availability on HIP/Love cells
+    res.json({ success: true, availability: map, blackouts });
   } catch (err) {
     console.error(err);
     res.json({ success: false, error: err.message });
@@ -190,11 +197,14 @@ app.get('/api/djs', async (req, res) => {
   }
 });
 
+// GET roster — venue param: 'arkbar' | 'hip' | 'love'
 app.get('/api/roster', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, month } = req.query;
-    const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
+    const tabName = venue === 'love' ? 'Love Beach Roster'
+                  : venue === 'hip'  ? 'HIP Roster'
+                  : 'ARKbar Roster';
     let values = [];
     try {
       const response = await sheets.spreadsheets.values.get({
@@ -203,29 +213,29 @@ app.get('/api/roster', async (req, res) => {
       });
       values = response.data.values || [];
     } catch (e) {}
+
     const filtered = values
       .filter(r => r[0] !== 'Date' && (!month || r[3] === month))
       .map(r => {
-        if (r[1]) r[1] = r[1].replace(/\u2013/g, '-').replace(/-/g, '\u2013');
+        if (r[1]) r[1] = normalizeSlot(r[1]);
         return r;
       })
       .filter(r => r[0] && r[2]);
+
     res.json({ success: true, roster: filtered });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
+// POST assign — single cell save
 app.post('/api/roster/assign', async (req, res) => {
   try {
     const sheets = getSheets();
-    const { venue, date, slot, dj, month, type } = req.body;
-
-    if (isIllegalAssignment(slot, dj, type)) {
-      return res.json({ success: false, error: `${dj} cannot be assigned to HIP slot ${slot}` });
-    }
-
-    const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
+    const { venue, date, slot, dj, month } = req.body;
+    const tabName = venue === 'love' ? 'Love Beach Roster'
+                  : venue === 'hip'  ? 'HIP Roster'
+                  : 'ARKbar Roster';
 
     let existingRows = [];
     try {
@@ -237,7 +247,9 @@ app.post('/api/roster/assign', async (req, res) => {
     } catch(e) {}
 
     const normSlot = normalizeSlot(slot);
-    const rowIndex = existingRows.findIndex(r => r[0] === date && normalizeSlot(r[1]) === normSlot && r[3] === month);
+    const rowIndex = existingRows.findIndex(
+      r => r[0] === date && normalizeSlot(r[1]) === normSlot && r[3] === month
+    );
 
     if (rowIndex >= 0) {
       await sheets.spreadsheets.values.update({
@@ -261,17 +273,13 @@ app.post('/api/roster/assign', async (req, res) => {
   }
 });
 
+// POST batch — auto-suggest save (ARKbar only)
 app.post('/api/roster/batch', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, month, assignments } = req.body;
-
-    // Hard block: strip any resident→HIP assignments before saving
-    const safeAssignments = assignments.filter(({ slot, dj, type }) => !isIllegalAssignment(slot, dj, type));
-    const blocked = assignments.length - safeAssignments.length;
-    if (blocked > 0) console.warn(`Blocked ${blocked} illegal resident→HIP assignments`);
-
     const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
+    // HIP is never batch-saved — it's manual only
 
     let existingRows = [];
     try {
@@ -290,7 +298,7 @@ app.post('/api/roster/batch', async (req, res) => {
     const updateData = [];
     const appendRows = [];
 
-    for (const { date, slot, dj } of safeAssignments) {
+    for (const { date, slot, dj } of assignments) {
       const key = `${date}|${normalizeSlot(slot)}`;
       if (rowMap[key] !== undefined) {
         updateData.push({
@@ -323,19 +331,14 @@ app.post('/api/roster/batch', async (req, res) => {
   }
 });
 
-// Helper: get spreadsheet ID for a named sheet tab
-async function getSheetTabId(sheets, tabName) {
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
-  const sheet = meta.data.sheets.find(s => s.properties.title === tabName);
-  return sheet ? sheet.properties.sheetId : null;
-}
-
+// POST clear — clears a venue's roster for a month
 app.post('/api/roster/clear', async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, month } = req.body;
-    const tabName = venue === 'love' ? 'Love Beach Roster' : 'ARKbar Roster';
-    const sheetId = await getSheetTabId(sheets, tabName);
+    const tabName = venue === 'love' ? 'Love Beach Roster'
+                  : venue === 'hip'  ? 'HIP Roster'
+                  : 'ARKbar Roster';
 
     let existingRows = [];
     try {
@@ -346,82 +349,26 @@ app.post('/api/roster/clear', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    // Find rows to keep (different month or header) and rows to delete
-    // We rewrite the whole sheet keeping only non-matching rows
-    const keepRows = existingRows.filter((r, i) => {
-      if (i === 0 && r[0] === 'Date') return true; // keep header
-      return (r[3] || '') !== month && r[0]; // keep other months
-    });
+    // Keep rows from other months, discard current month
+    const keepRows = existingRows.filter(r => r[0] && r[0] !== 'Date' && (r[3] || '') !== month);
 
-    // Overwrite entire sheet with kept rows, then clear the rest
-    const writeRows = keepRows.length > 0 ? keepRows : [['', '', '', '']];
-    
-    // Clear entire range first
     await sheets.spreadsheets.values.clear({
       spreadsheetId: SHEET_ID,
       range: `${tabName}!A:D`,
     });
 
-    // Write back kept rows
     if (keepRows.length > 0) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
         range: `${tabName}!A1`,
         valueInputOption: 'RAW',
-        requestBody: { values: writeRows },
+        requestBody: { values: keepRows },
       });
     }
 
-    const cleared = existingRows.length - keepRows.length;
-    res.json({ success: true, cleared });
+    res.json({ success: true, cleared: existingRows.length - keepRows.length });
   } catch (err) {
     console.error('Clear error:', err);
-    res.json({ success: false, error: err.message });
-  }
-});
-
-// Cleanup endpoint: remove any illegal resident→HIP rows from sheet
-app.post('/api/roster/cleanup', async (req, res) => {
-  try {
-    const sheets = getSheets();
-    const { month } = req.body;
-    const tabName = 'ARKbar Roster';
-
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: `${tabName}!A:D`,
-    });
-    const existingRows = response.data.values || [];
-
-    const cleanRows = existingRows.filter(r => {
-      if (!r[0] || !r[1] || !r[2]) return false; // drop blank rows
-      if (r[0] === 'Date') return true; // keep header
-      const slot = normalizeSlot(r[1]);
-      const dj = r[2];
-      const isHipSlot = HIP_SLOTS.map(normalizeSlot).includes(slot);
-      const isResident = RESIDENTS.includes(dj);
-      return !(isHipSlot && isResident); // drop illegal rows
-    });
-
-    const removed = existingRows.length - cleanRows.length;
-
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: SHEET_ID,
-      range: `${tabName}!A:D`,
-    });
-
-    if (cleanRows.length > 0) {
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID,
-        range: `${tabName}!A1`,
-        valueInputOption: 'RAW',
-        requestBody: { values: cleanRows },
-      });
-    }
-
-    res.json({ success: true, removed, kept: cleanRows.length });
-  } catch (err) {
-    console.error('Cleanup error:', err);
     res.json({ success: false, error: err.message });
   }
 });
