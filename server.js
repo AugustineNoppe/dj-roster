@@ -50,15 +50,18 @@ function tabName(venue) {
 }
 
 /* ── STATIC FILES ────────────────────────────────────────────────────────── */
+/* ── ROUTES (before static so / serves landing.html, not index.html) ──── */
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
+app.get('/availability', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/roster', (req, res) => res.sendFile(path.join(__dirname, 'public', 'roster.html')));
+
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1h',
+  index: false, // prevent static from serving index.html at /
   setHeaders(res, filePath) {
     if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
   }
 }));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
-app.get('/availability', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('/roster', (req, res) => res.sendFile(path.join(__dirname, 'public', 'roster.html')));
 
 /* ── AUTH ─────────────────────────────────────────────────────────────────── */
 app.post('/api/auth', (req, res) => {
