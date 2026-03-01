@@ -645,10 +645,6 @@ function goStep3() { buildSummary(); setStep(3); }
 function goStep1() { setStep(1); }
 
 /* ── BLACKOUT CALENDAR (residents) ── */
-// blackoutDates stores: { "1 Mar 2026": "morning" | "full" }
-// "morning" = 14:00-19:00 off (still available nights 19:00+)
-// "full"    = entire day off
-
 const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
 const NIGHT_SLOTS_RES = ['19:00–20:00','20:00–21:00','21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'];
 
@@ -666,15 +662,16 @@ function buildBlackoutCal() {
   }
 }
 
+/* ── MOBILE-FIXED BLACKOUT CARD ── */
 function makeBlackoutCard(key, dateLabel, d, mo, dow) {
   const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const state = blackoutDates.get(dateLabel) || null; // null | 'morning' | 'full'
+  const state = blackoutDates.get(dateLabel) || null;
   const dowColor = (dow===0||dow===6) ? 'var(--ark-orange)' : 'var(--teal)';
 
   const card = document.createElement('div');
   card.id = 'bc-' + key;
   card.style.cssText = `
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
     padding:10px 14px; margin-bottom:8px; border-radius:12px;
     border:1px solid ${state ? 'rgba(241,90,41,0.35)' : 'rgba(255,255,255,0.07)'};
     background:${state === 'full' ? 'rgba(241,90,41,0.12)' : state === 'morning' ? 'rgba(255,165,0,0.08)' : 'rgba(255,255,255,0.03)'};
@@ -682,40 +679,38 @@ function makeBlackoutCard(key, dateLabel, d, mo, dow) {
   `;
 
   card.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:160px;">
       <div style="font-size:10px;font-weight:800;color:${dowColor};text-transform:uppercase;letter-spacing:0.08em;min-width:28px;">${DAYS_SHORT[dow]}</div>
       <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.75);">${d} ${MN[mo]}</div>
-      ${state === 'full' ? '<div style="font-size:10px;font-weight:800;color:#ff8a65;margin-left:4px;">✕ FULL DAY OFF</div>' : ''}
-      ${state === 'morning' ? '<div style="font-size:10px;font-weight:800;color:#ffb74d;margin-left:4px;">☀ MORNING OFF · nights available</div>' : ''}
+      ${state === 'full' ? '<div style="font-size:10px;font-weight:800;color:#ff8a65;margin-left:4px;">✕ DAY OFF</div>' : ''}
+      ${state === 'morning' ? '<div style="font-size:10px;font-weight:800;color:#ffb74d;margin-left:4px;">☀ AM OFF</div>' : ''}
     </div>
-    <div style="display:flex;gap:6px;flex-shrink:0;">
+    <div style="display:flex;gap:6px;flex-shrink:0;margin-left:auto;">
       <button onclick="setBlackout('${key}','${dateLabel}',${mo},'morning')" style="
         padding:5px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;
         border:1px solid ${state==='morning' ? 'rgba(255,165,0,0.7)' : 'rgba(255,255,255,0.15)'};
         background:${state==='morning' ? 'rgba(255,165,0,0.25)' : 'rgba(255,255,255,0.06)'};
         color:${state==='morning' ? '#ffb74d' : 'rgba(255,255,255,0.4)'};
         transition:all 0.15s;
-      ">☀ Morning off</button>
+      ">☀ AM off</button>
       <button onclick="setBlackout('${key}','${dateLabel}',${mo},'full')" style="
         padding:5px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;
         border:1px solid ${state==='full' ? 'rgba(241,90,41,0.7)' : 'rgba(255,255,255,0.15)'};
         background:${state==='full' ? 'rgba(241,90,41,0.25)' : 'rgba(255,255,255,0.06)'};
         color:${state==='full' ? '#ff8a65' : 'rgba(255,255,255,0.4)'};
         transition:all 0.15s;
-      ">✕ Full day off</button>
+      ">✕ Full day</button>
     </div>`;
   return card;
 }
 
 function setBlackout(key, dateLabel, mo, type) {
   const current = blackoutDates.get(dateLabel) || null;
-  // Tap same button again = clear (toggle off)
   if (current === type) {
     blackoutDates.delete(dateLabel);
   } else {
     blackoutDates.set(dateLabel, type);
   }
-  // Re-render this card
   const [y, , d] = key.split('-');
   const dow = new Date(parseInt(y), mo, parseInt(d)).getDay();
   const card = document.getElementById('bc-' + key);
@@ -760,11 +755,8 @@ function makeDayCard(key,d,dow,m) {
 }
 
 function setFullDay(key) {
-  // Clear existing ranges
   st[key] = [];
   document.getElementById('ranges-'+key).innerHTML = '';
-  // Add full day range 14:00 - 02:00
-  const idx = 0;
   st[key].push({start:'14:00', end:'02:00'});
   const wrap = document.createElement('div');
   wrap.className = 'range-block'; wrap.id = `rb-${key}-0`;
@@ -779,14 +771,12 @@ function setFullDay(key) {
     <div class="slots-preview" id="pv-${key}-0"></div>`;
   document.getElementById('ranges-'+key).appendChild(wrap);
   populateTimeSelects(key, 0);
-  // Force select values
   const s = document.getElementById(`s-${key}-0`);
   const e = document.getElementById(`e-${key}-0`);
   if(s) s.value = '14:00';
   rebuildEndOptions(key, 0);
   if(e) e.value = '02:00';
   st[key][0] = {start:'14:00', end:'02:00'};
-  // Update preview chips
   const pv = document.getElementById(`pv-${key}-0`);
   if(pv){ pv.innerHTML=''; getSlots('14:00','02:00').forEach(slot=>{ const c=document.createElement('div'); c.className='slot-chip'; c.textContent=slot; pv.appendChild(c); }); }
   refreshBadge(key);
@@ -811,9 +801,8 @@ function toggleFullDay(key) {
     setFullDay(key);
     btn.classList.add('active');
     btn.textContent = '✓ Full Day';
-    card.classList.remove('open'); // collapse after setting
+    card.classList.remove('open');
   }
-  // Sync all-month button state
   syncAllMonthBtn();
 }
 
@@ -821,14 +810,12 @@ let allMonthActive = false;
 function toggleAllMonth() {
   allMonthActive = !allMonthActive;
   const btn = document.getElementById('all-month-btn');
-  // Get all day keys from current calendar
   const keys = Object.keys(st);
   if(allMonthActive) {
     btn.classList.add('active');
     btn.querySelector('div > div:first-child').textContent = '✓ All Month Selected';
     btn.querySelector('div > div:last-child').textContent = 'Tap again to clear all';
     keys.forEach(k => setFullDay(k));
-    // Mark all full-day buttons active
     keys.forEach(k => {
       const b = document.getElementById(`fdb-${k}`);
       if(b){ b.classList.add('active'); b.textContent='✓ Full Day'; }
@@ -861,7 +848,6 @@ function syncAllMonthBtn() {
     btn.classList.remove('active');
   }
 }
-
 
 function toggleDay(key) {
   const c=document.getElementById('dc-'+key);
@@ -902,16 +888,11 @@ function getUsedSlots(key, excludeIdx) {
 
 function populateTimeSelects(key, idx) {
   const usedSlots = getUsedSlots(key, idx);
-  const usedStartTimes = new Set();
-  usedSlots.forEach(s => { usedStartTimes.add(s.split('–')[0]); usedStartTimes.add(s.split('–')[1]); });
-
   const startEl = document.getElementById(`s-${key}-${idx}`);
   const endEl   = document.getElementById(`e-${key}-${idx}`);
   if(!startEl || !endEl) return;
-
   const curStart = startEl.value;
   const curEnd   = endEl.value;
-
   startEl.innerHTML = '<option value="">Start</option>';
   SLOTS.forEach(t => {
     const blocked = [...usedSlots].some(s => {
@@ -925,8 +906,6 @@ function populateTimeSelects(key, idx) {
     if(t===curStart) opt.selected=true;
     startEl.appendChild(opt);
   });
-
-  // Rebuild end options based on selected start
   rebuildEndOptions(key, idx);
 }
 
@@ -934,18 +913,14 @@ function rebuildEndOptions(key, idx) {
   const startEl = document.getElementById(`s-${key}-${idx}`);
   const endEl   = document.getElementById(`e-${key}-${idx}`);
   if(!startEl || !endEl) return;
-
   const start = startEl.value;
   const curEnd = endEl.value;
   const usedSlots = getUsedSlots(key, idx);
-
   endEl.innerHTML = '<option value="">End</option>';
   if(!start) return;
-
   const startIdx = SLOTS.indexOf(start);
   for(let i=startIdx+1; i<SLOTS.length; i++){
     const t = SLOTS[i];
-    // Check if any slot between start and this end would overlap
     let blocked = false;
     for(let j=startIdx; j<i; j++){
       const slotLabel = `${SLOTS[j]}–${SLOTS[j+1]}`;
@@ -956,7 +931,7 @@ function rebuildEndOptions(key, idx) {
     if(blocked){ opt.disabled=true; opt.style.color='#ccc'; opt.textContent = t+' (overlap)'; }
     if(t===curEnd) opt.selected=true;
     endEl.appendChild(opt);
-    if(blocked) break; // stop offering options past first overlap
+    if(blocked) break;
   }
 }
 
@@ -964,7 +939,6 @@ function removeRange(key,idx) {
   st[key][idx]=null;
   const el=document.getElementById(`rb-${key}-${idx}`);
   if(el) el.remove();
-  // Repopulate remaining ranges
   st[key].forEach((_,i) => { if(st[key][i]!==null) populateTimeSelects(key,i); });
   refreshBadge(key);
 }
@@ -976,7 +950,6 @@ function onRC(key,idx) {
   rebuildEndOptions(key,idx);
   const pv=document.getElementById(`pv-${key}-${idx}`);
   if(pv){ pv.innerHTML=''; getSlots(s,e).forEach(slot=>{ const c=document.createElement('div'); c.className='slot-chip'; c.textContent=slot; pv.appendChild(c); }); }
-  // Update other ranges in same day
   st[key].forEach((_,i)=>{ if(i!==idx && st[key][i]!==null) populateTimeSelects(key,i); });
   refreshBadge(key);
 }
@@ -1018,7 +991,7 @@ function buildSummary() {
       const mo = MN.indexOf(parts[1]);
       const dow = new Date(parseInt(parts[2]), mo, d).getDay();
       const isFull = type === 'full';
-      const chipLabel = isFull ? '✕ FULL DAY OFF' : '☀ MORNING OFF · nights available';
+      const chipLabel = isFull ? '✕ FULL DAY OFF' : '☀ MORNING OFF · nights OK';
       const chipStyle = isFull
         ? 'background:rgba(241,90,41,0.3);border:1px solid rgba(241,90,41,0.5);color:#ff8a65;'
         : 'background:rgba(255,165,0,0.2);border:1px solid rgba(255,165,0,0.4);color:#ffb74d;';
@@ -1071,8 +1044,6 @@ async function doSubmit() {
   btn.disabled=true; btn.textContent='Submitting...';
 
   if (isResident) {
-    // Resident: POST blackout entries {date, type} to server
-    // type = 'morning' (14:00-19:00 off) or 'full' (entire day off)
     const dates = [...blackoutDates.entries()].map(([date, type]) => ({ date, type }));
     try {
       const res = await fetch('/api/blackout', {
