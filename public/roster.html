@@ -2,486 +2,398 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DJ Roster — Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>DJ Roster - Admin</title>
 <meta name="theme-color" content="#0b1020">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* === RESET & TOKENS === */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#2B3990;--navy-dark:#1a2570;--teal:#5DB8C0;--teal-light:#eaf6f7;
+  --orange:#F15A29;--love-pink:#e91e8c;--love-dark:#880e4f;--love-light:#fce4ec;
+  --bg:#0b1020;--surface:rgba(255,255,255,0.07);--surface-hover:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.1);--border-subtle:rgba(255,255,255,0.06);
+  --text-primary:#fff;--text-secondary:rgba(255,255,255,0.7);
+  --text-muted:rgba(255,255,255,0.4);--text-faint:rgba(255,255,255,0.2);
+  --radius:12px;--radius-sm:8px;--radius-lg:16px;
+  --blur:blur(20px);--shadow:0 8px 40px rgba(0,0,0,0.4);
+  --transition:0.2s ease;
+  --header-h:56px;--tab-h:44px;
+}
+html,body{height:100%}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-primary);min-height:100vh;-webkit-font-smoothing:antialiased}
 
-:root {
-  --navy: #2B3990;
-  --navy-dark: #1a2570;
-  --teal: #5DB8C0;
-  --teal-light: #eaf6f7;
-  --orange: #F15A29;
-  --love-pink: #e91e8c;
-  --love-dark: #880e4f;
-  --love-light: #fce4ec;
-  --white: #ffffff;
-  --bg: #f0f2f8;
-  --border: #dde2f0;
-  --text: #1c2340;
-  --text-mid: #5a6380;
-  --text-light: #9aa0b8;
-  --radius: 12px;
-  --shadow: 0 2px 16px rgba(43,57,144,0.10);
-}
+/* === AMBIENT BACKGROUND === */
+.bg-fixed{position:fixed;inset:0;z-index:0;pointer-events:none;contain:strict}
+.bg-orb{position:absolute;border-radius:50%;filter:blur(100px);will-change:transform;animation:drift 14s ease-in-out infinite alternate}
+.bg-orb:nth-child(1){width:700px;height:700px;background:radial-gradient(circle,var(--navy) 0%,transparent 70%);top:-200px;left:-200px;opacity:.55}
+.bg-orb:nth-child(2){width:500px;height:500px;background:radial-gradient(circle,var(--teal) 0%,transparent 70%);bottom:-150px;right:-100px;opacity:.3;animation-delay:-5s}
+.bg-orb:nth-child(3){width:350px;height:350px;background:radial-gradient(circle,var(--orange) 0%,transparent 70%);top:45%;left:55%;opacity:.12;animation-delay:-9s}
+@keyframes drift{from{transform:translate(0,0)}to{transform:translate(40px,-50px)}}
 
-html, body { height: 100%; }
-body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--text); min-height: 100vh; }
+/* === LOGIN === */
+.login-wrap{min-height:100vh;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding:16px}
+.login-box{
+  background:var(--surface);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:48px 40px;
+  width:min(360px,100%);text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.5);
+  animation:fadeUp .7s ease both;
+}
+.login-box h1{font-size:26px;font-weight:900;margin-bottom:4px}
+.login-box .subtitle{font-size:12px;color:var(--text-muted);font-weight:500;margin-bottom:32px}
+.login-icon{font-size:40px;margin-bottom:12px}
+.pw-field{position:relative;width:100%;margin-bottom:12px}
+.pw-field input{
+  width:100%;padding:14px 52px 14px 18px;border:1px solid rgba(255,255,255,0.15);
+  border-radius:10px;font-family:inherit;font-size:15px;text-align:center;
+  letter-spacing:.05em;outline:none;background:rgba(255,255,255,0.08);color:#fff;
+  transition:border-color var(--transition),background var(--transition);
+}
+.pw-field input::placeholder{color:rgba(255,255,255,0.3)}
+.pw-field input:focus{border-color:var(--teal);background:rgba(255,255,255,0.12)}
+.pw-toggle{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;
+  user-select:none;z-index:2;line-height:0;padding:6px;-webkit-tap-highlight-color:transparent;
+}
+.login-btn{
+  width:100%;padding:14px;background:rgba(93,184,192,0.2);border:1px solid rgba(93,184,192,0.4);
+  color:#fff;border-radius:10px;font-family:inherit;font-size:14px;font-weight:800;
+  cursor:pointer;transition:background var(--transition),border-color var(--transition);
+}
+.login-btn:hover,.login-btn:focus-visible{background:rgba(93,184,192,0.35);border-color:rgba(93,184,192,0.7)}
+.login-error{color:var(--orange);font-size:12px;font-weight:600;margin-top:10px;display:none}
+.back-link{
+  display:inline-block;margin-top:20px;color:rgba(255,255,255,0.35);font-size:12px;
+  font-weight:600;text-decoration:none;transition:color var(--transition);
+}
+.back-link:hover,.back-link:focus-visible{color:rgba(255,255,255,0.7)}
 
-/* ── SHARED BACKGROUND ── */
-.bg-fixed {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-}
-.bg-orb {
-  position: absolute; border-radius: 50%; filter: blur(100px);
-  animation: drift 14s ease-in-out infinite alternate;
-}
-.bg-orb:nth-child(1) { width: 700px; height: 700px; background: radial-gradient(circle, #2B3990 0%, transparent 70%); top: -200px; left: -200px; opacity: 0.55; animation-delay: 0s; }
-.bg-orb:nth-child(2) { width: 500px; height: 500px; background: radial-gradient(circle, #5DB8C0 0%, transparent 70%); bottom: -150px; right: -100px; opacity: 0.3; animation-delay: -5s; }
-.bg-orb:nth-child(3) { width: 350px; height: 350px; background: radial-gradient(circle, #F15A29 0%, transparent 70%); top: 45%; left: 55%; opacity: 0.12; animation-delay: -9s; }
-@keyframes drift { from { transform: translate(0,0); } to { transform: translate(40px,-50px); } }
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── LOGIN ── */
-.login-wrap {
-  min-height: 100vh; position: relative; z-index: 1;
-  display: flex; align-items: center; justify-content: center;
-}
-.login-box {
-  background: rgba(255,255,255,0.07);
-  backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 24px; padding: 48px 40px;
-  width: min(360px, calc(100vw - 32px)); text-align: center;
-  box-shadow: 0 32px 80px rgba(0,0,0,0.5);
-  animation: fadeUp 0.7s ease both;
-}
-.login-icon { font-size: 32px; margin-bottom: 14px; }
-.login-box h1 { font-size: 26px; font-weight: 900; color: white; margin-bottom: 4px; }
-.login-box p { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 500; margin-bottom: 32px; }
-.login-box input {
-  width: 100%; padding: 14px 18px;
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 10px; font-family: 'Montserrat', sans-serif;
-  font-size: 15px; font-weight: 400; text-align: center;
-  letter-spacing: 0.05em; outline: none; margin-bottom: 12px;
-  background: rgba(255,255,255,0.08); color: white;
-  transition: border-color 0.2s, background 0.2s;
-}
-.login-box input::placeholder { color: rgba(255,255,255,0.3); }
-.login-box input:focus { border-color: var(--teal); background: rgba(255,255,255,0.12); }
-.login-box button {
-  width: 100%; padding: 14px;
-  background: rgba(93,184,192,0.2);
-  border: 1px solid rgba(93,184,192,0.4);
-  color: white; border-radius: 10px;
-  font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 800;
-  cursor: pointer; transition: background 0.2s, border-color 0.2s;
-}
-.login-box button:hover { background: rgba(93,184,192,0.35); border-color: rgba(93,184,192,0.7); }
-.login-error { color: var(--orange); font-size: 12px; font-weight: 600; margin-top: 10px; display: none; }
+/* === APP SHELL === */
+.app{display:none;flex-direction:column;min-height:100vh;position:relative;z-index:1}
+.app.visible{display:flex}
 
-@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+/* Header */
+.app-header{
+  background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid var(--border);color:#fff;padding:0 24px;height:var(--header-h);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.app-header-left{display:flex;align-items:center;gap:12px;min-width:0}
+.portal-btn{
+  display:inline-flex;align-items:center;padding:5px 12px;border-radius:20px;
+  font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--text-muted);
+  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);
+  text-decoration:none;transition:all var(--transition);white-space:nowrap;
+}
+.portal-btn:hover{color:#fff;background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.25)}
+.header-badge{
+  background:rgba(255,255,255,0.12);padding:3px 10px;border-radius:20px;
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);
+}
+.app-header h1{font-size:17px;font-weight:900;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* ── APP CHROME ── */
-.app { display: none; flex-direction: column; min-height: 100vh; position: relative; z-index: 1; }
-.app.visible { display: flex; }
+/* Month nav */
+.month-nav{display:flex;align-items:center;gap:8px}
+.month-nav button{
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);color:#fff;
+  width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;transition:background .15s;
+}
+.month-nav button:hover{background:rgba(255,255,255,0.2)}
+.month-label{font-size:13px;font-weight:800;min-width:130px;text-align:center}
 
-.app-header {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  color: white; padding: 0 24px; height: 56px;
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
+/* Venue tabs */
+.venue-bar{
+  background:rgba(255,255,255,0.04);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid rgba(255,255,255,0.08);padding:0 24px;
+  display:flex;align-items:flex-end;gap:4px;flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;
 }
-.back-btn-roster {
-  display: inline-flex; align-items: center;
-  padding: 5px 12px; border-radius: 20px;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
-  color: rgba(255,255,255,0.45);
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  text-decoration: none; transition: all 0.2s; white-space: nowrap;
+.venue-tab{
+  padding:12px 24px;border:none;background:none;font-family:inherit;font-size:13px;
+  font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;
+  margin-bottom:-1px;transition:all var(--transition);white-space:nowrap;
 }
-.back-btn-roster:hover { color: white; background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
+.venue-tab:hover{color:var(--text-secondary)}
+.venue-tab.active{color:#fff;border-bottom-color:var(--teal)}
+.venue-tab.love.active{border-bottom-color:var(--love-pink)}
+.venue-tab.hours.active{border-bottom-color:#4caf50}
 
-.app-header-left { display: flex; align-items: center; gap: 12px; }
-.app-header h1 { font-size: 17px; font-weight: 900; letter-spacing: -0.01em; color: white; }
-.header-badge {
-  background: rgba(255,255,255,0.12); padding: 3px 10px;
-  border-radius: 20px; font-size: 10px; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7);
-}
-.month-nav { display: flex; align-items: center; gap: 8px; }
-.month-nav button {
-  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
-  color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
-  font-size: 14px; display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-}
-.month-nav button:hover { background: rgba(255,255,255,0.2); }
-.month-label { font-size: 13px; font-weight: 800; min-width: 130px; text-align: center; color: white; }
+/* Main content */
+.main-content{flex:1;overflow:auto;padding:20px 24px;-webkit-overflow-scrolling:touch}
 
-.venue-bar {
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding: 0 24px; display: flex; align-items: flex-end; gap: 4px; flex-shrink: 0;
-}
-.venue-tab {
-  padding: 12px 24px; border: none; background: none;
-  font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700;
-  color: rgba(255,255,255,0.35); cursor: pointer;
-  border-bottom: 3px solid transparent; margin-bottom: -1px; transition: all 0.2s;
-}
-.venue-tab:hover { color: rgba(255,255,255,0.7); }
-.venue-tab.active { color: white; border-bottom-color: var(--teal); }
-.venue-tab.love.active { color: white; border-bottom-color: var(--love-pink); }
-.venue-tab.active[id="tabHours"] { color: white; border-bottom-color: #4caf50; }
+/* === ROSTER TABLE === */
+.grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius);background:#fff;box-shadow:var(--shadow)}
+.grid-wrap::-webkit-scrollbar{height:6px}
+.grid-wrap::-webkit-scrollbar-track{background:transparent}
+.grid-wrap::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px}
 
-.main-content { flex: 1; overflow: auto; padding: 20px 24px; -webkit-overflow-scrolling: touch; }
+.roster-table{border-collapse:collapse;min-width:100%;font-size:11px}
+.roster-table thead th{
+  padding:10px 6px;text-align:center;font-weight:800;font-size:10px;white-space:nowrap;
+  position:sticky;top:0;z-index:10;border-bottom:2px solid #dde2f0;letter-spacing:.03em;
+}
+.th-date{
+  background:var(--navy)!important;color:#fff!important;min-width:110px;
+  text-align:left!important;padding-left:14px!important;
+  position:sticky!important;left:0!important;z-index:20!important;
+}
+.th-arkbar{background:var(--teal-light);color:var(--navy);min-width:82px}
+.th-hip{background:var(--orange);color:#fff;min-width:82px}
+.th-love{background:var(--love-light);color:var(--love-dark);min-width:82px}
+.th-section-label{padding:6px;font-size:11px;font-weight:800;text-align:center;letter-spacing:.05em}
 
-.roster-table { border-collapse: collapse; min-width: 100%; font-size: 11px; }
-.roster-table thead th {
-  padding: 10px 6px; text-align: center; font-weight: 800; font-size: 10px;
-  white-space: nowrap; position: sticky; top: 0; z-index: 10;
-  border-bottom: 2px solid var(--border); letter-spacing: 0.03em;
-}
-.th-date {
-  background: var(--navy) !important; color: white !important;
-  min-width: 110px; text-align: left !important; padding-left: 14px !important;
-  position: sticky !important; left: 0 !important; z-index: 20 !important;
-}
-.th-arkbar { background: var(--teal-light); color: var(--navy); min-width: 82px; }
-.th-hip { background: var(--orange); color: white; min-width: 82px; }
-.th-love { background: var(--love-light); color: var(--love-dark); min-width: 82px; }
+.roster-table tbody tr:nth-child(even){background:#fafbff}
+.roster-table tbody tr:hover{background:#f4f5ff}
 
-.roster-table tbody tr:hover { background: #f8f9ff; }
-.roster-table tbody tr:nth-child(even) { background: #fafbff; }
-.roster-table tbody tr:nth-child(even):hover { background: #f4f5ff; }
+.td-date{
+  padding:8px 14px;font-weight:700;font-size:11px;color:#1c2340;white-space:nowrap;
+  border-right:2px solid #dde2f0;position:sticky;left:0;z-index:5;min-width:110px;background:#fff;
+}
+.roster-table tbody tr:nth-child(even) .td-date{background:#fafbff}
+.roster-table tbody tr:hover .td-date{background:#f4f5ff}
+.td-date .dow{color:var(--teal);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;display:block}
+.td-date.weekend .dow{color:var(--orange)}
 
-.td-date {
-  padding: 8px 14px; font-weight: 700; font-size: 11px; color: var(--text);
-  white-space: nowrap; border-right: 2px solid var(--border);
-  position: sticky; left: 0; z-index: 5; min-width: 110px;
-  background: white;
-}
-.roster-table tbody tr:nth-child(even) .td-date { background: #fafbff; }
-.roster-table tbody tr:hover .td-date { background: #f8f9ff; }
-.td-date .dow { color: var(--teal); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; display: block; }
-.td-date.weekend .dow { color: var(--orange); }
-.td-slot { padding: 4px; border: 1px solid #eef0f8; min-width: 82px; vertical-align: middle; }
-.td-slot.hip-slot { background: rgba(241,90,41,0.04); border-color: rgba(241,90,41,0.15); }
-.td-slot.love-slot { background: rgba(233,30,140,0.03); border-color: rgba(233,30,140,0.12); }
-.td-slot.empty-slot { background: #f9f9f9; }
+.td-slot{padding:4px;border:1px solid #eef0f8;min-width:82px;vertical-align:middle;position:relative}
+.td-slot.hip-slot{background:rgba(241,90,41,0.04);border-color:rgba(241,90,41,0.15)}
+.td-slot.love-slot{background:rgba(233,30,140,0.03);border-color:rgba(233,30,140,0.12)}
+.td-slot.empty-slot{background:#f9f9f9}
 
-.slot-select {
-  width: 100%; padding: 5px 3px; border: 1.5px solid transparent;
-  border-radius: 6px; font-family: 'Montserrat', sans-serif;
-  font-size: 10px; font-weight: 700; color: var(--text);
-  background: transparent; cursor: pointer; outline: none;
-  transition: all 0.15s; appearance: none; -webkit-appearance: none;
-  text-align: center; min-height: 28px;
+.slot-select{
+  width:100%;padding:5px 3px;border:1.5px solid transparent;border-radius:6px;
+  font-family:inherit;font-size:10px;font-weight:700;color:#1c2340;background:transparent;
+  cursor:pointer;outline:none;transition:all .15s;appearance:none;-webkit-appearance:none;
+  text-align:center;min-height:28px;
 }
-.slot-select:hover { border-color: var(--teal); background: var(--teal-light); }
-.slot-select:focus { border-color: var(--navy); background: white; box-shadow: 0 0 0 3px rgba(43,57,144,0.1); }
-.slot-select.assigned { color: white !important; font-weight: 800 !important; }
-.slot-select.unassigned { color: var(--text-light); }
-.slot-select.no-avail { background: #f5f5f5; color: #ccc; cursor: not-allowed; font-size: 10px; }
+.slot-select:hover{border-color:var(--teal);background:var(--teal-light)}
+.slot-select:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(43,57,144,0.1)}
+.slot-select.assigned{color:#fff!important;font-weight:800!important}
+.slot-select.unassigned{color:#9aa0b8}
+.slot-select.no-avail{background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:10px}
 
-.th-section-label { padding: 6px; font-size: 11px; font-weight: 800; text-align: center; letter-spacing: 0.05em; }
+/* Locked state */
+.roster-locked .slot-select:not(.no-avail){pointer-events:none;opacity:.95}
+.roster-locked .slot-select.unassigned{opacity:.4}
 
-.status-bar {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(255,255,255,0.08);
-  padding: 10px 24px; display: flex; align-items: center; gap: 20px;
-  flex-shrink: 0; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45);
+/* === STATUS BAR === */
+.status-bar{
+  background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:20px;
+  flex-shrink:0;font-size:11px;font-weight:600;color:var(--text-muted);
 }
-.status-pill {
-  display: flex; align-items: center; gap: 6px;
-  padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;
+.status-pill{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-weight:700;font-size:11px}
+.status-pill.draft{background:rgba(230,81,0,0.2);color:#ffab40;border:1px solid rgba(230,81,0,0.3)}
+.status-pill.published{background:rgba(46,125,50,0.2);color:#69f0ae;border:1px solid rgba(46,125,50,0.3)}
+.status-bar-right{margin-left:auto;display:flex;gap:10px}
+.btn-sm{
+  padding:7px 16px;border-radius:var(--radius-sm);font-family:inherit;font-size:11px;
+  font-weight:700;cursor:pointer;transition:all .15s;border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.08);color:#fff;backdrop-filter:blur(10px);
 }
-.status-pill.draft { background: rgba(230,81,0,0.2); color: #ffab40; border: 1px solid rgba(230,81,0,0.3); }
-.status-pill.published { background: rgba(46,125,50,0.2); color: #69f0ae; border: 1px solid rgba(46,125,50,0.3); }
-.status-bar-right { margin-left: auto; display: flex; gap: 10px; }
-.btn-sm {
-  padding: 7px 16px; border-radius: 8px; font-family: 'Montserrat', sans-serif;
-  font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.08); color: white;
-  backdrop-filter: blur(10px);
-}
-.btn-sm:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
-.btn-publish { background: rgba(43,57,144,0.6); border-color: rgba(93,184,192,0.5); color: white; }
-.btn-publish:hover { background: rgba(43,57,144,0.85); border-color: var(--teal); }
-.btn-suggest { background: rgba(93,184,192,0.15); border-color: rgba(93,184,192,0.4); color: var(--teal); }
-.btn-suggest:hover { background: rgba(93,184,192,0.3); border-color: var(--teal); color: white; }
-.btn-clear { background: rgba(241,90,41,0.12); border-color: rgba(241,90,41,0.35); color: #ff8a65; }
-.btn-clear:hover { background: rgba(241,90,41,0.25); border-color: var(--orange); color: white; }
+.btn-sm:hover{background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3)}
+.btn-publish{background:rgba(43,57,144,0.6);border-color:rgba(93,184,192,0.5)}
+.btn-publish:hover{background:rgba(43,57,144,0.85);border-color:var(--teal)}
+.btn-suggest{background:rgba(93,184,192,0.15);border-color:rgba(93,184,192,0.4);color:var(--teal)}
+.btn-suggest:hover{background:rgba(93,184,192,0.3);border-color:var(--teal);color:#fff}
+.btn-clear{background:rgba(241,90,41,0.12);border-color:rgba(241,90,41,0.35);color:#ff8a65}
+.btn-clear:hover{background:rgba(241,90,41,0.25);border-color:var(--orange);color:#fff}
 
-.loading { text-align: center; padding: 80px 40px; color: rgba(255,255,255,0.4); font-weight: 600; font-size: 13px; }
-.spinner {
-  width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1);
-  border-top-color: var(--teal); border-radius: 50%;
-  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+/* === LOADING & TOAST === */
+.loading{text-align:center;padding:80px 40px;color:var(--text-muted);font-weight:600;font-size:13px}
+.spinner{
+  width:32px;height:32px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--teal);
+  border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin{to{transform:rotate(360deg)}}
 
-.toast {
-  position: fixed; bottom: 24px; right: 24px;
-  background: rgba(30,40,80,0.95);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: white; padding: 12px 20px; border-radius: 10px;
-  font-size: 12px; font-weight: 700; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  transform: translateY(80px); opacity: 0; transition: all 0.3s ease; z-index: 1000;
+.toast{
+  position:fixed;bottom:24px;right:24px;background:rgba(30,40,80,0.95);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid rgba(255,255,255,0.15);color:#fff;padding:12px 20px;
+  border-radius:10px;font-size:12px;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  transform:translateY(80px);opacity:0;transition:all .3s ease;z-index:1000;
 }
-.toast.show { transform: translateY(0); opacity: 1; }
-.toast.success { background: rgba(27,94,32,0.95); border-color: rgba(105,240,174,0.3); }
-.toast.error { background: rgba(183,28,28,0.95); border-color: rgba(255,100,100,0.3); }
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:rgba(27,94,32,0.95);border-color:rgba(105,240,174,0.3)}
+.toast.error{background:rgba(183,28,28,0.95);border-color:rgba(255,100,100,0.3)}
 
-.grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius); background: white; box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
-.grid-wrap::-webkit-scrollbar { height: 6px; }
-.grid-wrap::-webkit-scrollbar-track { background: transparent; }
-.grid-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+/* === HOURS PAGE === */
+.hours-wrap{display:flex;flex-direction:column;gap:20px}
+.summary-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.summary-card{
+  background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--border);border-radius:var(--radius);padding:18px;
+}
+.card-label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.card-value{font-size:26px;font-weight:900;color:#fff}
+.card-sub{font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);margin-top:2px}
 
-/* LOCKED STATE */
-.roster-locked .slot-select:not(.no-avail) {
-  pointer-events: none;
-  opacity: 0.95;
+.hours-table-wrap{
+  background:rgba(255,255,255,0.06);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
 }
-.roster-locked .slot-select.unassigned {
-  opacity: 0.4;
+.hours-table-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.hours-table-header h2{font-size:14px;font-weight:800}
+.hours-table{width:100%;border-collapse:collapse}
+.hours-table thead th{
+  padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:rgba(255,255,255,0.35);
+  text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.03);
 }
+.hours-table thead th.right,.hours-table tbody td.right{text-align:right}
+.hours-table tbody tr{border-bottom:1px solid var(--border-subtle);transition:background .1s}
+.hours-table tbody tr:last-child{border-bottom:none}
+.hours-table tbody tr:hover{background:var(--surface-hover)}
+.hours-table tbody td{padding:11px 14px;font-size:12px;font-weight:600;color:var(--text-secondary)}
 
-/* HOURS PAGE */
-.hours-wrap { display: flex; flex-direction: column; gap: 20px; }
-.summary-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
-.summary-card {
-  background: rgba(255,255,255,0.07);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius); padding: 18px;
-}
-.summary-card .card-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-.summary-card .card-value { font-size: 26px; font-weight: 900; color: white; }
-.summary-card .card-sub { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35); margin-top: 2px; }
-.hours-table-wrap {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius); overflow: hidden;
-}
-.hours-table-header { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; }
-.hours-table-header h2 { font-size: 14px; font-weight: 800; color: white; }
-.hours-table { width: 100%; border-collapse: collapse; }
-.hours-table thead th { padding: 9px 14px; text-align: left; font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); }
-.hours-table thead th.right { text-align: right; }
-.hours-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.1s; }
-.hours-table tbody tr:last-child { border-bottom: none; }
-.hours-table tbody tr:hover { background: rgba(255,255,255,0.04); }
-.hours-table tbody td { padding: 11px 14px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
-.hours-table tbody td.right { text-align: right; }
-.dj-name-cell { display: flex; align-items: center; gap: 10px; }
-.dj-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.dj-name { font-weight: 700; font-size: 12px; color: white; }
-.hours-bar-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.hours-bar-bg { flex: 1; height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; min-width: 60px; }
-.hours-bar-fill { height: 100%; border-radius: 3px; background: var(--teal); }
-.hours-bar-fill.resident { background: #7c83ff; }
-.hours-bar-fill.zero { background: rgba(255,255,255,0.08); }
-.hours-val { font-size: 12px; font-weight: 800; color: white; min-width: 30px; text-align: right; }
-.badge { padding: 2px 7px; border-radius: 20px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
-.badge-low { background: rgba(230,81,0,0.25); color: #ffab40; border: 1px solid rgba(230,81,0,0.3); }
-.badge-ok { background: rgba(46,125,50,0.25); color: #69f0ae; border: 1px solid rgba(46,125,50,0.3); }
-.target-note { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.3); padding: 10px 20px; background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.06); }
-.totals-row { background: rgba(255,255,255,0.05) !important; }
-.totals-row td { font-weight: 800 !important; color: white !important; }
+.dj-name-cell{display:flex;align-items:center;gap:10px}
+.dj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dj-name{font-weight:700;font-size:12px;color:#fff}
+.hours-bar-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hours-bar-bg{flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;min-width:60px}
+.hours-bar-fill{height:100%;border-radius:3px;background:var(--teal)}
+.hours-bar-fill.resident{background:#7c83ff}
+.hours-bar-fill.zero{background:rgba(255,255,255,0.08)}
+.hours-val{font-size:12px;font-weight:800;color:#fff;min-width:30px;text-align:right}
+.badge{padding:2px 7px;border-radius:20px;font-size:9px;font-weight:800;text-transform:uppercase}
+.badge-low{background:rgba(230,81,0,0.25);color:#ffab40;border:1px solid rgba(230,81,0,0.3)}
+.badge-ok{background:rgba(46,125,50,0.25);color:#69f0ae;border:1px solid rgba(46,125,50,0.3)}
+.badge-needed{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:800;background:#fff8e1;color:#f57f17;border:1px solid #ffe082;margin-left:6px}
+.target-note{font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);padding:10px 20px;background:rgba(255,255,255,0.03);border-top:1px solid var(--border-subtle)}
+.totals-row{background:rgba(255,255,255,0.05)!important}
+.totals-row td{font-weight:800!important;color:#fff!important}
 
-/* ── RESIDENT HOURS SIDEBAR ── */
-.hours-toggle {
-  position: fixed; right: 0; top: 50%; transform: translateY(-50%);
-  background: rgba(43,57,144,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(93,184,192,0.4); border-right: none;
-  border-radius: 10px 0 0 10px; padding: 10px 8px;
-  cursor: pointer; z-index: 200; color: white; font-size: 11px; font-weight: 800;
-  writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.08em;
-  transition: all 0.2s; display: none;
+/* === RESIDENT HOURS SIDEBAR === */
+.hours-toggle{
+  position:fixed;right:0;top:50%;transform:translateY(-50%);
+  background:rgba(43,57,144,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid rgba(93,184,192,0.4);border-right:none;border-radius:10px 0 0 10px;
+  padding:10px 8px;cursor:pointer;z-index:200;color:#fff;font-size:11px;font-weight:800;
+  writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:.08em;
+  transition:all var(--transition);display:none;
 }
-.hours-toggle:hover { background: rgba(43,57,144,0.95); padding-right: 12px; }
-.app.visible .hours-toggle { display: block; }
+.hours-toggle:hover{background:rgba(43,57,144,0.95);padding-right:12px}
+.app.visible .hours-toggle{display:block}
+.app.visible .hours-toggle.hidden{display:none}
 
-.hours-panel {
-  position: fixed; right: -280px; top: 0; bottom: 0; width: 270px;
-  background: rgba(15,20,45,0.97); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-  border-left: 1px solid rgba(93,184,192,0.3); z-index: 300;
-  transition: right 0.3s ease; overflow-y: auto; display: flex; flex-direction: column;
+.hours-panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:250;display:none;cursor:pointer}
+.hours-panel-overlay.open{display:block}
+.hours-panel{
+  position:fixed;right:-280px;top:0;bottom:0;width:270px;
+  background:rgba(15,20,45,0.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-left:1px solid rgba(93,184,192,0.3);z-index:300;
+  transition:right .3s ease;overflow-y:auto;display:flex;flex-direction:column;
 }
-.hours-panel.open { right: 0; }
-.hours-panel-header {
-  padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.hours-panel-header h3 { font-size: 13px; font-weight: 800; color: white; }
-.hours-panel-close {
-  background: none; border: none; color: rgba(255,255,255,0.4); font-size: 18px;
-  cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.15s;
-}
-.hours-panel-close:hover { color: white; background: rgba(255,255,255,0.1); }
-.hours-panel-body { padding: 12px 16px; flex: 1; }
-.hp-row {
-  display: flex; align-items: center; gap: 8px; padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.hp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.hp-name { flex: 1; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); }
-.hp-hours { font-size: 13px; font-weight: 900; color: white; min-width: 36px; text-align: right; }
-.hp-target { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.3); min-width: 30px; }
-.hp-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; min-width: 40px; }
-.hp-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
-.hp-bar-fill.ok { background: var(--teal); }
-.hp-bar-fill.warn { background: #ffab40; }
-.hp-bar-fill.over { background: #ff5252; }
-.hours-panel-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 250;
-  display: none; cursor: pointer;
-}
-.hours-panel-overlay.open { display: block; }
+.hours-panel.open{right:0}
+.hours-panel-header{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.hours-panel-header h3{font-size:13px;font-weight:800}
+.hours-panel-close{background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .15s}
+.hours-panel-close:hover{color:#fff;background:rgba(255,255,255,0.1)}
+.hours-panel-body{padding:12px 16px;flex:1}
+.hp-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-subtle)}
+.hp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hp-name{flex:1;font-size:11px;font-weight:700;color:var(--text-secondary)}
+.hp-hours{font-size:13px;font-weight:900;color:#fff;min-width:36px;text-align:right}
+.hp-target{font-size:9px;font-weight:700;color:rgba(255,255,255,0.3);min-width:30px}
+.hp-bar{flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;min-width:40px}
+.hp-bar-fill{height:100%;border-radius:2px;transition:width .3s}
+.hp-bar-fill.ok{background:var(--teal)}
+.hp-bar-fill.warn{background:#ffab40}
+.hp-bar-fill.over{background:#ff5252}
 
-/* ── SCHEDULE HINT ── */
-.slot-hint {
-  position: absolute; top: 1px; right: 1px; width: 6px; height: 6px;
-  border-radius: 50%; background: var(--teal); opacity: 0.7;
-}
-.td-slot { position: relative; }
+/* === PRINT HEADER === */
+.print-header{display:none;text-align:center;margin-bottom:8px;font-size:14px;font-weight:800;color:var(--navy)}
 
-/* ── REDUCED MOTION ── */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-  .bg-orb { animation: none !important; }
+/* === REDUCED MOTION === */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .bg-orb{animation:none!important}
 }
 
-/* ── MOBILE: TABLETS & PHONES ── */
-@media (max-width: 768px) {
-  .bg-orb { animation: none; opacity: 0.3; }
-
-  .app-header {
-    height: auto;
-    padding: 10px 14px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .app-header-left { flex: 1; min-width: 0; }
-  .app-header h1 {
-    font-size: 13px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .header-badge { font-size: 9px; padding: 2px 7px; }
-  .month-nav { width: 100%; justify-content: center; }
-  .month-label { font-size: 12px; min-width: 110px; }
-  .month-nav button { width: 36px; height: 36px; font-size: 16px; min-height: 44px; }
-
-  .venue-bar { padding: 0 8px; gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .venue-tab { padding: 10px 12px; font-size: 11px; white-space: nowrap; min-height: 44px; }
-
-  .main-content { padding: 8px; }
-
-  .td-date { min-width: 66px; padding: 4px 6px; font-size: 10px; }
-  .td-date .dow { font-size: 8px; }
-  .td-slot { min-width: 66px; padding: 2px; }
-  .slot-select { font-size: 9px; min-height: 32px; padding: 4px 2px; }
-  .roster-table thead th { font-size: 8px; padding: 6px 2px; }
-  .th-section-label { font-size: 8px; padding: 4px; }
-
-  .status-bar {
-    padding: 8px 10px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .status-bar > span { display: none; }
-  .status-bar-right {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-  }
-  .btn-sm { padding: 8px 10px; font-size: 10px; min-height: 40px; text-align: center; justify-content: center; display: flex; align-items: center; }
-  .status-pill { font-size: 10px; }
-
-  .toast { bottom: 12px; right: 12px; left: 12px; font-size: 11px; }
-
-  .summary-row { grid-template-columns: 1fr 1fr; }
-  .hours-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .hours-table { min-width: 520px; }
-  .hours-table thead th, .hours-table tbody td { padding: 8px 8px; font-size: 11px; }
-  .hours-wrap { padding-right: 4px; }
+/* === MOBILE FIRST: <= 768px === */
+@media(max-width:768px){
+  .bg-orb{animation:none;opacity:.3}
+  .app-header{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .app-header-left{flex:1;min-width:0}
+  .app-header h1{font-size:13px}
+  .header-badge{font-size:9px;padding:2px 7px}
+  .month-nav{width:100%;justify-content:center}
+  .month-label{font-size:12px;min-width:110px}
+  .month-nav button{width:36px;height:36px;font-size:16px;min-height:44px}
+  .venue-bar{padding:0 8px;gap:0}
+  .venue-tab{padding:10px 12px;font-size:11px;min-height:var(--tab-h)}
+  .main-content{padding:8px}
+  .td-date{min-width:66px;padding:4px 6px;font-size:10px}
+  .td-date .dow{font-size:8px}
+  .td-slot{min-width:66px;padding:2px}
+  .slot-select{font-size:9px;min-height:32px;padding:4px 2px}
+  .roster-table thead th{font-size:8px;padding:6px 2px}
+  .th-section-label{font-size:8px;padding:4px}
+  .status-bar{padding:8px 10px;flex-wrap:wrap;gap:8px}
+  .status-bar>span{display:none}
+  .status-bar-right{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .btn-sm{padding:8px 10px;font-size:10px;min-height:40px;text-align:center;justify-content:center;display:flex;align-items:center}
+  .status-pill{font-size:10px}
+  .toast{bottom:12px;right:12px;left:12px;font-size:11px}
+  .summary-row{grid-template-columns:1fr 1fr}
+  .hours-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .hours-table{min-width:520px}
+  .hours-table thead th,.hours-table tbody td{padding:8px 8px;font-size:11px}
 }
 
-/* PRINT */
-@media print {
-  @page { size: A2 landscape; margin: 8mm; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-  body { background: white; font-size: 10px; }
-  .login-wrap { display: none !important; }
-  .app-header, .venue-bar, .status-bar { display: none !important; }
-  .print-header { display: block !important; padding: 0 0 6px 0; margin-bottom: 6px; border-bottom: 2px solid #2B3990; font-size: 13px; }
-  .main-content { padding: 0 !important; overflow: visible !important; flex: none; }
-  .app { display: block !important; min-height: unset; }
-  .grid-wrap { box-shadow: none; overflow: visible !important; border-radius: 0; }
-  .roster-table { font-size: 7.5px; }
-  .roster-table thead th { font-size: 7px; padding: 4px 3px; position: static; }
-  .th-arkbar { background: #eaf6f7 !important; color: #2B3990 !important; }
-  .th-hip { background: #F15A29 !important; color: white !important; }
-  .th-love { background: #fce4ec !important; color: #880e4f !important; }
-  .th-date { background: #2B3990 !important; color: white !important; }
-  .th-section-label[style*="teal"] { background: #5DB8C0 !important; color: white !important; }
-  .th-section-label[style*="orange"] { background: #F15A29 !important; color: white !important; }
-  .th-section-label[style*="love-pink"] { background: #e91e8c !important; color: white !important; }
-  .td-date { font-size: 7.5px; padding: 3px 5px; min-width: 55px; position: static; border-right: 1px solid #ccc; }
-  .td-date .dow { font-size: 7px; }
-  .td-slot { min-width: 50px; padding: 2px; border: 0.5px solid #eee; }
-  .slot-select { font-size: 8px; padding: 3px 2px; min-height: 20px; border-radius: 3px; border: none; width: 100%; }
-  .slot-select.assigned { color: white !important; font-weight: 800 !important; border-radius: 3px !important; }
-  .slot-select.unassigned, .slot-select.no-avail { display: none; }
-  .td-slot.empty-slot { background: #fafafa !important; }
-  .hours-wrap, .summary-row { display: none !important; }
-  .roster-table tbody tr:nth-child(even) { background: #fafbff !important; }
-}
-.print-header {
-  display: none;
-  text-align: center;
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--navy);
+/* === PRINT === */
+@media print{
+  @page{size:A2 landscape;margin:8mm}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  body{background:#fff;font-size:10px}
+  .login-wrap,.app-header,.venue-bar,.status-bar,.hours-toggle,.hours-panel,.hours-panel-overlay,.toast{display:none!important}
+  .print-header{display:block!important;padding:0 0 6px;margin-bottom:6px;border-bottom:2px solid var(--navy);font-size:13px}
+  .main-content{padding:0!important;overflow:visible!important;flex:none}
+  .app{display:block!important;min-height:unset}
+  .grid-wrap{box-shadow:none;overflow:visible!important;border-radius:0}
+  .roster-table{font-size:7.5px}
+  .roster-table thead th{font-size:7px;padding:4px 3px;position:static}
+  .th-arkbar{background:#eaf6f7!important;color:#2B3990!important}
+  .th-hip{background:#F15A29!important;color:#fff!important}
+  .th-love{background:#fce4ec!important;color:#880e4f!important}
+  .th-date{background:#2B3990!important;color:#fff!important}
+  .td-date{font-size:7.5px;padding:3px 5px;min-width:55px;position:static;border-right:1px solid #ccc}
+  .td-date .dow{font-size:7px}
+  .td-slot{min-width:50px;padding:2px;border:.5px solid #eee}
+  .slot-select{font-size:8px;padding:3px 2px;min-height:20px;border-radius:3px;border:none;width:100%}
+  .slot-select.assigned{color:#fff!important;font-weight:800!important;border-radius:3px!important}
+  .slot-select.unassigned,.slot-select.no-avail{display:none}
+  .td-slot.empty-slot{background:#fafafa!important}
+  .hours-wrap,.summary-row{display:none!important}
+  .roster-table tbody tr:nth-child(even){background:#fafbff!important}
 }
 </style>
 </head>
 <body>
 
-<div class="bg-fixed">
+<!-- Ambient background -->
+<div class="bg-fixed" aria-hidden="true">
   <div class="bg-orb"></div>
   <div class="bg-orb"></div>
   <div class="bg-orb"></div>
 </div>
 
-<div class="login-wrap" id="loginWrap">
+<!-- Login -->
+<section class="login-wrap" id="loginWrap">
   <div class="login-box">
-    <div class="login-icon" style="font-size:40px;margin-bottom:12px;">&#9835;</div>
+    <div class="login-icon" aria-hidden="true">&#9835;</div>
     <h1>DJ Roster</h1>
-    <p>Admin — ARKbar & Love Beach Club</p>
-    <div style="position:relative;width:100%;">
+    <p class="subtitle">Admin - ARKbar &amp; Love Beach Club</p>
+    <div class="pw-field">
       <input type="password" id="pwInput" placeholder="Password"
-             onkeydown="if(event.key==='Enter') doLogin()"
-             style="padding-right:52px;width:100%;box-sizing:border-box;">
-      <span onclick="togglePwView()" id="pwToggle"
-            style="position:absolute;right:14px;top:50%;transform:translateY(-50%);
-                   cursor:pointer;user-select:none;z-index:10;line-height:0;
-                   -webkit-tap-highlight-color:transparent;padding:6px;">
+             autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')doLogin()">
+      <span class="pw-toggle" id="pwToggle" onclick="togglePwView()" role="button" aria-label="Toggle password visibility" tabindex="0">
         <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
              viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round">
@@ -490,77 +402,82 @@ body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--
         </svg>
       </span>
     </div>
-    <button onclick="doLogin()">Enter Admin</button>
+    <button class="login-btn" onclick="doLogin()">Enter Admin</button>
     <div class="login-error" id="loginError">Incorrect password. Try again.</div>
-    <a href="/" style="display:inline-block;margin-top:20px;color:rgba(255,255,255,0.35);font-size:12px;font-weight:600;text-decoration:none;transition:color 0.2s;"
-       onmouseover="this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.color='rgba(255,255,255,0.35)'">&larr; Back to Port</a>
+    <a href="/" class="back-link">&larr; Back to Port</a>
   </div>
-</div>
+</section>
 
+<!-- App shell -->
 <div class="app" id="mainApp">
-  <div class="app-header">
+  <header class="app-header">
     <div class="app-header-left">
-      <a href="/" class="back-btn-roster">← Portal</a>
+      <a href="/" class="portal-btn">&larr; Portal</a>
       <div class="header-badge">Admin</div>
       <h1 id="headerTitle">ARKbar / HIP Roster</h1>
     </div>
-    <div class="month-nav">
-      <button onclick="changeMonth(-1)">◀</button>
-      <div class="month-label" id="monthLabel">—</div>
-      <button onclick="changeMonth(1)">▶</button>
-    </div>
-  </div>
+    <nav class="month-nav" aria-label="Month navigation">
+      <button onclick="changeMonth(-1)" aria-label="Previous month">&#9664;</button>
+      <div class="month-label" id="monthLabel">-</div>
+      <button onclick="changeMonth(1)" aria-label="Next month">&#9654;</button>
+    </nav>
+  </header>
 
-  <div class="venue-bar">
+  <nav class="venue-bar" aria-label="Venue tabs">
     <button class="venue-tab active" id="tabArkbar" onclick="switchVenue('arkbar')">ARKbar / HIP</button>
     <button class="venue-tab love" id="tabLove" onclick="switchVenue('love')">Love Beach Club</button>
-    <button class="venue-tab" id="tabHours" onclick="switchVenue('hours')">DJ Hours</button>
-  </div>
+    <button class="venue-tab hours" id="tabHours" onclick="switchVenue('hours')">DJ Hours</button>
+  </nav>
 
   <div class="print-header" id="printHeader"></div>
-  <div class="main-content" id="mainContent">
+  <main class="main-content" id="mainContent">
     <div class="loading"><div class="spinner"></div>Loading...</div>
-  </div>
+  </main>
 
-  <div class="status-bar" id="statusBarEl">
-    <div class="status-pill draft" id="statusPill">● Draft</div>
+  <footer class="status-bar" id="statusBarEl">
+    <div class="status-pill draft" id="statusPill">&#x25CF; Draft</div>
     <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
-      <button class="btn-sm btn-suggest" onclick="suggestRoster()">⚡ Auto-suggest</button>
-      <button class="btn-sm" onclick="clearRoster()" style="background:#fff0f0;color:#c62828;border:1.5px solid #ef9a9a;">Clear Roster</button>
+      <button class="btn-sm btn-suggest" onclick="suggestRoster()">&#9889; Auto-suggest</button>
+      <button class="btn-sm btn-clear" onclick="clearRoster()">Clear Roster</button>
       <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
-      <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:white;">Print / PDF</button>
+      <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:#fff;">Print / PDF</button>
     </div>
-  </div>
+  </footer>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- Toast notification -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<div class="hours-toggle" id="hoursToggle" onclick="toggleHoursPanel()">DJ HOURS</div>
+<!-- Resident hours slide-out -->
+<div class="hours-toggle" id="hoursToggle" onclick="toggleHoursPanel()" role="button" tabindex="0" aria-label="Open resident hours panel">DJ HOURS</div>
 <div class="hours-panel-overlay" id="hoursPanelOverlay" onclick="toggleHoursPanel()"></div>
-<div class="hours-panel" id="hoursPanel">
+<aside class="hours-panel" id="hoursPanel">
   <div class="hours-panel-header">
     <h3>Resident Hours</h3>
-    <button class="hours-panel-close" onclick="toggleHoursPanel()">✕</button>
+    <button class="hours-panel-close" onclick="toggleHoursPanel()" aria-label="Close panel">&#x2715;</button>
   </div>
   <div class="hours-panel-body" id="hoursPanelBody">
-    <div style="color:rgba(255,255,255,0.3);font-size:11px;padding:20px 0;text-align:center;">Load a roster to see hours</div>
+    <div style="color:var(--text-faint);font-size:11px;padding:20px 0;text-align:center">Load a roster to see hours</div>
   </div>
-</div>
+</aside>
 
 <script>
+// === STATE ===
 let currentVenue = 'arkbar';
 let currentYear, currentMonth;
 let availability = {};
 let rosterAssignments = {};
 let arkbarAssignments = {};
-let hipAssignments    = {};
-let loveAssignments   = {};
-let residentBlackouts = {}; // { djName: { "2026-03-01": "full"|"morning" } }
+let hipAssignments = {};
+let loveAssignments = {};
+let residentBlackouts = {};
 let djList = [];
+let isPublished = false;
+let toastTimer;
 
-const MONTHS = ['January','February','March','April','May','June',
-                'July','August','September','October','November','December'];
+// === CONSTANTS ===
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 const ARKBAR_SLOTS = [
@@ -568,10 +485,7 @@ const ARKBAR_SLOTS = [
   '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
   '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
 ];
-const HIP_SLOTS = [
-  '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'
-];
-// Full ARKbar 14:00?02:00
+const HIP_SLOTS = ['21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'];
 const LOVE_WEEKDAY_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
   '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'
@@ -583,138 +497,83 @@ const LOVE_SAT_SLOTS = [
 ];
 
 const ARKBAR_ONLY = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
-const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
+const RESIDENTS = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
 const LOVE_ONLY = ['Laina'];
-const NO_HIP = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
-const RESIDENTS_LATE_NIGHT = ['Alex RedWhite', 'Raffo DJ'];
-const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
-const SOUND_BOGIE_BLOCKED = ['14:00–15:00','15:00–16:00','16:00–17:00'];
-const SOUND_BOGIE_RARE = ['17:00–18:00','18:00–19:00'];
+const NO_HIP = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
+const RESIDENTS_LATE_NIGHT = ['Alex RedWhite','Raffo DJ'];
+const MORNING_SLOTS = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00','18:00\u201319:00'];
+const SOUND_BOGIE_BLOCKED = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
+const SOUND_BOGIE_RARE = ['17:00\u201318:00','18:00\u201319:00'];
 const RESIDENT_TARGET = 80;
 const SOUND_BOGIE_TARGET = 35;
-const RESIDENTS_80HR = ['Alex RedWhite', 'Raffo DJ'];
-const LATE_NIGHT_SLOTS = ['23:00–00:00','00:00–01:00','01:00–02:00'];
-
-// Helpers
-const pad2 = n => String(n).padStart(2, '0');
-const makeDateStr = (y, m, d) => `${y}-${pad2(m+1)}-${pad2(d)}`;
+const RESIDENTS_80HR = ['Alex RedWhite','Raffo DJ'];
+const LATE_NIGHT_SLOTS = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
 
 const DJ_COLORS = {
-  'Alex RedWhite': '#1565c0',
-  'Raffo DJ':      '#6a1b9a',
-  'Sound Bogie':   '#00695c',
-  'Tony':          '#b71c1c',
-  'Davoted':       '#e65100',
-  'D.Davoted':     '#bf360c',
-  'Pick':          '#558b2f',
-  'Jessi':         '#f57f17',
-  'Cocoa':         '#4e342e',
-  'Mostyx':        '#0277bd',
-  'Laina':         '#ad1457',
-  'Buba':          '#00838f',
-  'Vozka':         '#4527a0',
-  'Sky':           '#2e7d32',
-  'Tobi':          '#5d4037',
-  'Spice':         '#c62828',
-  'Guest DJ':      '#78909c',
+  'Alex RedWhite':'#1565c0','Raffo DJ':'#6a1b9a','Sound Bogie':'#00695c',
+  'Tony':'#b71c1c','Davoted':'#e65100','D.Davoted':'#bf360c','Pick':'#558b2f',
+  'Jessi':'#f57f17','Cocoa':'#4e342e','Mostyx':'#0277bd','Laina':'#ad1457',
+  'Buba':'#00838f','Vozka':'#4527a0','Sky':'#2e7d32','Tobi':'#5d4037',
+  'Spice':'#c62828','Guest DJ':'#78909c',
 };
 
-// ?? HIP WEEKLY ROTATION (4 slots per night, one DJ) ??????????????????
-const HIP_ROTATION = {
-  1: 'Vozka',   // Monday
-  4: 'Tobi',    // Thursday
-  // Other days: manual assignment
-};
+// HIP weekly rotation (4 slots per night, one DJ)
+const HIP_ROTATION = { 1:'Vozka', 4:'Tobi' };
 
-// ?? LOVE BEACH DJ AVAILABILITY (weekly patterns) ?????????????????????
-// Each entry: { days: [0=Sun..6=Sat], excluded: [{slot,days}] }
+// Love Beach DJ availability (weekly patterns)
 const LOVE_DJS = {
-  'Buba':    { days: [2,3,4,5,6] },                    // Tue-Sat
-  'Sky':     { days: [3,5] },                           // Wed, Fri
-  'Donsine': { days: [0,4,5,6] },                       // Thu,Fri,Sat,Sun
-  'Mostyx':  { days: [0,1,2,3,4,5,6], excluded: [
-    { days: [4], slots: ['14:00–15:00','15:00–16:00','16:00–17:00'] },  // Thu 2-5pm
-    { days: [6], slots: ['15:00–16:00','16:00–17:00','17:00–18:00'] },  // Sat 3-6pm
+  'Buba':    { days:[2,3,4,5,6] },
+  'Sky':     { days:[3,5] },
+  'Donsine': { days:[0,4,5,6] },
+  'Mostyx':  { days:[0,1,2,3,4,5,6], excluded:[
+    { days:[4], slots:['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'] },
+    { days:[6], slots:['15:00\u201316:00','16:00\u201317:00','17:00\u201318:00'] },
   ]},
 };
 
-// ?? HOURS PANEL ??????????????????????????????????????????????????????
-function toggleHoursPanel() {
-  document.getElementById('hoursPanel').classList.toggle('open');
-  document.getElementById('hoursPanelOverlay').classList.toggle('open');
-}
+// === HELPERS ===
+const pad2 = n => String(n).padStart(2,'0');
+const makeDateStr = (y,m,d) => `${y}-${pad2(m+1)}-${pad2(d)}`;
+const $ = id => document.getElementById(id);
 
-function updateHoursPanel() {
-  const body = document.getElementById('hoursPanelBody');
-  if (!body) return;
+function getMonthString() { return `${MONTHS[currentMonth]} ${currentYear}`; }
+function updateMonthLabel() { $('monthLabel').textContent = getMonthString(); }
 
-  const targets = { 'Alex RedWhite': 80, 'Raffo DJ': 80, 'Sound Bogie': 40 };
-  const resHours = {};
-  RESIDENTS.forEach(r => { resHours[r] = 0; });
-
-  // Count from all venue assignments
-  [arkbarAssignments, hipAssignments, loveAssignments].forEach(map => {
-    Object.values(map).forEach(dj => {
-      if (resHours[dj] !== undefined) resHours[dj]++;
-    });
-  });
-
-  let html = '';
-  RESIDENTS.forEach(r => {
-    const h = resHours[r];
-    const t = targets[r];
-    const pct = Math.min(h / t * 100, 100);
-    const cls = h > t ? 'over' : h >= t * 0.9 ? 'warn' : 'ok';
-    const color = DJ_COLORS[r] || '#aaa';
-    html += `<div class="hp-row">
-      <div class="hp-dot" style="background:${color}"></div>
-      <div class="hp-name">${r}</div>
-      <div class="hp-hours">${h}h</div>
-      <div class="hp-target">/${t}</div>
-    </div>
-    <div style="padding:0 0 10px 16px;">
-      <div class="hp-bar"><div class="hp-bar-fill ${cls}" style="width:${pct}%"></div></div>
-    </div>`;
-  });
-  body.innerHTML = html;
-}
-
-window.addEventListener('DOMContentLoaded', () => {
+// === INIT ===
+document.addEventListener('DOMContentLoaded', () => {
   const now = new Date();
   currentYear = now.getFullYear();
   currentMonth = now.getMonth();
   updateMonthLabel();
 });
 
-// ?? EYE TOGGLE ? SVG, always white, works on all platforms ??
+// === PASSWORD TOGGLE ===
 function togglePwView() {
-  const inp = document.getElementById('pwInput');
-  const icon = document.getElementById('eyeIcon');
+  const inp = $('pwInput');
+  const icon = $('eyeIcon');
   if (inp.type === 'password') {
     inp.type = 'text';
-    // Eye with slash (password visible)
     icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
   } else {
     inp.type = 'password';
-    // Eye open (password hidden)
     icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
   }
 }
 
+// === AUTH ===
 async function doLogin() {
-  const pw = document.getElementById('pwInput').value;
-  const errEl = document.getElementById('loginError');
+  const pw = $('pwInput').value;
+  const errEl = $('loginError');
   errEl.style.display = 'none';
   try {
     const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ password: pw })
     });
     const data = await res.json();
     if (data.success) {
-      document.getElementById('loginWrap').style.display = 'none';
-      document.getElementById('mainApp').classList.add('visible');
+      $('loginWrap').style.display = 'none';
+      $('mainApp').classList.add('visible');
       loadAll();
     } else {
       errEl.textContent = 'Incorrect password. Try again.';
@@ -727,46 +586,47 @@ async function doLogin() {
   }
 }
 
+// === NAVIGATION ===
+// BUG FIX: changeMonth now respects current tab
 function changeMonth(dir) {
   currentMonth += dir;
   if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
   updateMonthLabel();
-  loadAll();
-}
-
-function updateMonthLabel() {
-  document.getElementById('monthLabel').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
-}
-
-function getMonthString() {
-  return `${MONTHS[currentMonth]} ${currentYear}`;
-}
-
-function switchVenue(venue) {
-  currentVenue = venue;
-  document.getElementById('tabArkbar').classList.toggle('active', venue === 'arkbar');
-  document.getElementById('tabLove').classList.toggle('active', venue === 'love');
-  document.getElementById('tabHours').classList.toggle('active', venue === 'hours');
-  document.getElementById('headerTitle').textContent =
-    venue === 'arkbar' ? 'ARKbar / HIP Roster' :
-    venue === 'love'   ? 'Love Beach Club Roster' : 'DJ Hours';
-
-  document.getElementById('statusBarEl').style.display = venue === 'hours' ? 'none' : '';
-
-  if (venue === 'hours') {
+  if (currentVenue === 'hours') {
     loadHours();
   } else {
     loadAll();
   }
 }
 
+function switchVenue(venue) {
+  currentVenue = venue;
+  $('tabArkbar').classList.toggle('active', venue === 'arkbar');
+  $('tabLove').classList.toggle('active', venue === 'love');
+  $('tabHours').classList.toggle('active', venue === 'hours');
+  $('headerTitle').textContent =
+    venue === 'arkbar' ? 'ARKbar / HIP Roster' :
+    venue === 'love'   ? 'Love Beach Club Roster' : 'DJ Hours';
+  $('statusBarEl').style.display = venue === 'hours' ? 'none' : '';
+
+  // BUG FIX: Toggle hours sidebar visibility
+  const toggle = $('hoursToggle');
+  if (venue === 'hours') {
+    toggle.classList.add('hidden');
+  } else {
+    toggle.classList.remove('hidden');
+  }
+
+  if (venue === 'hours') loadHours();
+  else loadAll();
+}
+
+// === DATA LOADING ===
 async function loadAll() {
-  document.getElementById('mainContent').innerHTML =
-    '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
+  $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   const month = getMonthString();
   try {
-    // Load everything in parallel ? ARKbar, HIP, Love all separate rosters
     const [availRes, arkbarRes, hipRes, loveRes, djRes] = await Promise.all([
       fetch(`/api/availability?month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`),
@@ -774,18 +634,13 @@ async function loadAll() {
       fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`),
       fetch('/api/djs'),
     ]);
-    const availData  = await availRes.json();
-    const arkbarData = await arkbarRes.json();
-    const hipData    = await hipRes.json();
-    const loveData   = await loveRes.json();
-    const djData     = await djRes.json();
+    const [availData, arkbarData, hipData, loveData, djData] = await Promise.all([
+      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json()
+    ]);
 
-    // availability map: { "2026-03-01": { "21:00?22:00": ["Pick", ...] } }
     availability = availData.availability || {};
-    // blackouts from server: { "Alex RedWhite": { "2026-03-01": "full"|"morning" } }
     residentBlackouts = availData.blackouts || {};
 
-    // Parse each venue roster into a flat key?dj map
     function parseRoster(rows) {
       const map = {};
       (rows || []).forEach(row => {
@@ -795,10 +650,9 @@ async function loadAll() {
     }
 
     arkbarAssignments = parseRoster(arkbarData.roster);
-    hipAssignments    = parseRoster(hipData.roster);
-    loveAssignments   = parseRoster(loveData.roster);
+    hipAssignments = parseRoster(hipData.roster);
+    loveAssignments = parseRoster(loveData.roster);
 
-    // rosterAssignments points to the current venue being viewed
     if (currentVenue === 'arkbar') rosterAssignments = arkbarAssignments;
     else if (currentVenue === 'love') rosterAssignments = loveAssignments;
 
@@ -806,11 +660,11 @@ async function loadAll() {
     renderGrid();
     updateHoursPanel();
   } catch(e) {
-    document.getElementById('mainContent').innerHTML =
-      `<div class="loading">Error loading data: ${e.message}</div>`;
+    $('mainContent').innerHTML = `<div class="loading">Error loading data: ${e.message}</div>`;
   }
 }
 
+// === GRID RENDERER ===
 function renderGrid() {
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const isLove = currentVenue === 'love';
@@ -819,30 +673,23 @@ function renderGrid() {
   let slotHeaderRow = '<th class="th-date">Date</th>';
 
   if (!isLove) {
-    venueHeaderRow = `
-      <tr>
-        <th class="th-date" style="border-bottom:none;"></th>
-        <th colspan="${ARKBAR_SLOTS.length}" class="th-section-label" style="background:var(--teal);color:white;">
-          ARKbar Beach Club &nbsp;·&nbsp; 14:00 – 02:00
-        </th>
-        <th colspan="${HIP_SLOTS.length}" class="th-section-label" style="background:var(--orange);color:white;">
-          HIP Restaurant &nbsp;·&nbsp; 21:00 – 01:00
-        </th>
-      </tr>`;
+    venueHeaderRow = `<tr>
+      <th class="th-date" style="border-bottom:none"></th>
+      <th colspan="${ARKBAR_SLOTS.length}" class="th-section-label" style="background:var(--teal);color:#fff">ARKbar Beach Club &middot; 14:00 \u2013 02:00</th>
+      <th colspan="${HIP_SLOTS.length}" class="th-section-label" style="background:var(--orange);color:#fff">HIP Restaurant &middot; 21:00 \u2013 01:00</th>
+    </tr>`;
     ARKBAR_SLOTS.forEach(s => slotHeaderRow += `<th class="th-arkbar">${s}</th>`);
     HIP_SLOTS.forEach(s => slotHeaderRow += `<th class="th-hip">${s}</th>`);
   } else {
-    venueHeaderRow = `
-      <tr>
-        <th class="th-date" style="border-bottom:none;background:var(--love-dark)!important;"></th>
-        <th colspan="${LOVE_SAT_SLOTS.length}" class="th-section-label" style="background:var(--love-pink);color:white;">
-          Love Beach Club &nbsp;·&nbsp; Weekdays 14:00–17:00 &amp; 20:00–23:00 &nbsp;|&nbsp; Saturdays 14:00–00:00
-        </th>
-      </tr>`;
+    venueHeaderRow = `<tr>
+      <th class="th-date" style="border-bottom:none;background:var(--love-dark)!important"></th>
+      <th colspan="${LOVE_SAT_SLOTS.length}" class="th-section-label" style="background:var(--love-pink);color:#fff">Love Beach Club &middot; Weekdays 14:00\u201317:00 &amp; 20:00\u201323:00 | Saturdays 14:00\u201300:00</th>
+    </tr>`;
     LOVE_SAT_SLOTS.forEach(s => slotHeaderRow += `<th class="th-love">${s}</th>`);
   }
 
-  let bodyRows = '';
+  // Build rows using DocumentFragment approach for perf
+  const rowParts = [];
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(currentYear, currentMonth, d);
     const dow = date.getDay();
@@ -856,89 +703,60 @@ function renderGrid() {
       HIP_SLOTS.forEach(slot => { cells += buildCell(dateStr, slot, 'hip'); });
     } else {
       LOVE_SAT_SLOTS.forEach(slot => {
-        const isActive = isSat ? true : LOVE_WEEKDAY_SLOTS.includes(slot);
-        if (isActive) {
-          cells += buildCell(dateStr, slot, 'love');
-        } else {
-          cells += `<td class="td-slot empty-slot"></td>`;
-        }
+        const isActive = isSat || LOVE_WEEKDAY_SLOTS.includes(slot);
+        cells += isActive ? buildCell(dateStr, slot, 'love') : '<td class="td-slot empty-slot"></td>';
       });
     }
 
-    bodyRows += `
-      <tr>
-        <td class="td-date ${isWeekend ? 'weekend' : ''}">
-          <span class="dow">${DAYS[dow]}</span>
-          ${d} ${MONTHS[currentMonth].slice(0,3)}
-        </td>
-        ${cells}
-      </tr>`;
+    rowParts.push(`<tr>
+      <td class="td-date${isWeekend ? ' weekend' : ''}">
+        <span class="dow">${DAYS[dow]}</span>${d} ${MONTHS[currentMonth].slice(0,3)}
+      </td>${cells}
+    </tr>`);
   }
 
-  document.getElementById('mainContent').innerHTML = `
-    <div class="grid-wrap">
-      <table class="roster-table">
-        <thead>
-          ${venueHeaderRow}
-          <tr>${slotHeaderRow}</tr>
-        </thead>
-        <tbody>${bodyRows}</tbody>
-      </table>
-    </div>`;
+  $('mainContent').innerHTML = `<div class="grid-wrap">
+    <table class="roster-table">
+      <thead>${venueHeaderRow}<tr>${slotHeaderRow}</tr></thead>
+      <tbody>${rowParts.join('')}</tbody>
+    </table>
+  </div>`;
 }
 
+// === CELL BUILDER ===
 function buildCell(dateStr, slot, type) {
-  // Each venue uses its own assignment map
   const assignMap = type === 'hip' ? hipAssignments : rosterAssignments;
   const key = `${dateStr}|${slot}`;
   const assigned = assignMap[key] || '';
-
-  // Availability from the server map (regular DJs who submitted the form)
   const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
 
   let options = [];
 
   if (type === 'arkbar') {
-    // ARKbar: regular DJs from avail map + residents (unless blacked out)
-    const regularDJs = avail.filter(dj => !LOVE_ONLY.includes(dj) && !RESIDENTS.includes(dj));
-    options = [...regularDJs];
-    // Add residents if not fully blacked out today
+    options = avail.filter(dj => !LOVE_ONLY.includes(dj) && !RESIDENTS.includes(dj));
     RESIDENTS.forEach(res => {
       if (res === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return;
-      const blackout = residentBlackouts[res] && residentBlackouts[res][dateStr];
-      if (blackout === 'full') return;
-      if (blackout === 'morning' && MORNING_SLOTS.includes(slot)) return;
+      const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
+      if (bo === 'full') return;
+      if (bo === 'morning' && MORNING_SLOTS.includes(slot)) return;
       if (!options.includes(res)) options.push(res);
     });
-
-    // Always add Guest DJ as an option
     if (!options.includes('Guest DJ')) options.push('Guest DJ');
-
   } else if (type === 'hip') {
-    // HIP: regular DJs from avail map + residents (with conflict warning if double-booked)
-    // Residents CAN play HIP but we flag if they're already at ARKbar that slot
-    const regularDJs = avail.filter(dj => !LOVE_ONLY.includes(dj));
-    options = [...regularDJs];
-    // Add residents ? they may be assigned here even if at ARKbar (manager decides)
+    options = avail.filter(dj => !LOVE_ONLY.includes(dj));
     RESIDENTS.forEach(res => {
-      const blackout = residentBlackouts[res] && residentBlackouts[res][dateStr];
-      if (blackout === 'full') return;
+      const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
+      if (bo === 'full') return;
       if (!options.includes(res)) options.push(res);
     });
-
-    // Always add Guest DJ as an option for HIP
     if (!options.includes('Guest DJ')) options.push('Guest DJ');
-
   } else if (type === 'love') {
-    // Love: regular DJs from avail map (no ARKBAR_ONLY) + residents
-    const regularDJs = avail.filter(dj => !ARKBAR_ONLY.includes(dj) && !RESIDENTS.includes(dj));
-    options = [...regularDJs];
+    options = avail.filter(dj => !ARKBAR_ONLY.includes(dj) && !RESIDENTS.includes(dj));
     RESIDENTS.forEach(res => {
-      const blackout = residentBlackouts[res] && residentBlackouts[res][dateStr];
-      if (blackout === 'full') return;
+      const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
+      if (bo === 'full') return;
       if (!options.includes(res)) options.push(res);
     });
-    // Always add Guest DJ as an option
     if (!options.includes('Guest DJ')) options.push('Guest DJ');
   }
 
@@ -947,10 +765,7 @@ function buildCell(dateStr, slot, type) {
   const tdClass = `td-slot${isHip ? ' hip-slot' : isLove ? ' love-slot' : ''}`;
 
   if (options.length === 0 && !assigned) {
-    return `<td class="${tdClass} empty-slot">
-      <select class="slot-select no-avail" disabled title="No DJs available">
-        <option>—</option>
-      </select></td>`;
+    return `<td class="${tdClass} empty-slot"><select class="slot-select no-avail" disabled><option>\u2014</option></select></td>`;
   }
 
   const color = assigned ? (DJ_COLORS[assigned] || '#555') : '';
@@ -958,27 +773,21 @@ function buildCell(dateStr, slot, type) {
   const styleAttr = assigned ? `style="background:${color};border-color:${color}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
 
-  let opts = `<option value="">— assign —</option>`;
+  let opts = '<option value="">\u2014 assign \u2014</option>';
   options.forEach(dj => {
-    // For HIP/Love: flag if resident is already booked at ARKbar this slot
     const arkKey = `${dateStr}|${slot}`;
-    const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love')
-      && arkbarAssignments[arkKey] === dj;
-    const label = arkBooked ? `${dj} ⚠ ARKbar` : dj;
+    const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[arkKey] === dj;
+    const label = arkBooked ? `${dj} \u26A0 ARKbar` : dj;
     opts += `<option value="${dj}"${dj === assigned ? ' selected' : ''}>${label}</option>`;
   });
   if (assigned && !options.includes(assigned)) {
-    opts += `<option value="${assigned}" selected>${assigned} ⚠</option>`;
+    opts += `<option value="${assigned}" selected>${assigned} \u26A0</option>`;
   }
 
-  return `<td class="${tdClass}">
-    <select class="${selClass}" ${styleAttr}
-      data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}"
-      onchange="assignDJ(this)">
-      ${opts}
-    </select></td>`;
+  return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)">${opts}</select></td>`;
 }
 
+// === ASSIGN DJ ===
 async function assignDJ(sel) {
   if (isPublished) return;
 
@@ -991,20 +800,16 @@ async function assignDJ(sel) {
 
   if (dj) {
     if (LOVE_ONLY.includes(dj) && type !== 'love') {
-      showToast(`${dj} only plays Love Beach Club`, 'error');
-      sel.value = ''; return;
+      showToast(`${dj} only plays Love Beach Club`, 'error'); sel.value = ''; return;
     }
     if (ARKBAR_ONLY.includes(dj) && type === 'love') {
-      showToast(`${dj} only plays ARKbar / HIP`, 'error');
-      sel.value = ''; return;
+      showToast(`${dj} only plays ARKbar / HIP`, 'error'); sel.value = ''; return;
     }
 
-    const dayAssignments = Object.entries(rosterAssignments)
-      .filter(([k, v]) => k.startsWith(date) && v === dj);
+    const dayAssignments = Object.entries(rosterAssignments).filter(([k,v]) => k.startsWith(date) && v === dj);
     const maxSlots = RESIDENTS.includes(dj) ? 6 : 5;
     if (dayAssignments.length >= maxSlots) {
-      showToast(`${dj} already has ${maxSlots} slots on this day`, 'error');
-      sel.value = ''; return;
+      showToast(`${dj} already has ${maxSlots} slots on this day`, 'error'); sel.value = ''; return;
     }
 
     const combinedTimeline = [
@@ -1025,39 +830,36 @@ async function assignDJ(sel) {
         if (rosterAssignments[`${date}|${allSlots[i]}`] === dj) after++; else break;
       }
       if (before + after >= 3) {
-        showToast(`${dj} can't play more than 3 slots in a row`, 'error');
-        sel.value = ''; return;
+        showToast(`${dj} can't play more than 3 slots in a row`, 'error'); sel.value = ''; return;
       }
     }
 
     if (slotIdx >= 0) {
       const existingIdxs = allSlots
-        .map((s, i) => rosterAssignments[`${date}|${s}`] === dj ? i : -1)
+        .map((s,i) => rosterAssignments[`${date}|${s}`] === dj ? i : -1)
         .filter(i => i >= 0);
       if (existingIdxs.length > 0) {
         const min = Math.min(...existingIdxs);
         const max = Math.max(...existingIdxs);
         if (slotIdx !== min - 1 && slotIdx !== max + 1) {
-          showToast(`${dj}'s slots must be one unbroken block`, 'error');
-          sel.value = ''; return;
+          showToast(`${dj}'s slots must be one unbroken block`, 'error'); sel.value = ''; return;
         }
       }
     }
 
     if (type === 'hip' && rosterAssignments[`${date}|${slot}`] === dj) {
-      showToast(`${dj} is already on ARKbar at ${slot}`, 'error');
-      sel.value = ''; return;
+      showToast(`${dj} is already on ARKbar at ${slot}`, 'error'); sel.value = ''; return;
     }
 
     const otherAssignments = Object.entries(type === 'love' ? arkbarAssignments : loveAssignments)
-      .filter(([k, v]) => k.startsWith(date) && v === dj);
+      .filter(([k,v]) => k.startsWith(date) && v === dj);
     if (otherAssignments.length > 0) {
       const otherVenue = type === 'love' ? 'ARKbar' : 'Love Beach';
-      showToast(`${dj} is already booked at ${otherVenue} on this date`, 'error');
-      sel.value = ''; return;
+      showToast(`${dj} is already booked at ${otherVenue} on this date`, 'error'); sel.value = ''; return;
     }
   }
 
+  // Update UI immediately
   if (dj) {
     const color = DJ_COLORS[dj] || '#555';
     sel.className = 'slot-select assigned';
@@ -1081,14 +883,13 @@ async function assignDJ(sel) {
 
   try {
     const res = await fetch('/api/roster/assign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ venue: venueParam, date, slot, dj, month: getMonthString() })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ venue:venueParam, date, slot, dj, month:getMonthString() })
     });
     const data = await res.json();
     if (data.success) {
       showToast(dj ? `${dj} saved` : 'Cleared', 'success');
-        updateHoursPanel();
+      updateHoursPanel();
     } else {
       showToast('Save failed', 'error');
     }
@@ -1097,35 +898,29 @@ async function assignDJ(sel) {
   }
 }
 
+// === CLEAR ROSTER ===
 async function clearRoster() {
-  if (isPublished) {
-    showToast('Unlock roster before clearing', 'error');
-    return;
-  }
+  if (isPublished) { showToast('Unlock roster before clearing', 'error'); return; }
   if (currentVenue === 'hours') return;
 
-  const confirmed = confirm(`Clear ALL assignments for ${getMonthString()} — ${currentVenue === 'love' ? 'Love Beach' : 'ARKbar/HIP'}?\n\nThis cannot be undone.`);
-  if (!confirmed) return;
+  const venueName = currentVenue === 'love' ? 'Love Beach' : 'ARKbar/HIP';
+  if (!confirm(`Clear ALL assignments for ${getMonthString()} \u2014 ${venueName}?\n\nThis cannot be undone.`)) return;
 
   showToast('Clearing roster...', '');
   const venueParam = currentVenue === 'love' ? 'love' : 'arkbar';
   const month = getMonthString();
 
   try {
-    // ARKbar view clears both ARKbar and HIP tabs (separate sheets, same view)
-    const venuesToClear = venueParam === 'arkbar' ? ['arkbar', 'hip'] : [venueParam];
+    const venuesToClear = venueParam === 'arkbar' ? ['arkbar','hip'] : [venueParam];
     await Promise.all(venuesToClear.map(v =>
       fetch('/api/roster/clear', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ venue: v, month })
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ venue:v, month })
       })
     ));
-
     rosterAssignments = {};
     if (venueParam === 'arkbar') { arkbarAssignments = {}; hipAssignments = {}; }
     else loveAssignments = {};
-
     renderGrid();
     showToast('Roster cleared', 'success');
   } catch(e) {
@@ -1133,10 +928,11 @@ async function clearRoster() {
     if (venueParam === 'arkbar') { arkbarAssignments = {}; hipAssignments = {}; }
     else loveAssignments = {};
     renderGrid();
-    showToast('Cleared locally — check connection', 'error');
+    showToast('Cleared locally \u2014 check connection', 'error');
   }
 }
 
+// === AUTO-SUGGEST ===
 async function suggestRoster() {
   if (isPublished) { showToast('Unlock roster before auto-suggesting', 'error'); return; }
   if (currentVenue === 'hours') { showToast('Switch to a venue tab first', 'error'); return; }
@@ -1147,102 +943,69 @@ async function suggestRoster() {
   const month = getMonthString();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  // ?? CONFIGURATION ?????????????????????????????????????????????????????
-  // Based on February reference roster pattern
-  const TARGETS = { 'Alex RedWhite': 80, 'Raffo DJ': 80, 'Sound Bogie': 40 };
-  const MAX_CONSECUTIVE = 3; // max 3 consecutive slots
-  const MAX_DAY_HOURS = 6;   // max 6h per day (but with gap - not 6 consecutive)
-
-  // Sound Bogie: never auto-assigned to 14:00-17:00
-  const SOUND_BLOCKED = new Set(['14:00–15:00','15:00–16:00','16:00–17:00']);
+  // Configuration
+  const TARGETS = { 'Alex RedWhite':80, 'Raffo DJ':80, 'Sound Bogie':40 };
+  const MAX_CONSECUTIVE = 3;
+  const MAX_DAY_HOURS = 6;
+  const SOUND_BLOCKED = new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']);
 
   const ALL_ARKBAR_SLOTS = [
-    '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
-    '18:00–19:00','20:00–21:00','21:00–22:00',
-    '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
+    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+    '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
+    '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
   ];
 
-  // ?? ZONE DEFINITIONS ??????????????????????????????????????????????????
-  // Afternoon: 14:00-17:00 (3 slots) ? Alex & Raffo rotate, leave gaps for Pick/D.Davoted
-  // Cooldown: 17:00-19:00 (2 slots) ? Raffo & Sound rotate, leave gaps for others
-  // Evening: 20:00-23:00 (3 slots) ? leave mostly empty for regular DJs (Pick, Tony, Sound, etc)
-  // Late Night: 23:00-02:00 (3 slots) ? Alex, Raffo, Sound rotate in strict 3-day cycle
+  // Zone definitions
+  const ZONE_AFTERNOON = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
+  const ZONE_COOLDOWN  = ['17:00\u201318:00','18:00\u201319:00'];
+  const ZONE_LATENIGHT = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
 
-  const ZONE_AFTERNOON = ['14:00–15:00','15:00–16:00','16:00–17:00'];
-  const ZONE_COOLDOWN  = ['17:00–18:00','18:00–19:00'];
-  const ZONE_EVENING   = ['20:00–21:00','21:00–22:00','22:00–23:00'];
-  const ZONE_LATENIGHT = ['23:00–00:00','00:00–01:00','01:00–02:00'];
-
-  // Late night: strict 3-day rotation ? Alex, Raffo, Sound
-  const LATENIGHT_ROTATION = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
-
-  // Afternoon: Alex & Raffo alternate, with gaps (every other day, not consecutive)
-  // Pattern: Alex, gap, Raffo, gap, Alex, gap, Raffo...
+  const LATENIGHT_ROTATION = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
   const AFTERNOON_ROTATION = ['Alex RedWhite', null, 'Raffo DJ', null];
-
-  // Cooldown: Raffo & Sound alternate with gaps
   const COOLDOWN_ROTATION = ['Raffo DJ', null, 'Sound Bogie', null];
 
-  // Working copy
   const working = { ...rosterAssignments };
   const otherVenueMap = isLove ? arkbarAssignments : loveAssignments;
-
-  // Pre-build other venue lookup
   const otherVenueDJs = {};
-  Object.entries(otherVenueMap).forEach(([k, dj]) => {
+  Object.entries(otherVenueMap).forEach(([k,dj]) => {
     const d = k.split('|')[0];
     (otherVenueDJs[d] ??= new Set()).add(dj);
   });
 
-  // Track hours
   const djHours = {};
   RESIDENTS.forEach(r => { djHours[r] = 0; });
-  const djDaySlots = {}; // "dj|date" -> [slot, slot, ...]
+  const djDaySlots = {};
 
-  // Count existing assignments
-  Object.entries(working).forEach(([k, dj]) => {
+  Object.entries(working).forEach(([k,dj]) => {
     if (RESIDENTS.includes(dj)) {
       djHours[dj] = (djHours[dj] || 0) + 1;
-      const date = k.split('|')[0];
-      const dayKey = `${dj}|${date}`;
-      (djDaySlots[dayKey] ??= []).push(k.split('|')[1]);
+      const d = k.split('|')[0];
+      (djDaySlots[`${dj}|${d}`] ??= []).push(k.split('|')[1]);
     }
   });
 
-  function getDaySlotCount(dj, dateStr) {
-    return (djDaySlots[`${dj}|${dateStr}`] || []).length;
-  }
+  function getDaySlotCount(dj, dateStr) { return (djDaySlots[`${dj}|${dateStr}`] || []).length; }
   function addSlot(dj, dateStr, slot) {
-    const dayKey = `${dj}|${dateStr}`;
-    (djDaySlots[dayKey] ??= []).push(slot);
+    (djDaySlots[`${dj}|${dateStr}`] ??= []).push(slot);
     djHours[dj] = (djHours[dj] || 0) + 1;
   }
 
-  // Check if DJ is available
   function canAssign(dj, dateStr, slot) {
     if ((djHours[dj] || 0) >= (TARGETS[dj] || 999)) return false;
     if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
     if (working[`${dateStr}|${slot}`]) return false;
     if (otherVenueDJs[dateStr]?.has(dj)) return false;
     if (dj === 'Sound Bogie' && SOUND_BLOCKED.has(slot)) return false;
-
-    // Check blackouts
     const bo = residentBlackouts[dj]?.[dateStr];
     if (bo === 'full') return false;
     if (bo === 'morning' && MORNING_SLOTS.includes(slot)) return false;
-
     return true;
   }
 
-  // Check if assigning a zone would create >3 consecutive
   function wouldBreakConsecutive(dj, dateStr, zoneSlots) {
-    // Simulate assignment
     const allSlotIdx = new Set();
-    const existingSlots = djDaySlots[`${dj}|${dateStr}`] || [];
-    existingSlots.forEach(s => { const i = ALL_ARKBAR_SLOTS.indexOf(s); if (i >= 0) allSlotIdx.add(i); });
+    (djDaySlots[`${dj}|${dateStr}`] || []).forEach(s => { const i = ALL_ARKBAR_SLOTS.indexOf(s); if (i >= 0) allSlotIdx.add(i); });
     zoneSlots.forEach(s => { const i = ALL_ARKBAR_SLOTS.indexOf(s); if (i >= 0) allSlotIdx.add(i); });
-
-    // Check longest consecutive run
     const sorted = [...allSlotIdx].sort((a,b) => a - b);
     let maxRun = 1, run = 1;
     for (let i = 1; i < sorted.length; i++) {
@@ -1252,8 +1015,6 @@ async function suggestRoster() {
     return maxRun > MAX_CONSECUTIVE;
   }
 
-  // Check same-zone-consecutive-day rule
-  // Returns true if this DJ played the same zone yesterday
   function playedZoneYesterday(dj, dateStr, zoneSlots) {
     const d = new Date(dateStr);
     d.setDate(d.getDate() - 1);
@@ -1264,160 +1025,105 @@ async function suggestRoster() {
   if (!isLove) {
     const toSave = [];
 
-    // ?? PASS 1: LATE NIGHT (23:00-02:00) ? strict 3-day rotation ????????
-    // Alex day 1, Raffo day 2, Sound day 3, repeat
+    // Pass 1: Late Night - strict 3-day rotation
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = makeDateStr(currentYear, currentMonth, d);
-      const rotIdx = (d - 1) % LATENIGHT_ROTATION.length;
-      const dj = LATENIGHT_ROTATION[rotIdx];
-
+      const dj = LATENIGHT_ROTATION[(d - 1) % LATENIGHT_ROTATION.length];
       if (!canAssign(dj, dateStr, ZONE_LATENIGHT[0])) continue;
       if (wouldBreakConsecutive(dj, dateStr, ZONE_LATENIGHT)) continue;
-
-      // Check all 3 slots available
-      const canDoAll = ZONE_LATENIGHT.every(slot =>
-        !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot)
-      );
-      if (!canDoAll) continue;
-
+      if (!ZONE_LATENIGHT.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
       ZONE_LATENIGHT.forEach(slot => {
-        const key = `${dateStr}|${slot}`;
-        working[key] = dj;
+        working[`${dateStr}|${slot}`] = dj;
         addSlot(dj, dateStr, slot);
-        toSave.push({ dateStr, slot, type: 'arkbar', dj });
+        toSave.push({ dateStr, slot, type:'arkbar', dj });
       });
     }
 
-    // ?? PASS 2: AFTERNOON (14:00-17:00) ? Alex & Raffo alternate with gaps
-    // Pattern: Alex, skip, Raffo, skip ? leaving gaps for Pick/D.Davoted
+    // Pass 2: Afternoon - Alex & Raffo alternate with gaps
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = makeDateStr(currentYear, currentMonth, d);
-      const rotIdx = (d - 1) % AFTERNOON_ROTATION.length;
-      const dj = AFTERNOON_ROTATION[rotIdx];
-
-      if (!dj) continue; // gap day - leave for manual assignment
+      const dj = AFTERNOON_ROTATION[(d - 1) % AFTERNOON_ROTATION.length];
+      if (!dj) continue;
       if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
       if (wouldBreakConsecutive(dj, dateStr, ZONE_AFTERNOON)) continue;
       if (playedZoneYesterday(dj, dateStr, ZONE_AFTERNOON)) continue;
-
-      const canDoAll = ZONE_AFTERNOON.every(slot =>
-        !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot)
-      );
-      if (!canDoAll) continue;
-
+      if (!ZONE_AFTERNOON.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
       ZONE_AFTERNOON.forEach(slot => {
-        const key = `${dateStr}|${slot}`;
-        working[key] = dj;
+        working[`${dateStr}|${slot}`] = dj;
         addSlot(dj, dateStr, slot);
-        toSave.push({ dateStr, slot, type: 'arkbar', dj });
+        toSave.push({ dateStr, slot, type:'arkbar', dj });
       });
     }
 
-    // ?? PASS 3: COOLDOWN (17:00-19:00) ? Raffo & Sound alternate with gaps
+    // Pass 3: Cooldown - Raffo & Sound alternate with gaps
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = makeDateStr(currentYear, currentMonth, d);
-      const rotIdx = (d - 1) % COOLDOWN_ROTATION.length;
-      const dj = COOLDOWN_ROTATION[rotIdx];
-
+      const dj = COOLDOWN_ROTATION[(d - 1) % COOLDOWN_ROTATION.length];
       if (!dj) continue;
       if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
       if (wouldBreakConsecutive(dj, dateStr, ZONE_COOLDOWN)) continue;
       if (playedZoneYesterday(dj, dateStr, ZONE_COOLDOWN)) continue;
-
-      const canDoAll = ZONE_COOLDOWN.every(slot =>
-        !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot)
-      );
-      if (!canDoAll) continue;
-
+      if (!ZONE_COOLDOWN.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
       ZONE_COOLDOWN.forEach(slot => {
-        const key = `${dateStr}|${slot}`;
-        working[key] = dj;
+        working[`${dateStr}|${slot}`] = dj;
         addSlot(dj, dateStr, slot);
-        toSave.push({ dateStr, slot, type: 'arkbar', dj });
+        toSave.push({ dateStr, slot, type:'arkbar', dj });
       });
     }
 
-    // ?? EVENING (20:00-23:00) ? LEFT EMPTY for manual/regular DJs ???????
-    // This zone is intentionally not auto-filled
-
-    // ?? PASS 4: HIP RESTAURANT ? known weekly DJs, all 4 slots ??????????
+    // Pass 4: HIP Restaurant
     const hipToSave = [];
     for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(currentYear, currentMonth, d);
-      const dow = date.getDay();
+      const dow = new Date(currentYear, currentMonth, d).getDay();
       const dateStr = makeDateStr(currentYear, currentMonth, d);
       const hipDJ = HIP_ROTATION[dow];
       if (!hipDJ) continue;
-
-      // Check all 4 HIP slots are empty
-      const allEmpty = HIP_SLOTS.every(slot => !hipAssignments[`${dateStr}|${slot}`]);
-      if (!allEmpty) continue;
-
+      if (!HIP_SLOTS.every(slot => !hipAssignments[`${dateStr}|${slot}`])) continue;
       HIP_SLOTS.forEach(slot => {
         hipAssignments[`${dateStr}|${slot}`] = hipDJ;
-        hipToSave.push({ dateStr, slot, type: 'hip', dj: hipDJ });
+        hipToSave.push({ dateStr, slot, type:'hip', dj:hipDJ });
       });
     }
 
-    // ?? SUMMARY & SAVE ??????????????????????????????????????????????????
     const totalSlots = toSave.length + hipToSave.length;
-    if (totalSlots === 0) {
-      showToast('No slots could be auto-assigned', 'error');
-      return;
-    }
+    if (totalSlots === 0) { showToast('No slots could be auto-assigned', 'error'); return; }
 
     rosterAssignments = { ...working };
     arkbarAssignments = { ...working };
     renderGrid();
     updateHoursPanel();
 
-    const summary = RESIDENTS.map(r => `${r}: ${djHours[r] || 0}h`).join(' · ');
+    const summary = RESIDENTS.map(r => `${r}: ${djHours[r] || 0}h`).join(' \u00B7 ');
     showToast(`Saving ${totalSlots} slots...`, 'success');
 
     try {
       const saves = [];
-      if (toSave.length > 0) {
-        saves.push(fetch('/api/roster/batch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            venue: 'arkbar', month,
-            assignments: toSave.map(({ dateStr, slot, dj }) => ({ date: dateStr, slot, dj }))
-          })
-        }));
-      }
-      if (hipToSave.length > 0) {
-        saves.push(fetch('/api/roster/batch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            venue: 'hip', month,
-            assignments: hipToSave.map(({ dateStr, slot, dj }) => ({ date: dateStr, slot, dj }))
-          })
-        }));
-      }
+      if (toSave.length > 0) saves.push(fetch('/api/roster/batch', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ venue:'arkbar', month, assignments:toSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
+      }));
+      if (hipToSave.length > 0) saves.push(fetch('/api/roster/batch', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ venue:'hip', month, assignments:hipToSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
+      }));
       const results = await Promise.all(saves);
       const allOk = (await Promise.all(results.map(r => r.json()))).every(d => d.success);
       showToast(allOk
-        ? `Done: ARKbar ${toSave.length} + HIP ${hipToSave.length} slots · ${summary}`
-        : 'Some saves failed — check sheet', allOk ? 'success' : 'error');
+        ? `Done: ARKbar ${toSave.length} + HIP ${hipToSave.length} slots \u00B7 ${summary}`
+        : 'Some saves failed \u2014 check sheet', allOk ? 'success' : 'error');
     } catch(e) {
-      showToast('UI updated — check connection', 'error');
+      showToast('UI updated \u2014 check connection', 'error');
     }
     return;
   }
 
-  // ?? LOVE BEACH AUTO-SUGGEST ???????????????????????????????????????????
+  // Love Beach auto-suggest
   const loveToSave = [];
   const loveWorking = { ...loveAssignments };
-
-  const LOVE_AFTERNOON = ['14:00–15:00','15:00–16:00','16:00–17:00'];
-  const LOVE_EVENING = ['20:00–21:00','21:00–22:00','22:00–23:00'];
-
-  // Build list of Love DJs sorted by name for consistent rotation
+  const LOVE_AFTERNOON = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
+  const LOVE_EVENING = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'];
   const loveDJNames = Object.keys(LOVE_DJS).sort();
-  let loveRotAfternoon = 0;
-  let loveRotEvening = 0;
+  let loveRotAfternoon = 0, loveRotEvening = 0;
 
   function isLoveDJAvailable(djName, dateStr, slot) {
     const info = LOVE_DJS[djName];
@@ -1429,66 +1135,37 @@ async function suggestRoster() {
         if (excl.days.includes(dow) && excl.slots.includes(slot)) return false;
       }
     }
-    // Not already at ARKbar this date
-    if (Object.entries(arkbarAssignments).some(([k, v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
+    if (Object.entries(arkbarAssignments).some(([k,v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
     return true;
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(currentYear, currentMonth, d);
-    const dow = date.getDay();
+    const dow = new Date(currentYear, currentMonth, d).getDay();
     const isSat = dow === 6;
     const dateStr = makeDateStr(currentYear, currentMonth, d);
     const activeSlots = isSat ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
+    const afternoon = activeSlots.filter(s => s < '19:00\u201320:00');
+    const evening = activeSlots.filter(s => s >= '20:00\u201321:00');
 
-    const afternoon = activeSlots.filter(s => s < '19:00–20:00');
-    const evening = activeSlots.filter(s => s >= '20:00–21:00');
-
-    // Afternoon block ? rotate through available Love DJs
-    if (afternoon.length > 0) {
-      const allEmpty = afternoon.every(s => !loveWorking[`${dateStr}|${s}`]);
-      if (allEmpty) {
-        for (let attempt = 0; attempt < loveDJNames.length; attempt++) {
-          const djName = loveDJNames[(loveRotAfternoon + attempt) % loveDJNames.length];
-          const canDoAll = afternoon.every(s => isLoveDJAvailable(djName, dateStr, s));
-          if (canDoAll) {
-            afternoon.forEach(slot => {
-              const key = `${dateStr}|${slot}`;
-              loveWorking[key] = djName;
-              loveToSave.push({ dateStr, slot, type: 'love', dj: djName });
-            });
-            loveRotAfternoon = (loveRotAfternoon + attempt + 1) % loveDJNames.length;
-            break;
-          }
-        }
+    [{ block:afternoon, rot:'afternoon' }, { block:evening, rot:'evening' }].forEach(({block, rot}) => {
+      if (block.length === 0) return;
+      if (!block.every(s => !loveWorking[`${dateStr}|${s}`])) return;
+      for (let attempt = 0; attempt < loveDJNames.length; attempt++) {
+        const idx = rot === 'afternoon' ? loveRotAfternoon : loveRotEvening;
+        const djName = loveDJNames[(idx + attempt) % loveDJNames.length];
+        if (!block.every(s => isLoveDJAvailable(djName, dateStr, s))) continue;
+        block.forEach(slot => {
+          loveWorking[`${dateStr}|${slot}`] = djName;
+          loveToSave.push({ dateStr, slot, type:'love', dj:djName });
+        });
+        if (rot === 'afternoon') loveRotAfternoon = (loveRotAfternoon + attempt + 1) % loveDJNames.length;
+        else loveRotEvening = (loveRotEvening + attempt + 1) % loveDJNames.length;
+        break;
       }
-    }
-
-    // Evening block ? same rotation
-    if (evening.length > 0) {
-      const allEmpty = evening.every(s => !loveWorking[`${dateStr}|${s}`]);
-      if (allEmpty) {
-        for (let attempt = 0; attempt < loveDJNames.length; attempt++) {
-          const djName = loveDJNames[(loveRotEvening + attempt) % loveDJNames.length];
-          const canDoAll = evening.every(s => isLoveDJAvailable(djName, dateStr, s));
-          if (canDoAll) {
-            evening.forEach(slot => {
-              const key = `${dateStr}|${slot}`;
-              loveWorking[key] = djName;
-              loveToSave.push({ dateStr, slot, type: 'love', dj: djName });
-            });
-            loveRotEvening = (loveRotEvening + attempt + 1) % loveDJNames.length;
-            break;
-          }
-        }
-      }
-    }
+    });
   }
 
-  if (loveToSave.length === 0) {
-    showToast('No available DJs for Love Beach empty slots', 'error');
-    return;
-  }
+  if (loveToSave.length === 0) { showToast('No available DJs for Love Beach empty slots', 'error'); return; }
 
   loveAssignments = { ...loveWorking };
   rosterAssignments = loveAssignments;
@@ -1498,59 +1175,50 @@ async function suggestRoster() {
 
   try {
     const res = await fetch('/api/roster/batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        venue: 'love', month,
-        assignments: loveToSave.map(({ dateStr, slot, dj }) => ({ date: dateStr, slot, dj }))
-      })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ venue:'love', month, assignments:loveToSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
     });
     const data = await res.json();
     showToast(data.success
       ? `Done: ${loveToSave.length} Love Beach slots filled`
-      : `UI updated — sheet sync failed`, data.success ? 'success' : 'error');
+      : 'UI updated \u2014 sheet sync failed', data.success ? 'success' : 'error');
   } catch(e) {
-    showToast('UI updated — check connection', 'error');
+    showToast('UI updated \u2014 check connection', 'error');
   }
 }
 
-
-let isPublished = false;
-
+// === PUBLISH ===
 function publishRoster() {
   if (!isPublished) {
     isPublished = true;
-    document.getElementById('statusPill').className = 'status-pill published';
-    document.getElementById('statusPill').textContent = '● Published';
-    document.getElementById('statusText').textContent = `Published — ${MONTHS[currentMonth]} ${currentYear}`;
-    document.getElementById('btnPublish').textContent = 'Unlock Roster';
-    document.getElementById('btnPrint').style.display = 'inline-block';
-    document.getElementById('mainContent').classList.add('roster-locked');
-    showToast('Roster published — locked for editing', 'success');
+    $('statusPill').className = 'status-pill published';
+    $('statusPill').textContent = '\u25CF Published';
+    $('statusText').textContent = `Published \u2014 ${getMonthString()}`;
+    $('btnPublish').textContent = 'Unlock Roster';
+    $('btnPrint').style.display = 'inline-block';
+    $('mainContent').classList.add('roster-locked');
+    showToast('Roster published \u2014 locked for editing', 'success');
   } else {
     isPublished = false;
-    document.getElementById('statusPill').className = 'status-pill draft';
-    document.getElementById('statusPill').textContent = '● Draft';
-    document.getElementById('statusText').textContent = 'Unsaved changes will auto-save per cell';
-    document.getElementById('btnPublish').textContent = 'Publish Roster';
-    document.getElementById('btnPrint').style.display = 'none';
-    document.getElementById('mainContent').classList.remove('roster-locked');
+    $('statusPill').className = 'status-pill draft';
+    $('statusPill').textContent = '\u25CF Draft';
+    $('statusText').textContent = 'Unsaved changes will auto-save per cell';
+    $('btnPublish').textContent = 'Publish Roster';
+    $('btnPrint').style.display = 'none';
+    $('mainContent').classList.remove('roster-locked');
     showToast('Roster unlocked for editing', '');
   }
 }
 
 function printRoster() {
   const venue = currentVenue === 'arkbar' ? 'ARKbar / HIP Restaurant' : 'Love Beach Club';
-  const header = document.getElementById('printHeader');
-  if (header) {
-    header.textContent = `${venue}  —  DJ Roster  —  ${MONTHS[currentMonth]} ${currentYear}`;
-  }
+  $('printHeader').textContent = `${venue}  \u2014  DJ Roster  \u2014  ${getMonthString()}`;
   setTimeout(() => window.print(), 100);
 }
 
+// === HOURS TAB ===
 async function loadHours() {
-  document.getElementById('mainContent').innerHTML =
-    '<div class="loading"><div class="spinner"></div>Loading hours...</div>';
+  $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading hours...</div>';
   const month = getMonthString();
   try {
     const [arkRes, loveRes, djRes] = await Promise.all([
@@ -1558,39 +1226,30 @@ async function loadHours() {
       fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`),
       fetch('/api/djs')
     ]);
-    const arkData  = await arkRes.json();
-    const loveData = await loveRes.json();
-    const djData   = await djRes.json();
-
+    const [arkData, loveData, djData] = await Promise.all([arkRes.json(), loveRes.json(), djRes.json()]);
     const arkHours = {}, loveHours = {};
     (arkData.roster || []).forEach(r => { if (r[2]) arkHours[r[2]] = (arkHours[r[2]] || 0) + 1; });
     (loveData.roster || []).forEach(r => { if (r[2]) loveHours[r[2]] = (loveHours[r[2]] || 0) + 1; });
-
     renderHours(djData.djs || [], arkHours, loveHours);
   } catch(e) {
-    document.getElementById('mainContent').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
+    $('mainContent').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
   }
 }
 
 function renderHours(djs, arkHours, loveHours) {
   const normalize = name => name ? name.trim().toLowerCase() : '';
-
-  const arkHoursNorm = {};
-  const loveHoursNorm = {};
-  Object.entries(arkHours).forEach(([k, v]) => { arkHoursNorm[normalize(k)] = v; });
-  Object.entries(loveHours).forEach(([k, v]) => { loveHoursNorm[normalize(k)] = v; });
+  const arkNorm = {}, loveNorm = {};
+  Object.entries(arkHours).forEach(([k,v]) => { arkNorm[normalize(k)] = v; });
+  Object.entries(loveHours).forEach(([k,v]) => { loveNorm[normalize(k)] = v; });
 
   const totals = {};
-  djs.forEach(d => {
-    const n = normalize(d.name);
-    totals[d.name] = (arkHoursNorm[n] || 0) + (loveHoursNorm[n] || 0);
-  });
+  djs.forEach(d => { totals[d.name] = (arkNorm[normalize(d.name)] || 0) + (loveNorm[normalize(d.name)] || 0); });
 
-  const totalHours = Object.values(totals).reduce((a, b) => a + b, 0);
-  const totalCost  = djs.reduce((sum, d) => sum + (totals[d.name] || 0) * d.rate, 0);
-  const maxHours   = Math.max(...Object.values(totals), RESIDENT_TARGET);
+  const totalHours = Object.values(totals).reduce((a,b) => a + b, 0);
+  const totalCost = djs.reduce((sum,d) => sum + (totals[d.name] || 0) * d.rate, 0);
+  const maxHours = Math.max(...Object.values(totals), RESIDENT_TARGET);
 
-  const sorted = [...djs].sort((a, b) => {
+  const sorted = [...djs].sort((a,b) => {
     const aR = RESIDENTS.includes(a.name) ? 1 : 0;
     const bR = RESIDENTS.includes(b.name) ? 1 : 0;
     if (aR !== bR) return bR - aR;
@@ -1598,8 +1257,8 @@ function renderHours(djs, arkHours, loveHours) {
   });
 
   const rows = sorted.map(dj => {
-    const ark  = arkHoursNorm[normalize(dj.name)] || 0;
-    const love = loveHoursNorm[normalize(dj.name)] || 0;
+    const ark = arkNorm[normalize(dj.name)] || 0;
+    const love = loveNorm[normalize(dj.name)] || 0;
     const total = ark + love;
     const isResident = RESIDENTS.includes(dj.name);
     const has80Target = RESIDENTS_80HR.includes(dj.name);
@@ -1608,116 +1267,76 @@ function renderHours(djs, arkHours, loveHours) {
     const barClass = `hours-bar-fill${isResident ? ' resident' : total === 0 ? ' zero' : ''}`;
     const isSoundBogie = dj.name === 'Sound Bogie';
     const djTarget = isSoundBogie ? 35 : RESIDENT_TARGET;
-    const djTargetLabel = isSoundBogie ? '30–40' : RESIDENT_TARGET;
+    const djTargetLabel = isSoundBogie ? '30\u201340' : RESIDENT_TARGET;
     let badge = '';
     if (has80Target || isSoundBogie) {
-      if (total >= djTarget) {
-        badge = `<span class="badge badge-ok">${total}/${djTargetLabel}h ✓</span>`;
-      } else {
-        const rem = djTarget - total;
-        badge = `<span class="badge badge-low">${total}/${djTargetLabel}h</span><span style="margin-left:6px;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:800;background:#fff8e1;color:#f57f17;border:1px solid #ffe082">${rem}h needed</span>`;
-      }
+      badge = total >= djTarget
+        ? `<span class="badge badge-ok">${total}/${djTargetLabel}h \u2713</span>`
+        : `<span class="badge badge-low">${total}/${djTargetLabel}h</span><span class="badge-needed">${djTarget - total}h needed</span>`;
     }
     return `<tr>
       <td><div class="dj-name-cell" style="cursor:pointer" onclick="showDJDetail('${dj.name.replace(/'/g,"\\'")}')">
         <div class="dj-dot" style="background:${DJ_COLORS[dj.name]||'#aaa'}"></div>
         <div>
           <div class="dj-name" style="text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">${dj.name}</div>
-          ${isResident ? '<div style="font-size:9px;color:var(--teal);font-weight:800;text-transform:uppercase;letter-spacing:0.06em">Resident</div>' : ''}
+          ${isResident ? '<div style="font-size:9px;color:var(--teal);font-weight:800;text-transform:uppercase;letter-spacing:.06em">Resident</div>' : ''}
         </div>
       </div></td>
-      <td class="right">${ark > 0 ? ark + 'h' : '—'}</td>
-      <td class="right">${love > 0 ? love + 'h' : '—'}</td>
+      <td class="right">${ark > 0 ? ark + 'h' : '\u2014'}</td>
+      <td class="right">${love > 0 ? love + 'h' : '\u2014'}</td>
       <td><div class="hours-bar-wrap">
         <div class="hours-bar-bg"><div class="${barClass}" style="width:${pct}%"></div></div>
-        <div class="hours-val">${total}h</div>
-        ${badge}
+        <div class="hours-val">${total}h</div>${badge}
       </div></td>
-      <td class="right" style="color:var(--text-mid)">฿${dj.rate.toLocaleString()}/h</td>
-      <td class="right" style="font-weight:800;color:var(--navy)">${total > 0 ? '฿'+cost.toLocaleString() : '—'}</td>
+      <td class="right" style="color:var(--text-secondary)">\u0E3F${dj.rate.toLocaleString()}/h</td>
+      <td class="right" style="font-weight:800;color:var(--navy)">${total > 0 ? '\u0E3F' + cost.toLocaleString() : '\u2014'}</td>
     </tr>`;
   }).join('');
 
-  const arkTotal  = Object.values(arkHours).reduce((a,b)=>a+b,0);
+  const arkTotal = Object.values(arkHours).reduce((a,b)=>a+b,0);
   const loveTotal = Object.values(loveHours).reduce((a,b)=>a+b,0);
 
-  document.getElementById('mainContent').innerHTML = `
-    <div class="hours-wrap">
-      <div class="summary-row">
-        <div class="summary-card">
-          <div class="card-label">Total Hours</div>
-          <div class="card-value">${totalHours}h</div>
-          <div class="card-sub">${getMonthString()}</div>
-        </div>
-        <div class="summary-card">
-          <div class="card-label">Total Cost</div>
-          <div class="card-value" style="font-size:20px">฿${totalCost.toLocaleString()}</div>
-          <div class="card-sub">All venues</div>
-        </div>
-        <div class="summary-card">
-          <div class="card-label">ARKbar / HIP</div>
-          <div class="card-value">${arkTotal}h</div>
-          <div class="card-sub">Hours booked</div>
-        </div>
-        <div class="summary-card">
-          <div class="card-label">Love Beach</div>
-          <div class="card-value">${loveTotal}h</div>
-          <div class="card-sub">Hours booked</div>
-        </div>
-      </div>
-      <div class="hours-table-wrap">
-        <div class="hours-table-header">
-          <h2>Hours by DJ — ${getMonthString()}</h2>
-        </div>
-        <table class="hours-table">
-          <thead><tr>
-            <th>DJ</th>
-            <th class="right">ARKbar/HIP</th>
-            <th class="right">Love Beach</th>
-            <th>Total Hours</th>
-            <th class="right">Rate</th>
-            <th class="right">Total Cost</th>
-          </tr></thead>
-          <tbody>
-            ${rows}
-            <tr class="totals-row">
-              <td>Total</td>
-              <td class="right">${arkTotal}h</td>
-              <td class="right">${loveTotal}h</td>
-              <td><div class="hours-val" style="font-size:14px;color:var(--navy)">${totalHours}h</div></td>
-              <td></td>
-              <td class="right" style="font-size:14px;color:var(--navy)">฿${totalCost.toLocaleString()}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="target-note">Targets: Alex RedWhite & Raffo DJ — ${RESIDENT_TARGET}h/month · Sound Bogie — 30–40h/month</div>
-      </div>
-    </div>`;
+  $('mainContent').innerHTML = `<div class="hours-wrap">
+    <div class="summary-row">
+      <div class="summary-card"><div class="card-label">Total Hours</div><div class="card-value">${totalHours}h</div><div class="card-sub">${getMonthString()}</div></div>
+      <div class="summary-card"><div class="card-label">Total Cost</div><div class="card-value" style="font-size:20px">\u0E3F${totalCost.toLocaleString()}</div><div class="card-sub">All venues</div></div>
+      <div class="summary-card"><div class="card-label">ARKbar / HIP</div><div class="card-value">${arkTotal}h</div><div class="card-sub">Hours booked</div></div>
+      <div class="summary-card"><div class="card-label">Love Beach</div><div class="card-value">${loveTotal}h</div><div class="card-sub">Hours booked</div></div>
+    </div>
+    <div class="hours-table-wrap">
+      <div class="hours-table-header"><h2>Hours by DJ \u2014 ${getMonthString()}</h2></div>
+      <table class="hours-table">
+        <thead><tr><th>DJ</th><th class="right">ARKbar/HIP</th><th class="right">Love Beach</th><th>Total Hours</th><th class="right">Rate</th><th class="right">Total Cost</th></tr></thead>
+        <tbody>${rows}
+          <tr class="totals-row">
+            <td>Total</td><td class="right">${arkTotal}h</td><td class="right">${loveTotal}h</td>
+            <td><div class="hours-val" style="font-size:14px;color:var(--navy)">${totalHours}h</div></td>
+            <td></td><td class="right" style="font-size:14px;color:var(--navy)">\u0E3F${totalCost.toLocaleString()}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="target-note">Targets: Alex RedWhite &amp; Raffo DJ \u2014 ${RESIDENT_TARGET}h/month \u00B7 Sound Bogie \u2014 30\u201340h/month</div>
+    </div>
+  </div>`;
 }
 
-// ?? DJ DETAIL MODAL ??????????????????????????????????????????????????
+// === DJ DETAIL MODAL ===
 async function showDJDetail(djName) {
   const month = getMonthString();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-  // Fetch all venue rosters
   const [arkRes, hipRes, loveRes] = await Promise.all([
-    fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`).then(r => r.json()),
-    fetch(`/api/roster?venue=hip&month=${encodeURIComponent(month)}`).then(r => r.json()),
-    fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`).then(r => r.json()),
+    fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`).then(r=>r.json()),
+    fetch(`/api/roster?venue=hip&month=${encodeURIComponent(month)}`).then(r=>r.json()),
+    fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`).then(r=>r.json()),
   ]);
 
-  const normalize = n => n ? n.trim().toLowerCase() : '';
-  const djNorm = normalize(djName);
-
-  // Build daily breakdown
-  const dayData = {}; // { "2026-03-01": { arkbar: [...slots], hip: [...], love: [...] } }
+  const norm = n => n ? n.trim().toLowerCase() : '';
+  const djNorm = norm(djName);
+  const dayData = {};
   function addSlots(rows, venue) {
     (rows || []).forEach(r => {
-      if (normalize(r[2]) !== djNorm) return;
-      const date = r[0];
-      if (!dayData[date]) dayData[date] = { arkbar: [], hip: [], love: [] };
-      dayData[date][venue].push(r[1]);
+      if (norm(r[2]) !== djNorm) return;
+      if (!dayData[r[0]]) dayData[r[0]] = { arkbar:[], hip:[], love:[] };
+      dayData[r[0]][venue].push(r[1]);
     });
   }
   addSlots(arkRes.roster, 'arkbar');
@@ -1726,139 +1345,147 @@ async function showDJDetail(djName) {
 
   const dates = Object.keys(dayData).sort();
   let arkTotal = 0, hipTotal = 0, loveTotal = 0;
-
   const djInfo = (djList || []).find(d => d.name === djName);
   const rate = djInfo ? djInfo.rate : 0;
   const color = DJ_COLORS[djName] || '#aaa';
+
+  const formatSlots = slots => slots.length > 0
+    ? slots.map(s => `<span style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:10px;margin:1px">${s}</span>`).join(' ')
+    : '<span style="color:var(--text-faint)">\u2014</span>';
 
   let tableRows = '';
   dates.forEach(date => {
     const d = dayData[date];
     const dow = new Date(date).getDay();
     const dayLabel = `${DAYS[dow]} ${date.split('-')[2]} ${MONTHS[currentMonth].slice(0,3)}`;
-    const arkSlots = d.arkbar.sort();
-    const hipSlots = d.hip.sort();
-    const loveSlots = d.love.sort();
-    arkTotal += arkSlots.length;
-    hipTotal += hipSlots.length;
-    loveTotal += loveSlots.length;
-
-    const formatSlots = slots => slots.length > 0
-      ? slots.map(s => `<span style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:10px;margin:1px;">${s}</span>`).join(' ')
-      : '<span style="color:rgba(255,255,255,0.2)">—</span>';
-
-    tableRows += `<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-      <td style="padding:8px 12px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);white-space:nowrap">${dayLabel}</td>
-      <td style="padding:8px 6px;font-size:10px">${formatSlots(arkSlots)}</td>
-      <td style="padding:8px 6px;font-size:10px">${formatSlots(hipSlots)}</td>
-      <td style="padding:8px 6px;font-size:10px">${formatSlots(loveSlots)}</td>
-      <td style="padding:8px 12px;font-size:12px;font-weight:800;color:white;text-align:right">${arkSlots.length + hipSlots.length + loveSlots.length}h</td>
+    const as = d.arkbar.sort(), hs = d.hip.sort(), ls = d.love.sort();
+    arkTotal += as.length; hipTotal += hs.length; loveTotal += ls.length;
+    tableRows += `<tr style="border-bottom:1px solid var(--border-subtle)">
+      <td style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap">${dayLabel}</td>
+      <td style="padding:8px 6px;font-size:10px">${formatSlots(as)}</td>
+      <td style="padding:8px 6px;font-size:10px">${formatSlots(hs)}</td>
+      <td style="padding:8px 6px;font-size:10px">${formatSlots(ls)}</td>
+      <td style="padding:8px 12px;font-size:12px;font-weight:800;color:#fff;text-align:right">${as.length+hs.length+ls.length}h</td>
     </tr>`;
   });
 
   const grandTotal = arkTotal + hipTotal + loveTotal;
   const totalCost = djName === 'Guest DJ' ? 0 : grandTotal * rate;
 
-  // Create modal
   const modal = document.createElement('div');
   modal.id = 'djDetailModal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:fadeUp 0.2s ease;';
-  modal.innerHTML = `
-    <div id="djDetailContent" style="background:rgba(15,20,45,0.98);border:1px solid rgba(93,184,192,0.3);border-radius:16px;width:min(800px,calc(100vw - 32px));max-height:calc(100vh - 40px);overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
-      <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:12px;height:12px;border-radius:50%;background:${color}"></div>
-          <div>
-            <div style="font-size:18px;font-weight:900;color:white;">${djName}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);font-weight:600">${month} · ฿${rate.toLocaleString()}/h</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="printDJDetail()" style="padding:8px 16px;border-radius:8px;background:rgba(46,125,50,0.3);border:1px solid rgba(46,125,50,0.5);color:#69f0ae;font-family:Montserrat;font-size:11px;font-weight:700;cursor:pointer;">🖨 Print</button>
-          <button onclick="closeDJDetail()" style="padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:16px;cursor:pointer;">✕</button>
+  modal.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:fadeUp .2s ease';
+  modal.innerHTML = `<div id="djDetailContent" style="background:rgba(15,20,45,0.98);border:1px solid rgba(93,184,192,0.3);border-radius:var(--radius-lg);width:min(800px,calc(100vw - 32px));max-height:calc(100vh - 40px);overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6)">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:12px;height:12px;border-radius:50%;background:${color}"></div>
+        <div>
+          <div style="font-size:18px;font-weight:900">${djName}</div>
+          <div style="font-size:11px;color:var(--text-muted);font-weight:600">${month} \u00B7 \u0E3F${rate.toLocaleString()}/h</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
-        <div style="background:rgba(93,184,192,0.1);border:1px solid rgba(93,184,192,0.25);border-radius:10px;padding:12px;text-align:center;">
-          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em">ARKbar/HIP</div>
-          <div style="font-size:22px;font-weight:900;color:white">${arkTotal + hipTotal}h</div>
-        </div>
-        <div style="background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.2);border-radius:10px;padding:12px;text-align:center;">
-          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em">Love Beach</div>
-          <div style="font-size:22px;font-weight:900;color:white">${loveTotal}h</div>
-        </div>
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;text-align:center;">
-          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em">Total</div>
-          <div style="font-size:22px;font-weight:900;color:white">${grandTotal}h</div>
-        </div>
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;text-align:center;">
-          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em">Cost</div>
-          <div style="font-size:22px;font-weight:900;color:var(--teal)">฿${totalCost.toLocaleString()}</div>
-        </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="printDJDetail()" style="padding:8px 16px;border-radius:var(--radius-sm);background:rgba(46,125,50,0.3);border:1px solid rgba(46,125,50,0.5);color:#69f0ae;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">\uD83D\uDDA8 Print</button>
+        <button onclick="closeDJDetail()" style="padding:8px 12px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:var(--text-muted);font-size:16px;cursor:pointer">\u2715</button>
       </div>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
-          <th style="padding:10px 12px;text-align:left;font-size:9px;font-weight:800;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em">Date</th>
-          <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em">ARKbar</th>
-          <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em">HIP</th>
-          <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em">Love Beach</th>
-          <th style="padding:10px 12px;text-align:right;font-size:9px;font-weight:800;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em">Day Total</th>
-        </tr></thead>
-        <tbody style="color:rgba(255,255,255,0.7)">${tableRows}</tbody>
-        <tfoot><tr style="border-top:2px solid rgba(93,184,192,0.3)">
-          <td style="padding:12px;font-size:12px;font-weight:800;color:white">Total</td>
-          <td style="padding:12px 6px;font-size:12px;font-weight:800;color:white">${arkTotal}h</td>
-          <td style="padding:12px 6px;font-size:12px;font-weight:800;color:white">${hipTotal}h</td>
-          <td style="padding:12px 6px;font-size:12px;font-weight:800;color:white">${loveTotal}h</td>
-          <td style="padding:12px;font-size:14px;font-weight:900;color:var(--teal);text-align:right">${grandTotal}h · ฿${totalCost.toLocaleString()}</td>
-        </tr></tfoot>
-      </table>
-    </div>`;
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 24px;border-bottom:1px solid var(--border-subtle)">
+      <div style="background:rgba(93,184,192,0.1);border:1px solid rgba(93,184,192,0.25);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">ARKbar/HIP</div>
+        <div style="font-size:22px;font-weight:900">${arkTotal+hipTotal}h</div>
+      </div>
+      <div style="background:rgba(233,30,140,0.08);border:1px solid rgba(233,30,140,0.2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Love Beach</div>
+        <div style="font-size:22px;font-weight:900">${loveTotal}h</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Total</div>
+        <div style="font-size:22px;font-weight:900">${grandTotal}h</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Cost</div>
+        <div style="font-size:22px;font-weight:900;color:var(--teal)">\u0E3F${totalCost.toLocaleString()}</div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:1px solid var(--border)">
+        <th style="padding:10px 12px;text-align:left;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Date</th>
+        <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">ARKbar</th>
+        <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">HIP</th>
+        <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Love Beach</th>
+        <th style="padding:10px 12px;text-align:right;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Day Total</th>
+      </tr></thead>
+      <tbody style="color:var(--text-secondary)">${tableRows}</tbody>
+      <tfoot><tr style="border-top:2px solid rgba(93,184,192,0.3)">
+        <td style="padding:12px;font-size:12px;font-weight:800">Total</td>
+        <td style="padding:12px 6px;font-size:12px;font-weight:800">${arkTotal}h</td>
+        <td style="padding:12px 6px;font-size:12px;font-weight:800">${hipTotal}h</td>
+        <td style="padding:12px 6px;font-size:12px;font-weight:800">${loveTotal}h</td>
+        <td style="padding:12px;font-size:14px;font-weight:900;color:var(--teal);text-align:right">${grandTotal}h \u00B7 \u0E3F${totalCost.toLocaleString()}</td>
+      </tr></tfoot>
+    </table>
+  </div>`;
 
-  modal.addEventListener('click', (e) => { if (e.target === modal) closeDJDetail(); });
+  modal.addEventListener('click', e => { if (e.target === modal) closeDJDetail(); });
   document.body.appendChild(modal);
 }
 
-function closeDJDetail() {
-  const m = document.getElementById('djDetailModal');
-  if (m) m.remove();
-}
+function closeDJDetail() { const m = $('djDetailModal'); if (m) m.remove(); }
 
 function printDJDetail() {
-  const content = document.getElementById('djDetailContent');
+  const content = $('djDetailContent');
   if (!content) return;
   const w = window.open('', '_blank');
   w.document.write(`<html><head><title>DJ Report</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-      * { box-sizing:border-box; margin:0; padding:0; font-family:'Montserrat',sans-serif; }
-      body { padding:24px; background:white; color:#1c2340; }
-      table { width:100%; border-collapse:collapse; }
-      th, td { padding:8px 10px; text-align:left; font-size:11px; border-bottom:1px solid #eee; }
-      th { font-weight:800; text-transform:uppercase; letter-spacing:0.06em; font-size:9px; color:#888; }
-      tfoot td { font-weight:800; border-top:2px solid #2B3990; }
-      div[style*="grid"] { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
-      div[style*="grid"] > div { border:1px solid #ddd; border-radius:8px; padding:10px; text-align:center; }
-      span[style*="background"] { background:#f0f0f0 !important; padding:2px 6px; border-radius:3px; }
-      @media print { button { display:none !important; } }
-    </style>
+    <style>*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}body{padding:24px;background:#fff;color:#1c2340}table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;text-align:left;font-size:11px;border-bottom:1px solid #eee}th{font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:9px;color:#888}tfoot td{font-weight:800;border-top:2px solid #2B3990}div[style*="grid"]{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}div[style*="grid"]>div{border:1px solid #ddd;border-radius:8px;padding:10px;text-align:center}span[style*="background"]{background:#f0f0f0!important;padding:2px 6px;border-radius:3px}@media print{button{display:none!important}}</style>
   </head><body>${content.innerHTML}</body></html>`);
   w.document.close();
-  setTimeout(() => { w.print(); }, 300);
+  setTimeout(() => w.print(), 300);
 }
 
-let toastTimer;
+// === HOURS PANEL (sidebar) ===
+function toggleHoursPanel() {
+  $('hoursPanel').classList.toggle('open');
+  $('hoursPanelOverlay').classList.toggle('open');
+}
+
+function updateHoursPanel() {
+  const body = $('hoursPanelBody');
+  if (!body) return;
+  const targets = { 'Alex RedWhite':80, 'Raffo DJ':80, 'Sound Bogie':40 };
+  const resHours = {};
+  RESIDENTS.forEach(r => { resHours[r] = 0; });
+  [arkbarAssignments, hipAssignments, loveAssignments].forEach(map => {
+    Object.values(map).forEach(dj => { if (resHours[dj] !== undefined) resHours[dj]++; });
+  });
+
+  let html = '';
+  RESIDENTS.forEach(r => {
+    const h = resHours[r];
+    const t = targets[r];
+    const pct = Math.min(h / t * 100, 100);
+    const cls = h > t ? 'over' : h >= t * 0.9 ? 'warn' : 'ok';
+    const color = DJ_COLORS[r] || '#aaa';
+    html += `<div class="hp-row">
+      <div class="hp-dot" style="background:${color}"></div>
+      <div class="hp-name">${r}</div>
+      <div class="hp-hours">${h}h</div>
+      <div class="hp-target">/${t}</div>
+    </div>
+    <div style="padding:0 0 10px 16px"><div class="hp-bar"><div class="hp-bar-fill ${cls}" style="width:${pct}%"></div></div></div>`;
+  });
+  body.innerHTML = html;
+}
+
+// === TOAST ===
 function showToast(msg, type) {
-  const t = document.getElementById('toast');
+  const t = $('toast');
   t.textContent = msg;
   t.className = `toast ${type} show`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), type === 'error' ? 4000 : 2500);
 }
-
-// Debounce for assignDJ saves
-let _assignQueue = new Map();
-let _assignTimer = null;
 </script>
 </body>
 </html>
