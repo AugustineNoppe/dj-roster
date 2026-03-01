@@ -349,24 +349,25 @@ app.post('/api/roster/clear', async (req, res) => {
       existingRows = response.data.values || [];
     } catch(e) {}
 
-    // Keep rows from other months, discard current month
-    const keepRows = existingRows.filter(r => r[0] && r[0] !== 'Date' && (r[3] || '') !== month);
+    // Keep header + rows from other months, discard current month
+    const header = ['Date', 'Slot', 'DJ', 'Month'];
+    const dataRows = existingRows.filter(r => r[0] && r[0] !== 'Date');
+    const keepRows = dataRows.filter(r => (r[3] || '') !== month);
+    const writeRows = [header, ...keepRows];
 
     await sheets.spreadsheets.values.clear({
       spreadsheetId: SHEET_ID,
       range: `${tabName}!A:D`,
     });
 
-    if (keepRows.length > 0) {
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID,
-        range: `${tabName}!A1`,
-        valueInputOption: 'RAW',
-        requestBody: { values: keepRows },
-      });
-    }
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${tabName}!A1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: writeRows },
+    });
 
-    res.json({ success: true, cleared: existingRows.length - keepRows.length });
+    res.json({ success: true, cleared: dataRows.length - keepRows.length });
   } catch (err) {
     console.error('Clear error:', err);
     res.json({ success: false, error: err.message });
