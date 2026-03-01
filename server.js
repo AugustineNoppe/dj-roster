@@ -140,6 +140,22 @@ app.get('/api/availability', async (req, res) => {
       }
     }
 
+    // ── INJECT GUEST DJ ──────────────────────────────────────────────────────
+    // Guest DJ is always available for all slots at all venues
+    if (month && year !== undefined && monthIdx >= 0) {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateKey = `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (!map[dateKey]) map[dateKey] = {};
+        ARKBAR_SLOTS.forEach(slot => {
+          const normSlot = normalizeSlot(slot);
+          if (!map[dateKey][normSlot]) map[dateKey][normSlot] = [];
+          if (!map[dateKey][normSlot].includes('Guest DJ')) {
+            map[dateKey][normSlot].push('Guest DJ');
+          }
+        });
+      }
+    }
+
     // Return both the availability map and the blackout map
     // Client uses blackouts to show resident availability on HIP/Love cells
     res.json({ success: true, availability: map, blackouts });
