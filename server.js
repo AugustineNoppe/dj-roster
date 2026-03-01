@@ -4,7 +4,7 @@ const { google } = require('googleapis');
 const app = express();
 app.use(express.json());
 
-/* -- GOOGLE SHEETS - CACHED AUTH ------------------------------------------- */
+/* == GOOGLE SHEETS AUTH (cached singleton) ================================ */
 let _sheets = null;
 function getSheets() {
   if (_sheets) return _sheets;
@@ -20,12 +20,12 @@ function getSheets() {
 const SHEET_ID = process.env.SPREADSHEET_ID;
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 const ALL_SLOTS = [
-  '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00',
-  '18:00–19:00','20:00–21:00','21:00–22:00',
-  '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
+  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+  '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
+  '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
 ];
 const MORNING_SLOTS = new Set([
-  '14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'
+  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00','18:00\u201319:00'
 ]);
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
@@ -49,120 +49,206 @@ function tabName(venue) {
        : 'ARKbar Roster';
 }
 
-/* -- STATIC FILES ---------------------------------------------------------- */
-/* -- ROUTES (before static so / serves landing.html, not index.html) ---- */
+/* == CACHE LAYER ========================================================== */
+/*
+ * TTLs tuned by data volatility:
+ *   DJ list:      10min  (almost never changes)
+ *   Availability: 3min   (changes when DJs submit form)
+ *   Roster:       write-through (no TTL, invalidated on assign/batch/clear)
+ *   Blackouts:    3min   (changes infrequently)
+ *
+ * On a typical roster editing session the user loads once (cold),
+ * then every subsequent month-switch or tab-switch serves from cache.
+ * Only writes (assign, batch, clear) bust the relevant roster entry.
+ */
+
+const cache = {
+  djs:          { data: null, time: 0, ttl: 10 * 60 * 1000 },
+  availability: new Map(),
+  roster:       new Map(),
+  blackouts:    { data: null, time: 0, ttl: 3 * 60 * 1000, month: null },
+};
+
+const AVAIL_TTL = 3 * 60 * 1000;
+
+function isFresh(entry) {
+  return entry.data !== null && (Date.now() - entry.time) < entry.ttl;
+}
+
+function invalidateRoster(venue, month) {
+  cache.roster.delete(`${venue}|${month}`);
+}
+
+function invalidateAllRosters(month) {
+  for (const key of cache.roster.keys()) {
+    if (key.endsWith(`|${month}`)) cache.roster.delete(key);
+  }
+}
+
+/* == CACHED FETCHERS ====================================================== */
+
+async function fetchDJs() {
+  if (isFresh(cache.djs)) return cache.djs.data;
+  const sheets = getSheets();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID, range: 'DJ Rates!A2:B',
+  });
+  const djs = (response.data.values || []).map(([name, rate]) => ({
+    name, rate: parseInt(rate) || 0
+  }));
+  const result = { success: true, djs };
+  cache.djs.data = result;
+  cache.djs.time = Date.now();
+  return result;
+}
+
+async function fetchBlackouts(month) {
+  if (isFresh(cache.blackouts) && cache.blackouts.month === month) {
+    return cache.blackouts.data;
+  }
+  const sheets = getSheets();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID, range: 'Resident Blackouts!A2:E',
+  }).catch(() => ({ data: { values: [] } }));
+
+  const blackouts = {};
+  RESIDENTS.forEach(r => { blackouts[r] = {}; });
+  for (const [dj, dateRaw, monthLabel, , type] of (response.data.values || [])) {
+    if (!dj || !dateRaw || !blackouts[dj]) continue;
+    if (month && monthLabel !== month) continue;
+    const dk = parseDateKey(dateRaw);
+    if (dk) blackouts[dj][dk] = type || 'full';
+  }
+
+  cache.blackouts.data = blackouts;
+  cache.blackouts.month = month;
+  cache.blackouts.time = Date.now();
+  return blackouts;
+}
+
+async function fetchAvailability(month) {
+  const cached = cache.availability.get(month);
+  if (cached && (Date.now() - cached.time) < AVAIL_TTL) {
+    return cached.data;
+  }
+
+  const sheets = getSheets();
+  const parts = month.split(' ');
+  const monthIdx = MONTH_NAMES.indexOf(parts[0]);
+  const year = parseInt(parts[1]);
+  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+
+  const [availRes, blackouts] = await Promise.all([
+    sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: 'DJ Availability_Datasheet!A2:F',
+    }),
+    fetchBlackouts(month),
+  ]);
+
+  const filtered = (availRes.data.values || []).filter(r => r[2] === month);
+  const map = {};
+  for (const [, dj, , dateRaw, , slot] of filtered) {
+    if (!dateRaw || !slot || !dj) continue;
+    const dk = parseDateKey(dateRaw);
+    if (!dk) continue;
+    const ns = normalizeSlot(slot);
+    (map[dk] ??= {})[ns] ??= [];
+    if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
+  }
+
+  if (year !== undefined && monthIdx >= 0) {
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dk = makeDateKey(year, monthIdx + 1, d);
+      if (!map[dk]) map[dk] = {};
+      for (const slot of ALL_SLOTS) {
+        const ns = normalizeSlot(slot);
+        if (!map[dk][ns]) map[dk][ns] = [];
+        const arr = map[dk][ns];
+        for (const resident of RESIDENTS) {
+          const bo = blackouts[resident][dk];
+          if (bo === 'full') continue;
+          if (bo === 'morning' && MORNING_SLOTS.has(slot)) continue;
+          if (!arr.includes(resident)) arr.push(resident);
+        }
+        if (!arr.includes('Guest DJ')) arr.push('Guest DJ');
+      }
+    }
+  }
+
+  const result = { success: true, availability: map, blackouts };
+  cache.availability.set(month, { data: result, time: Date.now() });
+  return result;
+}
+
+async function fetchRoster(venue, month) {
+  const key = `${venue}|${month}`;
+  const cached = cache.roster.get(key);
+  if (cached) return cached;
+
+  const sheets = getSheets();
+  let values = [];
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${tabName(venue)}!A:D`,
+    });
+    values = response.data.values || [];
+  } catch (e) {}
+
+  const filtered = values
+    .filter(r => r[0] !== 'Date' && (!month || r[3] === month) && r[0] && r[2])
+    .map(r => { if (r[1]) r[1] = normalizeSlot(r[1]); return r; });
+
+  const result = { success: true, roster: filtered };
+  cache.roster.set(key, result);
+  return result;
+}
+
+/* == STATIC FILES ========================================================= */
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
 app.get('/availability', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/roster', (req, res) => res.sendFile(path.join(__dirname, 'public', 'roster.html')));
 
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1h',
-  index: false, // prevent static from serving index.html at /
+  index: false,
   setHeaders(res, filePath) {
     if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
   }
 }));
 
-/* -- AUTH ------------------------------------------------------------------- */
+/* == AUTH ================================================================== */
 app.post('/api/auth', (req, res) => {
   res.json({ success: req.body.password === process.env.ADMIN_PASSWORD });
 });
 
-/* -- DJ LIST (5-min cache) ------------------------------------------------- */
-let djCache = null;
-let djCacheTime = 0;
-const DJ_CACHE_TTL = 5 * 60 * 1000;
+/* == API ROUTES =========================================================== */
 
 app.get('/api/djs', async (req, res) => {
-  try {
-    const now = Date.now();
-    if (djCache && now - djCacheTime < DJ_CACHE_TTL) return res.json(djCache);
-    const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: 'DJ Rates!A2:B',
-    });
-    const djs = (response.data.values || []).map(([name, rate]) => ({ name, rate: parseInt(rate) || 0 }));
-    djCache = { success: true, djs };
-    djCacheTime = now;
-    res.json(djCache);
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
+  try { res.json(await fetchDJs()); }
+  catch (err) { res.json({ success: false, error: err.message }); }
 });
 
-/* -- AVAILABILITY ---------------------------------------------------------- */
 app.get('/api/availability', async (req, res) => {
   try {
-    const sheets = getSheets();
     const month = req.query.month;
-    let year, monthIdx, daysInMonth;
-
-    if (month) {
-      const parts = month.split(' ');
-      monthIdx = MONTH_NAMES.indexOf(parts[0]);
-      year = parseInt(parts[1]);
-      daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
-    }
-
-    const [availRes, blackoutRes] = await Promise.all([
-      sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: 'DJ Availability_Datasheet!A2:F',
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: 'Resident Blackouts!A2:E',
-      }).catch(() => ({ data: { values: [] } }))
-    ]);
-
-    // Regular DJ availability
-    const filtered = month ? (availRes.data.values || []).filter(r => r[2] === month) : (availRes.data.values || []);
-    const map = {};
-    for (const [, dj, , dateRaw, , slot] of filtered) {
-      if (!dateRaw || !slot || !dj) continue;
-      const dk = parseDateKey(dateRaw);
-      if (!dk) continue;
-      const ns = normalizeSlot(slot);
-      (map[dk] ??= {})[ns] ??= [];
-      if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
-    }
-
-    // Resident blackouts
-    const blackouts = {};
-    RESIDENTS.forEach(r => { blackouts[r] = {}; });
-    for (const [dj, dateRaw, monthLabel, , type] of (blackoutRes.data.values || [])) {
-      if (!dj || !dateRaw || !blackouts[dj]) continue;
-      if (month && monthLabel !== month) continue;
-      const dk = parseDateKey(dateRaw);
-      if (dk) blackouts[dj][dk] = type || 'full';
-    }
-
-    // Inject residents + Guest DJ
-    if (month && year !== undefined && monthIdx >= 0) {
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dk = makeDateKey(year, monthIdx + 1, d);
-        if (!map[dk]) map[dk] = {};
-        for (const slot of ALL_SLOTS) {
-          const ns = normalizeSlot(slot);
-          if (!map[dk][ns]) map[dk][ns] = [];
-          const arr = map[dk][ns];
-          for (const resident of RESIDENTS) {
-            const bo = blackouts[resident][dk];
-            if (bo === 'full') continue;
-            if (bo === 'morning' && MORNING_SLOTS.has(slot)) continue;
-            if (!arr.includes(resident)) arr.push(resident);
-          }
-          if (!arr.includes('Guest DJ')) arr.push('Guest DJ');
-        }
-      }
-    }
-
-    res.json({ success: true, availability: map, blackouts });
+    if (!month) return res.json({ success: false, error: 'month required' });
+    res.json(await fetchAvailability(month));
   } catch (err) {
     console.error(err);
     res.json({ success: false, error: err.message });
   }
 });
 
-/* -- BLACKOUT SUBMISSION --------------------------------------------------- */
+app.get('/api/roster', async (req, res) => {
+  try {
+    const { venue, month } = req.query;
+    res.json(await fetchRoster(venue, month));
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* == BLACKOUT SUBMISSION ================================================== */
 app.post('/api/blackout', async (req, res) => {
   try {
     const { dj, month, dates } = req.body;
@@ -179,6 +265,9 @@ app.post('/api/blackout', async (req, res) => {
       valueInputOption: 'RAW',
       requestBody: { values: [...keepRows, ...newRows].length > 0 ? [...keepRows, ...newRows] : [['']] },
     });
+    // Invalidate
+    cache.blackouts.data = null;
+    cache.availability.delete(month);
     res.json({ success: true, saved: newRows.length });
   } catch (err) {
     console.error(err);
@@ -186,28 +275,7 @@ app.post('/api/blackout', async (req, res) => {
   }
 });
 
-/* -- GET ROSTER ------------------------------------------------------------ */
-app.get('/api/roster', async (req, res) => {
-  try {
-    const sheets = getSheets();
-    const { venue, month } = req.query;
-    let values = [];
-    try {
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: `${tabName(venue)}!A:D`,
-      });
-      values = response.data.values || [];
-    } catch (e) {}
-    const filtered = values
-      .filter(r => r[0] !== 'Date' && (!month || r[3] === month) && r[0] && r[2])
-      .map(r => { if (r[1]) r[1] = normalizeSlot(r[1]); return r; });
-    res.json({ success: true, roster: filtered });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
-
-/* -- ASSIGN SINGLE CELL ---------------------------------------------------- */
+/* == ASSIGN SINGLE CELL =================================================== */
 app.post('/api/roster/assign', async (req, res) => {
   try {
     const sheets = getSheets();
@@ -235,13 +303,14 @@ app.post('/api/roster/assign', async (req, res) => {
         requestBody: { values: [[date, slot, dj, month]] },
       });
     }
+    invalidateRoster(venue, month);
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-/* -- BATCH ASSIGN ---------------------------------------------------------- */
+/* == BATCH ASSIGN ========================================================= */
 app.post('/api/roster/batch', async (req, res) => {
   try {
     const sheets = getSheets();
@@ -275,13 +344,14 @@ app.post('/api/roster/batch', async (req, res) => {
       valueInputOption: 'RAW', requestBody: { values: appendRows },
     }));
     await Promise.all(promises);
+    invalidateRoster(venue, month);
     res.json({ success: true, updated: updateData.length, appended: appendRows.length });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-/* -- CLEAR ROSTER ---------------------------------------------------------- */
+/* == CLEAR ROSTER ========================================================= */
 app.post('/api/roster/clear', async (req, res) => {
   try {
     const sheets = getSheets();
@@ -301,6 +371,7 @@ app.post('/api/roster/clear', async (req, res) => {
       spreadsheetId: SHEET_ID, range: `${tab}!A1`,
       valueInputOption: 'RAW', requestBody: { values: [header, ...keepRows] },
     });
+    invalidateAllRosters(month);
     res.json({ success: true, cleared: dataRows.length - keepRows.length });
   } catch (err) {
     console.error('Clear error:', err);
@@ -308,5 +379,19 @@ app.post('/api/roster/clear', async (req, res) => {
   }
 });
 
+/* == CACHE STATUS (debug) ================================================= */
+app.get('/api/cache-status', (req, res) => {
+  const age = entry => entry.data ? Math.round((Date.now() - entry.time) / 1000) + 's' : null;
+  res.json({
+    djs: { cached: !!cache.djs.data, age: age(cache.djs) },
+    blackouts: { cached: !!cache.blackouts.data, age: age(cache.blackouts) },
+    availability: [...cache.availability.keys()].map(k => ({
+      month: k, age: Math.round((Date.now() - cache.availability.get(k).time) / 1000) + 's'
+    })),
+    roster: [...cache.roster.keys()],
+  });
+});
+
+/* == START ================================================================= */
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
