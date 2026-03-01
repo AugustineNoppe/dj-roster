@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -11,34 +10,34 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-–navy: #2B3990;
-–navy-dark: #1a2570;
-–teal: #5DB8C0;
-–teal-light: #eaf6f7;
-–orange: #F15A29;
-–love-pink: #e91e8c;
-–love-dark: #880e4f;
-–love-light: #fce4ec;
-–white: #ffffff;
-–bg: #f0f2f8;
-–border: #dde2f0;
-–text: #1c2340;
-–text-mid: #5a6380;
-–text-light: #9aa0b8;
-–radius: 12px;
-–shadow: 0 2px 16px rgba(43,57,144,0.10);
+  --navy: #2B3990;
+  --navy-dark: #1a2570;
+  --teal: #5DB8C0;
+  --teal-light: #eaf6f7;
+  --orange: #F15A29;
+  --love-pink: #e91e8c;
+  --love-dark: #880e4f;
+  --love-light: #fce4ec;
+  --white: #ffffff;
+  --bg: #f0f2f8;
+  --border: #dde2f0;
+  --text: #1c2340;
+  --text-mid: #5a6380;
+  --text-light: #9aa0b8;
+  --radius: 12px;
+  --shadow: 0 2px 16px rgba(43,57,144,0.10);
 }
 
 html, body { height: 100%; }
-body { font-family: ‘Montserrat’, sans-serif; background: #0b1020; color: var(–text); min-height: 100vh; }
+body { font-family: 'Montserrat', sans-serif; background: #0b1020; color: var(--text); min-height: 100vh; }
 
 /* ── SHARED BACKGROUND ── */
 .bg-fixed {
-position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
 }
 .bg-orb {
-position: absolute; border-radius: 50%; filter: blur(100px);
-animation: drift 14s ease-in-out infinite alternate;
+  position: absolute; border-radius: 50%; filter: blur(100px);
+  animation: drift 14s ease-in-out infinite alternate;
 }
 .bg-orb:nth-child(1) { width: 700px; height: 700px; background: radial-gradient(circle, #2B3990 0%, transparent 70%); top: -200px; left: -200px; opacity: 0.55; animation-delay: 0s; }
 .bg-orb:nth-child(2) { width: 500px; height: 500px; background: radial-gradient(circle, #5DB8C0 0%, transparent 70%); bottom: -150px; right: -100px; opacity: 0.3; animation-delay: -5s; }
@@ -47,42 +46,42 @@ animation: drift 14s ease-in-out infinite alternate;
 
 /* ── LOGIN ── */
 .login-wrap {
-min-height: 100vh; position: relative; z-index: 1;
-display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
 }
 .login-box {
-background: rgba(255,255,255,0.07);
-backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-border: 1px solid rgba(255,255,255,0.12);
-border-radius: 24px; padding: 48px 40px;
-width: min(360px, calc(100vw - 32px)); text-align: center;
-box-shadow: 0 32px 80px rgba(0,0,0,0.5);
-animation: fadeUp 0.7s ease both;
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 24px; padding: 48px 40px;
+  width: min(360px, calc(100vw - 32px)); text-align: center;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+  animation: fadeUp 0.7s ease both;
 }
 .login-icon { font-size: 32px; margin-bottom: 14px; }
 .login-box h1 { font-size: 26px; font-weight: 900; color: white; margin-bottom: 4px; }
 .login-box p { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 500; margin-bottom: 32px; }
 .login-box input {
-width: 100%; padding: 14px 18px;
-border: 1px solid rgba(255,255,255,0.15);
-border-radius: 10px; font-family: ‘Montserrat’, sans-serif;
-font-size: 15px; font-weight: 400; text-align: center;
-letter-spacing: 0.05em; outline: none; margin-bottom: 12px;
-background: rgba(255,255,255,0.08); color: white;
-transition: border-color 0.2s, background 0.2s;
+  width: 100%; padding: 14px 18px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px; font-family: 'Montserrat', sans-serif;
+  font-size: 15px; font-weight: 400; text-align: center;
+  letter-spacing: 0.05em; outline: none; margin-bottom: 12px;
+  background: rgba(255,255,255,0.08); color: white;
+  transition: border-color 0.2s, background 0.2s;
 }
 .login-box input::placeholder { color: rgba(255,255,255,0.3); }
-.login-box input:focus { border-color: var(–teal); background: rgba(255,255,255,0.12); }
+.login-box input:focus { border-color: var(--teal); background: rgba(255,255,255,0.12); }
 .login-box button {
-width: 100%; padding: 14px;
-background: rgba(93,184,192,0.2);
-border: 1px solid rgba(93,184,192,0.4);
-color: white; border-radius: 10px;
-font-family: ‘Montserrat’, sans-serif; font-size: 14px; font-weight: 800;
-cursor: pointer; transition: background 0.2s, border-color 0.2s;
+  width: 100%; padding: 14px;
+  background: rgba(93,184,192,0.2);
+  border: 1px solid rgba(93,184,192,0.4);
+  color: white; border-radius: 10px;
+  font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 800;
+  cursor: pointer; transition: background 0.2s, border-color 0.2s;
 }
 .login-box button:hover { background: rgba(93,184,192,0.35); border-color: rgba(93,184,192,0.7); }
-.login-error { color: var(–orange); font-size: 12px; font-weight: 600; margin-top: 10px; display: none; }
+.login-error { color: var(--orange); font-size: 12px; font-weight: 600; margin-top: 10px; display: none; }
 
 @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
 
@@ -91,189 +90,189 @@ cursor: pointer; transition: background 0.2s, border-color 0.2s;
 .app.visible { display: flex; }
 
 .app-header {
-background: rgba(255,255,255,0.06);
-backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-border-bottom: 1px solid rgba(255,255,255,0.1);
-color: white; padding: 0 24px; height: 56px;
-display: flex; align-items: center; justify-content: space-between;
-flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  color: white; padding: 0 24px; height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
 }
 .back-btn-roster {
-display: inline-flex; align-items: center;
-padding: 5px 12px; border-radius: 20px;
-font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
-color: rgba(255,255,255,0.45);
-background: rgba(255,255,255,0.08);
-border: 1px solid rgba(255,255,255,0.12);
-text-decoration: none; transition: all 0.2s; white-space: nowrap;
+  display: inline-flex; align-items: center;
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  text-decoration: none; transition: all 0.2s; white-space: nowrap;
 }
 .back-btn-roster:hover { color: white; background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
 
 .app-header-left { display: flex; align-items: center; gap: 12px; }
 .app-header h1 { font-size: 17px; font-weight: 900; letter-spacing: -0.01em; color: white; }
 .header-badge {
-background: rgba(255,255,255,0.12); padding: 3px 10px;
-border-radius: 20px; font-size: 10px; font-weight: 700;
-letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.12); padding: 3px 10px;
+  border-radius: 20px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7);
 }
 .month-nav { display: flex; align-items: center; gap: 8px; }
 .month-nav button {
-background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
-color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
-font-size: 14px; display: flex; align-items: center; justify-content: center;
-transition: background 0.15s;
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+  color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
 }
 .month-nav button:hover { background: rgba(255,255,255,0.2); }
 .month-label { font-size: 13px; font-weight: 800; min-width: 130px; text-align: center; color: white; }
 
 .venue-bar {
-background: rgba(255,255,255,0.04);
-backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-border-bottom: 1px solid rgba(255,255,255,0.08);
-padding: 0 24px; display: flex; align-items: flex-end; gap: 4px; flex-shrink: 0;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 24px; display: flex; align-items: flex-end; gap: 4px; flex-shrink: 0;
 }
 .venue-tab {
-padding: 12px 24px; border: none; background: none;
-font-family: ‘Montserrat’, sans-serif; font-size: 13px; font-weight: 700;
-color: rgba(255,255,255,0.35); cursor: pointer;
-border-bottom: 3px solid transparent; margin-bottom: -1px; transition: all 0.2s;
+  padding: 12px 24px; border: none; background: none;
+  font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700;
+  color: rgba(255,255,255,0.35); cursor: pointer;
+  border-bottom: 3px solid transparent; margin-bottom: -1px; transition: all 0.2s;
 }
 .venue-tab:hover { color: rgba(255,255,255,0.7); }
-.venue-tab.active { color: white; border-bottom-color: var(–teal); }
-.venue-tab.love.active { color: white; border-bottom-color: var(–love-pink); }
-.venue-tab.active[id=“tabHours”] { color: white; border-bottom-color: #4caf50; }
+.venue-tab.active { color: white; border-bottom-color: var(--teal); }
+.venue-tab.love.active { color: white; border-bottom-color: var(--love-pink); }
+.venue-tab.active[id="tabHours"] { color: white; border-bottom-color: #4caf50; }
 
 .main-content { flex: 1; overflow: auto; padding: 20px 24px; -webkit-overflow-scrolling: touch; }
 
 .roster-table { border-collapse: collapse; min-width: 100%; font-size: 11px; }
 .roster-table thead th {
-padding: 10px 6px; text-align: center; font-weight: 800; font-size: 10px;
-white-space: nowrap; position: sticky; top: 0; z-index: 10;
-border-bottom: 2px solid var(–border); letter-spacing: 0.03em;
+  padding: 10px 6px; text-align: center; font-weight: 800; font-size: 10px;
+  white-space: nowrap; position: sticky; top: 0; z-index: 10;
+  border-bottom: 2px solid var(--border); letter-spacing: 0.03em;
 }
 .th-date {
-background: var(–navy) !important; color: white !important;
-min-width: 110px; text-align: left !important; padding-left: 14px !important;
-position: sticky !important; left: 0 !important; z-index: 20 !important;
+  background: var(--navy) !important; color: white !important;
+  min-width: 110px; text-align: left !important; padding-left: 14px !important;
+  position: sticky !important; left: 0 !important; z-index: 20 !important;
 }
-.th-arkbar { background: var(–teal-light); color: var(–navy); min-width: 82px; }
-.th-hip { background: var(–orange); color: white; min-width: 82px; }
-.th-love { background: var(–love-light); color: var(–love-dark); min-width: 82px; }
+.th-arkbar { background: var(--teal-light); color: var(--navy); min-width: 82px; }
+.th-hip { background: var(--orange); color: white; min-width: 82px; }
+.th-love { background: var(--love-light); color: var(--love-dark); min-width: 82px; }
 
 .roster-table tbody tr:hover { background: #f8f9ff; }
 .roster-table tbody tr:nth-child(even) { background: #fafbff; }
 .roster-table tbody tr:nth-child(even):hover { background: #f4f5ff; }
 
 .td-date {
-padding: 8px 14px; font-weight: 700; font-size: 11px; color: var(–text);
-white-space: nowrap; border-right: 2px solid var(–border);
-position: sticky; left: 0; z-index: 5; min-width: 110px;
-background: white;
+  padding: 8px 14px; font-weight: 700; font-size: 11px; color: var(--text);
+  white-space: nowrap; border-right: 2px solid var(--border);
+  position: sticky; left: 0; z-index: 5; min-width: 110px;
+  background: white;
 }
 .roster-table tbody tr:nth-child(even) .td-date { background: #fafbff; }
 .roster-table tbody tr:hover .td-date { background: #f8f9ff; }
-.td-date .dow { color: var(–teal); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; display: block; }
-.td-date.weekend .dow { color: var(–orange); }
+.td-date .dow { color: var(--teal); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; display: block; }
+.td-date.weekend .dow { color: var(--orange); }
 .td-slot { padding: 4px; border: 1px solid #eef0f8; min-width: 82px; vertical-align: middle; }
 .td-slot.hip-slot { background: rgba(241,90,41,0.04); border-color: rgba(241,90,41,0.15); }
 .td-slot.love-slot { background: rgba(233,30,140,0.03); border-color: rgba(233,30,140,0.12); }
 .td-slot.empty-slot { background: #f9f9f9; }
 
 .slot-select {
-width: 100%; padding: 5px 3px; border: 1.5px solid transparent;
-border-radius: 6px; font-family: ‘Montserrat’, sans-serif;
-font-size: 10px; font-weight: 700; color: var(–text);
-background: transparent; cursor: pointer; outline: none;
-transition: all 0.15s; appearance: none; -webkit-appearance: none;
-text-align: center; min-height: 28px;
+  width: 100%; padding: 5px 3px; border: 1.5px solid transparent;
+  border-radius: 6px; font-family: 'Montserrat', sans-serif;
+  font-size: 10px; font-weight: 700; color: var(--text);
+  background: transparent; cursor: pointer; outline: none;
+  transition: all 0.15s; appearance: none; -webkit-appearance: none;
+  text-align: center; min-height: 28px;
 }
-.slot-select:hover { border-color: var(–teal); background: var(–teal-light); }
-.slot-select:focus { border-color: var(–navy); background: white; box-shadow: 0 0 0 3px rgba(43,57,144,0.1); }
+.slot-select:hover { border-color: var(--teal); background: var(--teal-light); }
+.slot-select:focus { border-color: var(--navy); background: white; box-shadow: 0 0 0 3px rgba(43,57,144,0.1); }
 .slot-select.assigned { color: white !important; font-weight: 800 !important; }
-.slot-select.unassigned { color: var(–text-light); }
+.slot-select.unassigned { color: var(--text-light); }
 .slot-select.no-avail { background: #f5f5f5; color: #ccc; cursor: not-allowed; font-size: 10px; }
 
 .th-section-label { padding: 6px; font-size: 11px; font-weight: 800; text-align: center; letter-spacing: 0.05em; }
 
 .status-bar {
-background: rgba(255,255,255,0.05);
-backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-border-top: 1px solid rgba(255,255,255,0.08);
-padding: 10px 24px; display: flex; align-items: center; gap: 20px;
-flex-shrink: 0; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 10px 24px; display: flex; align-items: center; gap: 20px;
+  flex-shrink: 0; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45);
 }
 .status-pill {
-display: flex; align-items: center; gap: 6px;
-padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 11px;
 }
 .status-pill.draft { background: rgba(230,81,0,0.2); color: #ffab40; border: 1px solid rgba(230,81,0,0.3); }
 .status-pill.published { background: rgba(46,125,50,0.2); color: #69f0ae; border: 1px solid rgba(46,125,50,0.3); }
 .status-bar-right { margin-left: auto; display: flex; gap: 10px; }
 .btn-sm {
-padding: 7px 16px; border-radius: 8px; font-family: ‘Montserrat’, sans-serif;
-font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s;
-border: 1px solid rgba(255,255,255,0.15);
-background: rgba(255,255,255,0.08); color: white;
-backdrop-filter: blur(10px);
+  padding: 7px 16px; border-radius: 8px; font-family: 'Montserrat', sans-serif;
+  font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08); color: white;
+  backdrop-filter: blur(10px);
 }
 .btn-sm:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
 .btn-publish { background: rgba(43,57,144,0.6); border-color: rgba(93,184,192,0.5); color: white; }
-.btn-publish:hover { background: rgba(43,57,144,0.85); border-color: var(–teal); }
-.btn-suggest { background: rgba(93,184,192,0.15); border-color: rgba(93,184,192,0.4); color: var(–teal); }
-.btn-suggest:hover { background: rgba(93,184,192,0.3); border-color: var(–teal); color: white; }
+.btn-publish:hover { background: rgba(43,57,144,0.85); border-color: var(--teal); }
+.btn-suggest { background: rgba(93,184,192,0.15); border-color: rgba(93,184,192,0.4); color: var(--teal); }
+.btn-suggest:hover { background: rgba(93,184,192,0.3); border-color: var(--teal); color: white; }
 .btn-clear { background: rgba(241,90,41,0.12); border-color: rgba(241,90,41,0.35); color: #ff8a65; }
-.btn-clear:hover { background: rgba(241,90,41,0.25); border-color: var(–orange); color: white; }
+.btn-clear:hover { background: rgba(241,90,41,0.25); border-color: var(--orange); color: white; }
 
 .loading { text-align: center; padding: 80px 40px; color: rgba(255,255,255,0.4); font-weight: 600; font-size: 13px; }
 .spinner {
-width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1);
-border-top-color: var(–teal); border-radius: 50%;
-animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+  width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: var(--teal); border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .toast {
-position: fixed; bottom: 24px; right: 24px;
-background: rgba(30,40,80,0.95);
-backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-border: 1px solid rgba(255,255,255,0.15);
-color: white; padding: 12px 20px; border-radius: 10px;
-font-size: 12px; font-weight: 700; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-transform: translateY(80px); opacity: 0; transition: all 0.3s ease; z-index: 1000;
+  position: fixed; bottom: 24px; right: 24px;
+  background: rgba(30,40,80,0.95);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: white; padding: 12px 20px; border-radius: 10px;
+  font-size: 12px; font-weight: 700; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transform: translateY(80px); opacity: 0; transition: all 0.3s ease; z-index: 1000;
 }
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.success { background: rgba(27,94,32,0.95); border-color: rgba(105,240,174,0.3); }
 .toast.error { background: rgba(183,28,28,0.95); border-color: rgba(255,100,100,0.3); }
 
-.grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(–radius); background: white; box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
+.grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius); background: white; box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
 .grid-wrap::-webkit-scrollbar { height: 6px; }
 .grid-wrap::-webkit-scrollbar-track { background: transparent; }
 .grid-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
 
 /* LOCKED STATE */
 .roster-locked .slot-select:not(.no-avail) {
-pointer-events: none;
-opacity: 0.95;
+  pointer-events: none;
+  opacity: 0.95;
 }
 .roster-locked .slot-select.unassigned {
-opacity: 0.4;
+  opacity: 0.4;
 }
 
 /* HOURS PAGE */
 .hours-wrap { display: flex; flex-direction: column; gap: 20px; }
 .summary-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .summary-card {
-background: rgba(255,255,255,0.07);
-backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-border: 1px solid rgba(255,255,255,0.1); border-radius: var(–radius); padding: 18px;
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius); padding: 18px;
 }
 .summary-card .card-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
 .summary-card .card-value { font-size: 26px; font-weight: 900; color: white; }
 .summary-card .card-sub { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35); margin-top: 2px; }
 .hours-table-wrap {
-background: rgba(255,255,255,0.06);
-backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-border: 1px solid rgba(255,255,255,0.1); border-radius: var(–radius); overflow: hidden;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius); overflow: hidden;
 }
 .hours-table-header { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; }
 .hours-table-header h2 { font-size: 14px; font-weight: 800; color: white; }
@@ -290,7 +289,7 @@ border: 1px solid rgba(255,255,255,0.1); border-radius: var(–radius); overflow
 .dj-name { font-weight: 700; font-size: 12px; color: white; }
 .hours-bar-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .hours-bar-bg { flex: 1; height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; min-width: 60px; }
-.hours-bar-fill { height: 100%; border-radius: 3px; background: var(–teal); }
+.hours-bar-fill { height: 100%; border-radius: 3px; background: var(--teal); }
 .hours-bar-fill.resident { background: #7c83ff; }
 .hours-bar-fill.zero { background: rgba(255,255,255,0.08); }
 .hours-val { font-size: 12px; font-weight: 800; color: white; min-width: 30px; text-align: right; }
@@ -303,38 +302,38 @@ border: 1px solid rgba(255,255,255,0.1); border-radius: var(–radius); overflow
 
 /* ── RESIDENT HOURS SIDEBAR ── */
 .hours-toggle {
-position: fixed; right: 0; top: 50%; transform: translateY(-50%);
-background: rgba(43,57,144,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-border: 1px solid rgba(93,184,192,0.4); border-right: none;
-border-radius: 10px 0 0 10px; padding: 10px 8px;
-cursor: pointer; z-index: 200; color: white; font-size: 11px; font-weight: 800;
-writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.08em;
-transition: all 0.2s; display: none;
+  position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+  background: rgba(43,57,144,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(93,184,192,0.4); border-right: none;
+  border-radius: 10px 0 0 10px; padding: 10px 8px;
+  cursor: pointer; z-index: 200; color: white; font-size: 11px; font-weight: 800;
+  writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.08em;
+  transition: all 0.2s; display: none;
 }
 .hours-toggle:hover { background: rgba(43,57,144,0.95); padding-right: 12px; }
 .app.visible .hours-toggle { display: block; }
 
 .hours-panel {
-position: fixed; right: -280px; top: 0; bottom: 0; width: 270px;
-background: rgba(15,20,45,0.97); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-border-left: 1px solid rgba(93,184,192,0.3); z-index: 300;
-transition: right 0.3s ease; overflow-y: auto; display: flex; flex-direction: column;
+  position: fixed; right: -280px; top: 0; bottom: 0; width: 270px;
+  background: rgba(15,20,45,0.97); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border-left: 1px solid rgba(93,184,192,0.3); z-index: 300;
+  transition: right 0.3s ease; overflow-y: auto; display: flex; flex-direction: column;
 }
 .hours-panel.open { right: 0; }
 .hours-panel-header {
-padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
-display: flex; align-items: center; justify-content: space-between;
+  padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: space-between;
 }
 .hours-panel-header h3 { font-size: 13px; font-weight: 800; color: white; }
 .hours-panel-close {
-background: none; border: none; color: rgba(255,255,255,0.4); font-size: 18px;
-cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.15s;
+  background: none; border: none; color: rgba(255,255,255,0.4); font-size: 18px;
+  cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.15s;
 }
 .hours-panel-close:hover { color: white; background: rgba(255,255,255,0.1); }
 .hours-panel-body { padding: 12px 16px; flex: 1; }
 .hp-row {
-display: flex; align-items: center; gap: 8px; padding: 8px 0;
-border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex; align-items: center; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 .hp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .hp-name { flex: 1; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); }
@@ -342,91 +341,90 @@ border-bottom: 1px solid rgba(255,255,255,0.05);
 .hp-target { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.3); min-width: 30px; }
 .hp-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; min-width: 40px; }
 .hp-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
-.hp-bar-fill.ok { background: var(–teal); }
+.hp-bar-fill.ok { background: var(--teal); }
 .hp-bar-fill.warn { background: #ffab40; }
 .hp-bar-fill.over { background: #ff5252; }
 .hours-panel-overlay {
-position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 250;
-display: none; cursor: pointer;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 250;
+  display: none; cursor: pointer;
 }
 .hours-panel-overlay.open { display: block; }
 
 /* ── SCHEDULE HINT ── */
 .slot-hint {
-position: absolute; top: 1px; right: 1px; width: 6px; height: 6px;
-border-radius: 50%; background: var(–teal); opacity: 0.7;
+  position: absolute; top: 1px; right: 1px; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--teal); opacity: 0.7;
 }
 .td-slot { position: relative; }
 
 /* ── REDUCED MOTION ── */
 @media (prefers-reduced-motion: reduce) {
-*, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-.bg-orb { animation: none !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .bg-orb { animation: none !important; }
 }
 
 /* ── MOBILE: TABLETS & PHONES ── */
 @media (max-width: 768px) {
-.bg-orb { animation: none; opacity: 0.3; }
+  .bg-orb { animation: none; opacity: 0.3; }
 
-.app-header {
-height: auto;
-padding: 10px 14px;
-flex-wrap: wrap;
-gap: 8px;
-}
-.app-header-left { flex: 1; min-width: 0; }
-.app-header h1 {
-font-size: 13px;
-white-space: nowrap;
-overflow: hidden;
-text-overflow: ellipsis;
-}
-.header-badge { font-size: 9px; padding: 2px 7px; }
-.month-nav { width: 100%; justify-content: center; }
-.month-label { font-size: 12px; min-width: 110px; }
-.month-nav button { width: 36px; height: 36px; font-size: 16px; min-height: 44px; }
+  .app-header {
+    height: auto;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .app-header-left { flex: 1; min-width: 0; }
+  .app-header h1 {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header-badge { font-size: 9px; padding: 2px 7px; }
+  .month-nav { width: 100%; justify-content: center; }
+  .month-label { font-size: 12px; min-width: 110px; }
+  .month-nav button { width: 36px; height: 36px; font-size: 16px; min-height: 44px; }
 
-.venue-bar { padding: 0 8px; gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.venue-tab { padding: 10px 12px; font-size: 11px; white-space: nowrap; min-height: 44px; }
+  .venue-bar { padding: 0 8px; gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .venue-tab { padding: 10px 12px; font-size: 11px; white-space: nowrap; min-height: 44px; }
 
-.main-content { padding: 8px; }
+  .main-content { padding: 8px; }
 
-.td-date { min-width: 66px; padding: 4px 6px; font-size: 10px; }
-.td-date .dow { font-size: 8px; }
-.td-slot { min-width: 66px; padding: 2px; }
-.slot-select { font-size: 9px; min-height: 32px; padding: 4px 2px; }
-.roster-table thead th { font-size: 8px; padding: 6px 2px; }
-.th-section-label { font-size: 8px; padding: 4px; }
+  .td-date { min-width: 66px; padding: 4px 6px; font-size: 10px; }
+  .td-date .dow { font-size: 8px; }
+  .td-slot { min-width: 66px; padding: 2px; }
+  .slot-select { font-size: 9px; min-height: 32px; padding: 4px 2px; }
+  .roster-table thead th { font-size: 8px; padding: 6px 2px; }
+  .th-section-label { font-size: 8px; padding: 4px; }
 
-.status-bar {
-padding: 8px 10px;
-flex-wrap: wrap;
-gap: 8px;
-}
-.status-bar > span { display: none; }
-.status-bar-right {
-width: 100%;
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 6px;
-}
-.btn-sm { padding: 8px 10px; font-size: 10px; min-height: 40px; text-align: center; justify-content: center; display: flex; align-items: center; }
-.status-pill { font-size: 10px; }
+  .status-bar {
+    padding: 8px 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .status-bar > span { display: none; }
+  .status-bar-right {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .btn-sm { padding: 8px 10px; font-size: 10px; min-height: 40px; text-align: center; justify-content: center; display: flex; align-items: center; }
+  .status-pill { font-size: 10px; }
 
-.toast { bottom: 12px; right: 12px; left: 12px; font-size: 11px; }
+  .toast { bottom: 12px; right: 12px; left: 12px; font-size: 11px; }
 
-.summary-row { grid-template-columns: 1fr 1fr; }
-.hours-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.hours-table { min-width: 520px; }
-.hours-table thead th, .hours-table tbody td { padding: 8px 8px; font-size: 11px; }
-.hours-wrap { padding-right: 4px; }
+  .summary-row { grid-template-columns: 1fr 1fr; }
+  .hours-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .hours-table { min-width: 520px; }
+  .hours-table thead th, .hours-table tbody td { padding: 8px 8px; font-size: 11px; }
+  .hours-wrap { padding-right: 4px; }
 }
 
 /* PRINT */
 @media print {
-@page { size: A2 landscape; margin: 8mm; }
-
-- { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  @page { size: A2 landscape; margin: 8mm; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   body { background: white; font-size: 10px; }
   .login-wrap { display: none !important; }
   .app-header, .venue-bar, .status-bar { display: none !important; }
@@ -440,9 +438,9 @@ gap: 6px;
   .th-hip { background: #F15A29 !important; color: white !important; }
   .th-love { background: #fce4ec !important; color: #880e4f !important; }
   .th-date { background: #2B3990 !important; color: white !important; }
-  .th-section-label[style*=“teal”] { background: #5DB8C0 !important; color: white !important; }
-  .th-section-label[style*=“orange”] { background: #F15A29 !important; color: white !important; }
-  .th-section-label[style*=“love-pink”] { background: #e91e8c !important; color: white !important; }
+  .th-section-label[style*="teal"] { background: #5DB8C0 !important; color: white !important; }
+  .th-section-label[style*="orange"] { background: #F15A29 !important; color: white !important; }
+  .th-section-label[style*="love-pink"] { background: #e91e8c !important; color: white !important; }
   .td-date { font-size: 7.5px; padding: 3px 5px; min-width: 55px; position: static; border-right: 1px solid #ccc; }
   .td-date .dow { font-size: 7px; }
   .td-slot { min-width: 50px; padding: 2px; border: 0.5px solid #eee; }
@@ -452,16 +450,15 @@ gap: 6px;
   .td-slot.empty-slot { background: #fafafa !important; }
   .hours-wrap, .summary-row { display: none !important; }
   .roster-table tbody tr:nth-child(even) { background: #fafbff !important; }
-  }
-  .print-header {
+}
+.print-header {
   display: none;
   text-align: center;
   margin-bottom: 8px;
   font-size: 14px;
   font-weight: 800;
-  color: var(–navy);
-  }
-
+  color: var(--navy);
+}
 </style>
 </head>
 <body>
@@ -572,7 +569,7 @@ const ARKBAR_SLOTS = [
 const HIP_SLOTS = [
   '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'
 ];
-// Full ARKbar 14:00–02:00
+// Full ARKbar 14:00?02:00
 const LOVE_WEEKDAY_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
   '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'
@@ -620,17 +617,17 @@ const DJ_COLORS = {
   'Guest DJ':      '#78909c',
 };
 
-// ── HIP WEEKLY ROTATION (4 slots per night, one DJ) ──────────────────
+// ?? HIP WEEKLY ROTATION (4 slots per night, one DJ) ??????????????????
 const HIP_ROTATION = {
   1: 'Vozka',   // Monday
   4: 'Tobi',    // Thursday
   // Other days: manual assignment
 };
 
-// ── LOVE BEACH DJ AVAILABILITY (weekly patterns) ─────────────────────
+// ?? LOVE BEACH DJ AVAILABILITY (weekly patterns) ?????????????????????
 // Each entry: { days: [0=Sun..6=Sat], excluded: [{slot,days}] }
 const LOVE_DJS = {
-  'Buba':    { days: [2,3,4,5,6] },                    // Tue–Sat
+  'Buba':    { days: [2,3,4,5,6] },                    // Tue-Sat
   'Sky':     { days: [3,5] },                           // Wed, Fri
   'Donsine': { days: [0,4,5,6] },                       // Thu,Fri,Sat,Sun
   'Mostyx':  { days: [0,1,2,3,4,5,6], excluded: [
@@ -639,7 +636,7 @@ const LOVE_DJS = {
   ]},
 };
 
-// ── HOURS PANEL ──────────────────────────────────────────────────────
+// ?? HOURS PANEL ??????????????????????????????????????????????????????
 function toggleHoursPanel() {
   document.getElementById('hoursPanel').classList.toggle('open');
   document.getElementById('hoursPanelOverlay').classList.toggle('open');
@@ -687,7 +684,7 @@ window.addEventListener('DOMContentLoaded', () => {
   updateMonthLabel();
 });
 
-// ── EYE TOGGLE — SVG, always white, works on all platforms ──
+// ?? EYE TOGGLE ? SVG, always white, works on all platforms ??
 function togglePwView() {
   const inp = document.getElementById('pwInput');
   const icon = document.getElementById('eyeIcon');
@@ -704,6 +701,8 @@ function togglePwView() {
 
 async function doLogin() {
   const pw = document.getElementById('pwInput').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
   try {
     const res = await fetch('/api/auth', {
       method: 'POST',
@@ -716,11 +715,13 @@ async function doLogin() {
       document.getElementById('mainApp').classList.add('visible');
       loadAll();
     } else {
-      document.getElementById('loginError').style.display = 'block';
+      errEl.textContent = 'Incorrect password. Try again.';
+      errEl.style.display = 'block';
     }
   } catch(e) {
-    document.getElementById('loginError').style.display = 'block';
-    document.getElementById('loginError').textContent = 'Connection error.';
+    console.error('Login error:', e);
+    errEl.textContent = 'Cannot connect to server. Try refreshing.';
+    errEl.style.display = 'block';
   }
 }
 
@@ -763,7 +764,7 @@ async function loadAll() {
     '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   const month = getMonthString();
   try {
-    // Load everything in parallel — ARKbar, HIP, Love all separate rosters
+    // Load everything in parallel ? ARKbar, HIP, Love all separate rosters
     const [availRes, arkbarRes, hipRes, loveRes, djRes] = await Promise.all([
       fetch(`/api/availability?month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`),
@@ -777,12 +778,12 @@ async function loadAll() {
     const loveData   = await loveRes.json();
     const djData     = await djRes.json();
 
-    // availability map: { "2026-03-01": { "21:00–22:00": ["Pick", ...] } }
+    // availability map: { "2026-03-01": { "21:00?22:00": ["Pick", ...] } }
     availability = availData.availability || {};
     // blackouts from server: { "Alex RedWhite": { "2026-03-01": "full"|"morning" } }
     residentBlackouts = availData.blackouts || {};
 
-    // Parse each venue roster into a flat key→dj map
+    // Parse each venue roster into a flat key?dj map
     function parseRoster(rows) {
       const map = {};
       (rows || []).forEach(row => {
@@ -916,7 +917,7 @@ function buildCell(dateStr, slot, type) {
     // Residents CAN play HIP but we flag if they're already at ARKbar that slot
     const regularDJs = avail.filter(dj => !LOVE_ONLY.includes(dj));
     options = [...regularDJs];
-    // Add residents — they may be assigned here even if at ARKbar (manager decides)
+    // Add residents ? they may be assigned here even if at ARKbar (manager decides)
     RESIDENTS.forEach(res => {
       const blackout = residentBlackouts[res] && residentBlackouts[res][dateStr];
       if (blackout === 'full') return;
@@ -1144,11 +1145,11 @@ async function suggestRoster() {
   const month = getMonthString();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  // ── CONFIGURATION ─────────────────────────────────────────────────────
+  // ?? CONFIGURATION ?????????????????????????????????????????????????????
   // Based on February reference roster pattern
   const TARGETS = { 'Alex RedWhite': 80, 'Raffo DJ': 80, 'Sound Bogie': 40 };
   const MAX_CONSECUTIVE = 3; // max 3 consecutive slots
-  const MAX_DAY_HOURS = 6;   // max 6h per day (but with gap — not 6 consecutive)
+  const MAX_DAY_HOURS = 6;   // max 6h per day (but with gap - not 6 consecutive)
 
   // Sound Bogie: never auto-assigned to 14:00-17:00
   const SOUND_BLOCKED = new Set(['14:00–15:00','15:00–16:00','16:00–17:00']);
@@ -1159,18 +1160,18 @@ async function suggestRoster() {
     '22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'
   ];
 
-  // ── ZONE DEFINITIONS ──────────────────────────────────────────────────
-  // Afternoon: 14:00-17:00 (3 slots) — Alex & Raffo rotate, leave gaps for Pick/D.Davoted
-  // Cooldown: 17:00-19:00 (2 slots) — Raffo & Sound rotate, leave gaps for others
-  // Evening: 20:00-23:00 (3 slots) — leave mostly empty for regular DJs (Pick, Tony, Sound, etc)
-  // Late Night: 23:00-02:00 (3 slots) — Alex, Raffo, Sound rotate in strict 3-day cycle
+  // ?? ZONE DEFINITIONS ??????????????????????????????????????????????????
+  // Afternoon: 14:00-17:00 (3 slots) ? Alex & Raffo rotate, leave gaps for Pick/D.Davoted
+  // Cooldown: 17:00-19:00 (2 slots) ? Raffo & Sound rotate, leave gaps for others
+  // Evening: 20:00-23:00 (3 slots) ? leave mostly empty for regular DJs (Pick, Tony, Sound, etc)
+  // Late Night: 23:00-02:00 (3 slots) ? Alex, Raffo, Sound rotate in strict 3-day cycle
 
   const ZONE_AFTERNOON = ['14:00–15:00','15:00–16:00','16:00–17:00'];
   const ZONE_COOLDOWN  = ['17:00–18:00','18:00–19:00'];
   const ZONE_EVENING   = ['20:00–21:00','21:00–22:00','22:00–23:00'];
   const ZONE_LATENIGHT = ['23:00–00:00','00:00–01:00','01:00–02:00'];
 
-  // Late night: strict 3-day rotation — Alex, Raffo, Sound
+  // Late night: strict 3-day rotation ? Alex, Raffo, Sound
   const LATENIGHT_ROTATION = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 
   // Afternoon: Alex & Raffo alternate, with gaps (every other day, not consecutive)
@@ -1261,7 +1262,7 @@ async function suggestRoster() {
   if (!isLove) {
     const toSave = [];
 
-    // ── PASS 1: LATE NIGHT (23:00-02:00) — strict 3-day rotation ────────
+    // ?? PASS 1: LATE NIGHT (23:00-02:00) ? strict 3-day rotation ????????
     // Alex day 1, Raffo day 2, Sound day 3, repeat
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = makeDateStr(currentYear, currentMonth, d);
@@ -1285,14 +1286,14 @@ async function suggestRoster() {
       });
     }
 
-    // ── PASS 2: AFTERNOON (14:00-17:00) — Alex & Raffo alternate with gaps
-    // Pattern: Alex, skip, Raffo, skip — leaving gaps for Pick/D.Davoted
+    // ?? PASS 2: AFTERNOON (14:00-17:00) ? Alex & Raffo alternate with gaps
+    // Pattern: Alex, skip, Raffo, skip ? leaving gaps for Pick/D.Davoted
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = makeDateStr(currentYear, currentMonth, d);
       const rotIdx = (d - 1) % AFTERNOON_ROTATION.length;
       const dj = AFTERNOON_ROTATION[rotIdx];
 
-      if (!dj) continue; // gap day — leave for manual assignment
+      if (!dj) continue; // gap day - leave for manual assignment
       if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
       if (wouldBreakConsecutive(dj, dateStr, ZONE_AFTERNOON)) continue;
       if (playedZoneYesterday(dj, dateStr, ZONE_AFTERNOON)) continue;
@@ -1310,7 +1311,7 @@ async function suggestRoster() {
       });
     }
 
-    // ── PASS 3: COOLDOWN (17:00-19:00) — Raffo & Sound alternate with gaps
+    // ?? PASS 3: COOLDOWN (17:00-19:00) ? Raffo & Sound alternate with gaps
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = makeDateStr(currentYear, currentMonth, d);
       const rotIdx = (d - 1) % COOLDOWN_ROTATION.length;
@@ -1334,10 +1335,10 @@ async function suggestRoster() {
       });
     }
 
-    // ── EVENING (20:00-23:00) — LEFT EMPTY for manual/regular DJs ───────
+    // ?? EVENING (20:00-23:00) ? LEFT EMPTY for manual/regular DJs ???????
     // This zone is intentionally not auto-filled
 
-    // ── PASS 4: HIP RESTAURANT — known weekly DJs, all 4 slots ──────────
+    // ?? PASS 4: HIP RESTAURANT ? known weekly DJs, all 4 slots ??????????
     const hipToSave = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(currentYear, currentMonth, d);
@@ -1356,7 +1357,7 @@ async function suggestRoster() {
       });
     }
 
-    // ── SUMMARY & SAVE ──────────────────────────────────────────────────
+    // ?? SUMMARY & SAVE ??????????????????????????????????????????????????
     const totalSlots = toSave.length + hipToSave.length;
     if (totalSlots === 0) {
       showToast('No slots could be auto-assigned', 'error');
@@ -1404,7 +1405,7 @@ async function suggestRoster() {
     return;
   }
 
-  // ── LOVE BEACH AUTO-SUGGEST ───────────────────────────────────────────
+  // ?? LOVE BEACH AUTO-SUGGEST ???????????????????????????????????????????
   const loveToSave = [];
   const loveWorking = { ...loveAssignments };
 
@@ -1441,7 +1442,7 @@ async function suggestRoster() {
     const afternoon = activeSlots.filter(s => s < '19:00–20:00');
     const evening = activeSlots.filter(s => s >= '20:00–21:00');
 
-    // Afternoon block — rotate through available Love DJs
+    // Afternoon block ? rotate through available Love DJs
     if (afternoon.length > 0) {
       const allEmpty = afternoon.every(s => !loveWorking[`${dateStr}|${s}`]);
       if (allEmpty) {
@@ -1461,7 +1462,7 @@ async function suggestRoster() {
       }
     }
 
-    // Evening block — same rotation
+    // Evening block ? same rotation
     if (evening.length > 0) {
       const allEmpty = evening.every(s => !loveWorking[`${dateStr}|${s}`]);
       if (allEmpty) {
@@ -1692,7 +1693,7 @@ function renderHours(djs, arkHours, loveHours) {
     </div>`;
 }
 
-// ── DJ DETAIL MODAL ──────────────────────────────────────────────────
+// ?? DJ DETAIL MODAL ??????????????????????????????????????????????????
 async function showDJDetail(djName) {
   const month = getMonthString();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -1839,7 +1840,6 @@ function printDJDetail() {
       span[style*="background"] { background:#f0f0f0 !important; padding:2px 6px; border-radius:3px; }
       @media print { button { display:none !important; } }
     </style>
-
   </head><body>${content.innerHTML}</body></html>`);
   w.document.close();
   setTimeout(() => { w.print(); }, 300);
@@ -1847,17 +1847,16 @@ function printDJDetail() {
 
 let toastTimer;
 function showToast(msg, type) {
-const t = document.getElementById(‘toast’);
-t.textContent = msg;
-t.className = `toast ${type} show`;
-clearTimeout(toastTimer);
-toastTimer = setTimeout(() => t.classList.remove(‘show’), type === ‘error’ ? 4000 : 2500);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), type === 'error' ? 4000 : 2500);
 }
 
 // Debounce for assignDJ saves
 let _assignQueue = new Map();
 let _assignTimer = null;
 </script>
-
 </body>
 </html>
