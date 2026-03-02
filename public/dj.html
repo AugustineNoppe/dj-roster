@@ -20,7 +20,7 @@
   --transition:0.2s ease;
   --header-h:52px;--month-h:48px;--tab-h:42px;--status-h:32px;
 }
-html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
 /* === BACKGROUND === */
 .bg-fixed{position:fixed;inset:0;z-index:0;pointer-events:none}
@@ -278,6 +278,22 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   .app-header,.month-nav,.tab-bar,.status-bar,.bg-fixed,.toast{display:none!important}
   .main-content{overflow:visible!important}
 }
+
+/* === MOBILE PERFORMANCE — disable expensive GPU blurs === */
+@media(max-width:600px){
+  .bg-orb{display:none}
+  .app-header{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(11,16,32,0.97)}
+  .month-nav{backdrop-filter:none;-webkit-backdrop-filter:none}
+  .tab-bar{backdrop-filter:none;-webkit-backdrop-filter:none}
+  .login-box{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+}
+
+/* === GROUPED SCHEDULE === */
+.sched-day-group{background:var(--surface);border:1px solid var(--border-sub);border-radius:14px;padding:14px 16px;margin-bottom:8px}
+.sched-day-hdr{font-size:14px;font-weight:900;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border-sub)}
+.sched-venue-row{display:flex;align-items:center;gap:10px;padding:7px 0}
+.sched-venue-row+.sched-venue-row{border-top:1px solid var(--border-sub)}
+.sched-times{font-size:13px;font-weight:700;color:var(--text-2);flex:1}
 </style>
 </head>
 <body>
@@ -657,10 +673,13 @@ async function saveAvailability() {
   clearTimeout(saveTimer);
   setSaveState('saving');
   const month = getMonthStr();
+  // Only persist slots that differ from the default (residents=available, guests=unavailable).
+  // This prevents writing hundreds of default entries to the sheet on login.
+  const defaultStatus = isResident ? 'available' : 'unavailable';
   const slots = [];
   for (const [date, slotMap] of Object.entries(availability)) {
     for (const [slot, status] of Object.entries(slotMap)) {
-      slots.push({ date, slot, status });
+      if (status !== defaultStatus) slots.push({ date, slot, status });
     }
   }
   try {
@@ -681,6 +700,28 @@ async function saveAvailability() {
   }
 }
 
+// ===== SLOT MERGE HELPER =====
+function slotToMins(t) {
+  const [h, m] = t.split(':').map(Number);
+  // Post-midnight hours (00–05) treated as 24+h so they sort after 23:xx
+  return h < 14 ? (h + 24) * 60 + m : h * 60 + m;
+}
+function mergeSlots(slots) {
+  if (!slots.length) return [];
+  const parsed = slots.map(s => {
+    const parts = s.split('\u2013');
+    return { s: slotToMins(parts[0]), e: slotToMins(parts[1]) };
+  }).sort((a, b) => a.s - b.s);
+  const merged = [{ ...parsed[0] }];
+  for (let i = 1; i < parsed.length; i++) {
+    const last = merged[merged.length - 1];
+    if (parsed[i].s <= last.e) { last.e = Math.max(last.e, parsed[i].e); }
+    else { merged.push({ ...parsed[i] }); }
+  }
+  const fmt = m => `${String(Math.floor(m / 60) % 24).padStart(2,'0')}:${String(m % 60).padStart(2,'0')}`;
+  return merged.map(({ s, e }) => `${fmt(s)}\u2013${fmt(e)}`);
+}
+
 // ===== SCHEDULE =====
 function renderSchedule() {
   updateStatusBar();
@@ -697,19 +738,34 @@ function renderSchedule() {
   }
 
   const venueCls = { ARKbar: 'ark', HIP: 'hip', 'Love Beach': 'love' };
+  const venueOrder = ['ARKbar', 'HIP', 'Love Beach'];
 
-  let items = '';
+  // Group by date → venue → slots
+  const byDate = {};
   for (const { venue, date, slot } of schedule) {
+    if (!byDate[date]) byDate[date] = {};
+    if (!byDate[date][venue]) byDate[date][venue] = [];
+    byDate[date][venue].push(slot);
+  }
+
+  let groups = '';
+  for (const date of Object.keys(byDate).sort()) {
     const [y, m, d] = date.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
-    const label = `${DAYS_LONG[dateObj.getDay()]} ${ordinal(d)} ${MONTHS[m - 1]}`;
-    const cls = venueCls[venue] || 'ark';
-    items += `<div class="schedule-item">
-      <span class="venue-badge ${cls}">${venue}</span>
-      <div class="schedule-info">
-        <div class="schedule-slot">${slot}</div>
-        <div class="schedule-date">${label}</div>
-      </div>
+    const label = `${DAYS_LONG[dateObj.getDay()]}, ${ordinal(d)} ${MONTHS[m - 1]}`;
+    let venueRows = '';
+    for (const venue of venueOrder) {
+      if (!byDate[date][venue]) continue;
+      const ranges = mergeSlots(byDate[date][venue]);
+      const cls = venueCls[venue] || 'ark';
+      venueRows += `<div class="sched-venue-row">
+        <span class="venue-badge ${cls}">${venue}</span>
+        <span class="sched-times">${ranges.join(' &amp; ')}</span>
+      </div>`;
+    }
+    groups += `<div class="sched-day-group">
+      <div class="sched-day-hdr">${label}</div>
+      ${venueRows}
     </div>`;
   }
 
@@ -718,7 +774,7 @@ function renderSchedule() {
       <h2>Bookings — ${monthStr}</h2>
       <button class="print-btn" onclick="printSchedule()">&#128438; Print</button>
     </div>
-    <div class="schedule-list">${items}</div>
+    <div class="schedule-list">${groups}</div>
   </div>`;
 }
 
@@ -762,7 +818,6 @@ function renderHours() {
     if (counts[venue] !== undefined) counts[venue]++;
     total++;
   }
-  const cost = total * djRate;
 
   const empty = total === 0 ? `
     <div class="empty-state" style="margin-top:16px">
@@ -772,21 +827,11 @@ function renderHours() {
     </div>` : '';
 
   $('mainContent').innerHTML = `<div class="hours-wrap">
-    <div class="hours-cards">
-      <div class="hours-card">
+    <div class="hours-cards" style="grid-template-columns:1fr;max-width:220px;margin-bottom:16px">
+      <div class="hours-card accent">
         <div class="hours-card-label">Total Hours</div>
         <div class="hours-card-value">${total}h</div>
         <div class="hours-card-sub">${monthStr}</div>
-      </div>
-      <div class="hours-card">
-        <div class="hours-card-label">Rate</div>
-        <div class="hours-card-value" style="font-size:22px">&#3647;${djRate.toLocaleString()}</div>
-        <div class="hours-card-sub">per hour</div>
-      </div>
-      <div class="hours-card accent">
-        <div class="hours-card-label">Amount Owed</div>
-        <div class="hours-card-value" style="color:var(--teal);font-size:${cost >= 10000 ? '20px' : '26px'}">&#3647;${cost.toLocaleString()}</div>
-        <div class="hours-card-sub">Total</div>
       </div>
     </div>
     <div class="hours-breakdown">
