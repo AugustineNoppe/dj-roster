@@ -294,6 +294,48 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 .sched-venue-row{display:flex;align-items:center;gap:10px;padding:7px 0}
 .sched-venue-row+.sched-venue-row{border-top:1px solid var(--border-sub)}
 .sched-times{font-size:13px;font-weight:700;color:var(--text-2);flex:1}
+.signoff-btn{
+  padding:5px 12px;border-radius:20px;font-family:inherit;font-size:10px;font-weight:800;
+  background:rgba(93,184,192,0.15);border:1px solid rgba(93,184,192,0.4);color:var(--teal);
+  cursor:pointer;transition:all var(--transition);white-space:nowrap;flex-shrink:0;
+}
+.signoff-btn:hover{background:rgba(93,184,192,0.3);border-color:rgba(93,184,192,0.7)}
+.signoff-done{font-size:10px;font-weight:800;color:#69f0ae;white-space:nowrap;flex-shrink:0}
+/* Select-all button inside slot panel */
+.select-all-btn{
+  padding:5px 14px;border-radius:20px;font-family:inherit;font-size:10px;font-weight:800;
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);color:var(--text-2);
+  cursor:pointer;transition:all var(--transition);
+}
+.select-all-btn:hover{background:rgba(255,255,255,0.14);color:#fff}
+/* Sign-off password modal */
+.signoff-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:600;
+  display:flex;align-items:center;justify-content:center;padding:16px;
+}
+.signoff-modal{
+  background:rgba(15,22,50,0.98);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  border:1px solid rgba(93,184,192,0.3);border-radius:18px;padding:28px 24px;
+  width:min(340px,100%);box-shadow:0 32px 80px rgba(0,0,0,0.6);
+}
+.signoff-modal h3{font-size:16px;font-weight:900;margin-bottom:6px}
+.signoff-modal p{font-size:12px;color:var(--text-3);margin-bottom:20px;line-height:1.5}
+.signoff-modal input{
+  width:100%;padding:12px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;
+  background:rgba(255,255,255,0.06);color:#fff;font-family:inherit;font-size:14px;font-weight:600;
+  outline:none;margin-bottom:14px;
+}
+.signoff-modal input:focus{border-color:var(--teal)}
+.signoff-modal-btns{display:flex;gap:10px}
+.signoff-modal-btns button{
+  flex:1;padding:12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;
+  cursor:pointer;border:none;transition:opacity var(--transition);
+}
+.signoff-confirm-btn{background:var(--teal);color:#0b1020}
+.signoff-confirm-btn:hover{opacity:.85}
+.signoff-cancel-btn{background:rgba(255,255,255,0.08);color:var(--text-2)}
+.signoff-cancel-btn:hover{background:rgba(255,255,255,0.14)}
+/* DJ edit modal (admin) */
 </style>
 </head>
 <body>
@@ -365,6 +407,20 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 
 </div>
 
+<!-- Sign-off password modal -->
+<div class="signoff-overlay" id="signoffOverlay" style="display:none">
+  <div class="signoff-modal">
+    <h3>&#10003; Sign Off Set</h3>
+    <p id="signoffDesc">Enter the management password to confirm this set.</p>
+    <input type="password" id="signoffPwd" placeholder="Management password" onkeydown="if(event.key==='Enter')confirmSignoff()">
+    <div id="signoffErr" style="font-size:11px;color:var(--orange);margin-bottom:10px;display:none"></div>
+    <div class="signoff-modal-btns">
+      <button class="signoff-cancel-btn" onclick="closeSignoffModal()">Cancel</button>
+      <button class="signoff-confirm-btn" onclick="confirmSignoff()">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -374,6 +430,7 @@ let djName = '', isResident = false, djRate = 0;
 let currentYear, currentMonth;
 let availability = {};   // dateKey → { slotKey: 'available'|'unavailable' }
 let schedule = [];       // [{venue, date, slot}]
+let signoffs = new Set(); // "date|slot|venue" keys for signed-off sets
 let isFinalized = false;
 let expandedDate = null;
 let saveTimer = null;
@@ -386,7 +443,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const ALL_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
-  '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
+  '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
   '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
 ];
 
@@ -519,14 +576,16 @@ async function loadMonth() {
   try {
     const month = getMonthStr();
     const enc = encodeURIComponent;
-    const [availData, schedData] = await Promise.all([
+    const [availData, schedData, signoffData] = await Promise.all([
       fetch(`/api/dj/availability/${enc(djName)}/${enc(month)}`).then(r => r.json()),
       fetch(`/api/dj/schedule/${enc(djName)}/${enc(month)}`).then(r => r.json()),
+      fetch(`/api/dj/signoffs/${enc(djName)}/${enc(month)}`).then(r => r.json()).catch(() => ({ signoffs: [] })),
     ]);
 
     availability = availData.availability || {};
     schedule     = schedData.schedule    || [];
     isFinalized  = availData.isFinalized || false;
+    signoffs = new Set((signoffData.signoffs || []).map(s => `${s.date}|${s.slot}|${s.venue}`));
 
     renderCurrentTab();
   } catch(e) {
@@ -651,10 +710,17 @@ function buildSlotPanel(dk) {
     pills += `<button class="${cls}" ${onclick} ${disabled}>${slot}</button>`;
   }
 
+  const allAvail = ALL_SLOTS.every(s => {
+    const st = slotMap[s] !== undefined ? slotMap[s] : (isResident ? 'available' : 'unavailable');
+    return st === 'available';
+  });
+  const selectAllBtn = isFinalized ? '' :
+    `<button class="select-all-btn" onclick="toggleAllSlots('${dk}')">${allAvail ? 'Deselect All' : 'Select All'}</button>`;
+
   return `<div class="slot-panel">
     <div class="slot-panel-hdr">
       <span>${dayName}, ${ordinal(d)} ${monthName}${lockLabel}</span>
-      <button class="slot-close" onclick="toggleDate('${dk}')">&#x2715;</button>
+      <div style="display:flex;align-items:center;gap:8px">${selectAllBtn}<button class="slot-close" onclick="toggleDate('${dk}')">&#x2715;</button></div>
     </div>
     <div class="slot-hint">${hint}</div>
     <div class="slot-pills">${pills}</div>
@@ -680,6 +746,64 @@ function toggleSlot(dk, slot) {
 
   renderCalendar();
   startSaveTimer();
+}
+
+// ===== SELECT ALL =====
+function toggleAllSlots(dk) {
+  if (isFinalized) return;
+  if (!availability[dk]) {
+    availability[dk] = {};
+    for (const s of ALL_SLOTS) availability[dk][s] = isResident ? 'available' : 'unavailable';
+  }
+  const allAvail = ALL_SLOTS.every(s => {
+    const v = availability[dk][s];
+    return (v !== undefined ? v : (isResident ? 'available' : 'unavailable')) === 'available';
+  });
+  const newStatus = allAvail ? 'unavailable' : 'available';
+  for (const s of ALL_SLOTS) availability[dk][s] = newStatus;
+  renderCalendar();
+  startSaveTimer();
+}
+
+// ===== SIGN-OFF =====
+let _signoffPending = null; // { date, slot, venue }
+
+function startSignoff(date, slot, venue) {
+  _signoffPending = { date, slot, venue };
+  $('signoffDesc').textContent = `Confirm sign-off for ${slot} at ${venue} on ${date}.`;
+  $('signoffPwd').value = '';
+  $('signoffErr').style.display = 'none';
+  $('signoffOverlay').style.display = 'flex';
+  setTimeout(() => $('signoffPwd').focus(), 50);
+}
+
+function closeSignoffModal() {
+  $('signoffOverlay').style.display = 'none';
+  _signoffPending = null;
+}
+
+async function confirmSignoff() {
+  if (!_signoffPending) return;
+  const password = $('signoffPwd').value;
+  if (!password) { showErr('Enter the management password.'); return; }
+  const { date, slot, venue } = _signoffPending;
+  const month = getMonthStr();
+  try {
+    const data = await fetch('/api/dj/signoff', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: djName, date, slot, venue, month, password }),
+    }).then(r => r.json());
+    if (data.success) {
+      signoffs.add(`${date}|${slot}|${venue}`);
+      closeSignoffModal();
+      renderCurrentTab();
+    } else {
+      showErr(data.error === 'Unauthorized' ? 'Incorrect password.' : (data.error || 'Sign-off failed.'));
+    }
+  } catch(e) {
+    showErr('Connection error — try again.');
+  }
+  function showErr(msg) { $('signoffErr').textContent = msg; $('signoffErr').style.display = 'block'; }
 }
 
 // ===== AUTO-SAVE =====
@@ -792,12 +916,21 @@ function renderSchedule() {
     let venueRows = '';
     for (const venue of venueOrder) {
       if (!byDate[date][venue]) continue;
-      const ranges = mergeSlots(byDate[date][venue]);
       const cls = venueCls[venue] || 'ark';
-      venueRows += `<div class="sched-venue-row">
-        <span class="venue-badge ${cls}">${venue}</span>
-        <span class="sched-times">${ranges.join(' &amp; ')}</span>
-      </div>`;
+      for (const slot of byDate[date][venue]) {
+        const key = `${date}|${slot}|${venue}`;
+        const isSigned = signoffs.has(key);
+        const slotEsc = slot.replace(/'/g, "\\'");
+        const venueEsc = venue.replace(/'/g, "\\'");
+        const btn = isSigned
+          ? `<span class="signoff-done">&#10003; Signed Off</span>`
+          : `<button class="signoff-btn" onclick="startSignoff('${date}','${slotEsc}','${venueEsc}')">Sign Off</button>`;
+        venueRows += `<div class="sched-venue-row">
+          <span class="venue-badge ${cls}">${venue}</span>
+          <span class="sched-times">${slot}</span>
+          ${btn}
+        </div>`;
+      }
     }
     groups += `<div class="sched-day-group">
       <div class="sched-day-hdr">${label}</div>

@@ -21,7 +21,7 @@ const SHEET_ID = process.env.SPREADSHEET_ID;
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 const ALL_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
-  '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
+  '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
   '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
 ];
 const MORNING_SLOTS = new Set([
@@ -30,6 +30,7 @@ const MORNING_SLOTS = new Set([
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 const SHORT_MONTHS = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+const DJ_SIGNOFFS_SHEET = 'DJ Signoffs';
 
 const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
 const pad2 = n => String(n).padStart(2, '0');
@@ -592,6 +593,77 @@ app.get('/api/dj/schedule/:name/:month', async (req, res) => {
     }
     schedule.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.slot < b.slot ? -1 : 1);
     res.json({ success: true, schedule });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- POST /api/dj/signoff ------------------------------------------------- */
+app.post('/api/dj/signoff', async (req, res) => {
+  try {
+    const { name, date, slot, venue, month, password } = req.body;
+    if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
+    if (!name || !date || !slot || !venue || !month) return res.json({ success: false, error: 'Missing fields' });
+    const sheets = getSheets();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:F`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[date, normalizeSlot(slot), name, venue, month, new Date().toISOString()]] },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- GET /api/dj/signoffs/:name/:month ------------------------------------ */
+app.get('/api/dj/signoffs/:name/:month', async (req, res) => {
+  try {
+    const name  = decodeURIComponent(req.params.name);
+    const month = decodeURIComponent(req.params.month);
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:F`,
+    }).catch(() => ({ data: { values: [] } }));
+    const signoffs = (response.data.values || [])
+      .filter(r => r[2] && r[2].trim().toLowerCase() === name.trim().toLowerCase() && r[4] === month)
+      .map(r => ({ date: r[0], slot: normalizeSlot(r[1]), venue: r[3] }));
+    res.json({ success: true, signoffs });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- POST /api/djs/update ------------------------------------------------- */
+app.post('/api/djs/update', async (req, res) => {
+  try {
+    const { oldName, newName, rate, password } = req.body;
+    if (password !== process.env.ADMIN_PASSWORD && password !== process.env.MANAGER_PASSWORD) {
+      return res.json({ success: false, error: 'Unauthorized' });
+    }
+    if (!oldName || !newName || rate === undefined) return res.json({ success: false, error: 'Missing fields' });
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: 'DJ Rates!A2:B',
+    });
+    const rows = response.data.values || [];
+    const idx = rows.findIndex(r => r[0] && r[0].trim().toLowerCase() === oldName.trim().toLowerCase());
+    if (idx === -1) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID, range: 'DJ Rates!A2:B',
+        valueInputOption: 'RAW',
+        requestBody: { values: [[newName, rate]] },
+      });
+    } else {
+      const rowNum = idx + 2;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID, range: `DJ Rates!A${rowNum}:B${rowNum}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[newName, rate]] },
+      });
+    }
+    cache.djs.data = null;
+    res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
