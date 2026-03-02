@@ -591,6 +591,9 @@ const DJ_COLORS = {
 // HIP weekly rotation (4 slots per night, one DJ)
 const HIP_ROTATION = { 1:'Vozka', 4:'Tobi' };
 
+// Fixed-schedule guest DJs — shown with ⚠ in dropdowns to flag that slots need confirmation
+const FIXED_GUEST_DJS = new Set(['Davoted']);
+
 // Love Beach DJ availability (weekly patterns)
 const LOVE_DJS = {
   'Buba':    { days:[2,3,4,5,6] },
@@ -882,7 +885,7 @@ function buildCell(dateStr, slot, type) {
   options.forEach(dj => {
     const arkKey = `${dateStr}|${slot}`;
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[arkKey] === dj;
-    const label = arkBooked ? `${dj} \u26A0 ARKbar` : dj;
+    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (FIXED_GUEST_DJS.has(dj) ? `${dj} \u26A0` : dj);
     opts += `<option value="${dj}"${dj === assigned ? ' selected' : ''}>${label}</option>`;
   });
   if (assigned && !options.includes(assigned)) {
