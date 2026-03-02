@@ -481,6 +481,15 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const name  = decodeURIComponent(req.params.name);
     const month = decodeURIComponent(req.params.month);
     const isResident = RESIDENTS.includes(name);
+    const isDavoted = name.trim().toLowerCase() === 'davoted';
+    // Davoted's fixed weekly slots — keyed by day-of-week (0=Sun … 6=Sat)
+    const DAVOTED_PORTAL = {
+      1: new Set(['14:00\u201315:00','15:00\u201316:00']),
+      2: new Set(['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00']),
+      3: new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00']),
+      4: new Set(['14:00\u201315:00','15:00\u201316:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00']),
+      5: new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']),
+    };
     const finalized = await fetchFinalized();
     const isFinalized = finalized.months.includes(month);
 
@@ -509,12 +518,17 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       const days = new Date(year, monthIdx + 1, 0).getDate();
       for (let d = 1; d <= days; d++) {
         const dk = makeDateKey(year, monthIdx + 1, d);
+        const dow = new Date(year, monthIdx, d).getDay();
+        const davotedToday = isDavoted ? (DAVOTED_PORTAL[dow] || new Set()) : null;
         availability[dk] = {};
         for (const slot of ALL_SLOTS) {
           const ns = normalizeSlot(slot);
+          const defaultStatus = isResident ? 'available'
+            : (davotedToday && davotedToday.has(ns)) ? 'available'
+            : 'unavailable';
           availability[dk][ns] = (stored[dk] && stored[dk][ns] !== undefined)
             ? stored[dk][ns]
-            : (isResident ? 'available' : 'unavailable');
+            : defaultStatus;
         }
       }
     }
