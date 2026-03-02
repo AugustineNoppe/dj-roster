@@ -912,9 +912,8 @@ async function assignDJ(sel) {
     }
 
     const dayAssignments = Object.entries(rosterAssignments).filter(([k,v]) => k.startsWith(date) && v === dj);
-    const maxSlots = RESIDENTS.includes(dj) ? 6 : 5;
-    if (dayAssignments.length >= maxSlots) {
-      showToast(`${dj} already has ${maxSlots} slots on this day`, 'error'); sel.value = ''; return;
+    if (dayAssignments.length >= 7) {
+      showToast(`${dj} already has 7 slots on this day`, 'error'); sel.value = ''; return;
     }
 
     const combinedTimeline = [
@@ -934,8 +933,8 @@ async function assignDJ(sel) {
       for (let i = slotIdx + 1; i < allSlots.length; i++) {
         if (rosterAssignments[`${date}|${allSlots[i]}`] === dj) after++; else break;
       }
-      if (before + after >= 3) {
-        showToast(`${dj} can't play more than 3 slots in a row`, 'error'); sel.value = ''; return;
+      if (before + after >= 7) {
+        showToast(`${dj} can't play more than 7 slots in a row`, 'error'); sel.value = ''; return;
       }
     }
 
