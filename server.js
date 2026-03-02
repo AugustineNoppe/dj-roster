@@ -138,10 +138,13 @@ async function fetchAvailability(month) {
   const year = parseInt(parts[1]);
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
-  const [availRes, blackouts] = await Promise.all([
+  const [availRes, portalRes, blackouts] = await Promise.all([
     sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID, range: 'DJ Availability_Datasheet!A2:F',
-    }),
+    }).catch(() => ({ data: { values: [] } })),
+    sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
+    }).catch(() => ({ data: { values: [] } })),
     fetchBlackouts(month),
   ]);
 
@@ -149,6 +152,16 @@ async function fetchAvailability(month) {
   const map = {};
   for (const [, dj, , dateRaw, , slot] of filtered) {
     if (!dateRaw || !slot || !dj) continue;
+    const dk = parseDateKey(dateRaw);
+    if (!dk) continue;
+    const ns = normalizeSlot(slot);
+    (map[dk] ??= {})[ns] ??= [];
+    if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
+  }
+
+  // Include portal submissions (DJ Availability sheet) — column layout: name, date, slot, month, status
+  for (const [dj, dateRaw, slot, rowMonth, status] of (portalRes.data.values || [])) {
+    if (!dj || !dateRaw || !slot || rowMonth !== month || status !== 'available') continue;
     const dk = parseDateKey(dateRaw);
     if (!dk) continue;
     const ns = normalizeSlot(slot);
@@ -502,6 +515,7 @@ app.post('/api/dj/availability', async (req, res) => {
         valueInputOption: 'RAW', requestBody: { values: allRows },
       });
     }
+    cache.availability.delete(month);
     res.json({ success: true, saved: newRows.length });
   } catch (err) {
     res.json({ success: false, error: err.message });
