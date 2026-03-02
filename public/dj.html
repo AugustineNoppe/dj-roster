@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>DJ Portal — ARKbar × Love Beach</title>
+<meta name="theme-color" content="#0b1020">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#2B3990;--teal:#5DB8C0;--orange:#F15A29;--love-pink:#e91e8c;
+  --green:#4caf50;--green-dim:rgba(76,175,80,0.15);
+  --bg:#0b1020;--surface:rgba(255,255,255,0.07);--surface2:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.1);--border-sub:rgba(255,255,255,0.06);
+  --text:#fff;--text-2:rgba(255,255,255,0.7);--text-3:rgba(255,255,255,0.4);--text-4:rgba(255,255,255,0.2);
+  --radius:12px;--radius-sm:8px;
+  --transition:0.2s ease;
+  --header-h:52px;--month-h:48px;--tab-h:42px;--status-h:32px;
+}
+html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+
+/* === BACKGROUND === */
+.bg-fixed{position:fixed;inset:0;z-index:0;pointer-events:none}
+.bg-orb{position:absolute;border-radius:50%;filter:blur(100px);animation:drift 14s ease-in-out infinite alternate}
+.bg-orb:nth-child(1){width:700px;height:700px;background:radial-gradient(circle,#2B3990 0%,transparent 70%);top:-200px;left:-200px;opacity:.5}
+.bg-orb:nth-child(2){width:500px;height:500px;background:radial-gradient(circle,#5DB8C0 0%,transparent 70%);bottom:-150px;right:-100px;opacity:.25;animation-delay:-5s}
+.bg-orb:nth-child(3){width:350px;height:350px;background:radial-gradient(circle,#F15A29 0%,transparent 70%);top:45%;left:55%;opacity:.1;animation-delay:-9s}
+@keyframes drift{from{transform:translate(0,0)}to{transform:translate(40px,-50px)}}
+
+/* === LOGIN === */
+.login-wrap{min-height:100vh;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding:16px}
+.login-box{
+  background:var(--surface);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  border:1px solid rgba(255,255,255,0.12);border-top:2px solid rgba(93,184,192,0.7);
+  border-radius:24px;padding:44px 36px;width:min(380px,100%);
+  text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.5);animation:fadeUp .7s ease both;
+}
+.login-venues{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px}
+.login-v{font-size:9px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+.login-v.ark{color:var(--teal)}.login-v.love{color:var(--love-pink)}
+.login-dot{width:3px;height:3px;border-radius:50%;background:var(--text-4)}
+.login-title{font-size:24px;font-weight:900;letter-spacing:-.02em;margin-bottom:4px}
+.login-sub{font-size:11px;color:var(--text-3);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:32px}
+.field-label{font-size:9px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;text-align:left;margin-bottom:6px}
+.field-wrap{margin-bottom:14px}
+.field-wrap select,.field-wrap input{
+  width:100%;padding:13px 16px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;
+  font-family:inherit;font-size:14px;font-weight:600;outline:none;
+  background:rgba(255,255,255,0.08);color:#fff;transition:border-color var(--transition),background var(--transition);
+  -webkit-appearance:none;appearance:none;
+}
+.field-wrap select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.4)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.field-wrap select option{background:#1a2040;color:#fff}
+.field-wrap select::placeholder,.field-wrap input::placeholder{color:rgba(255,255,255,0.3)}
+.field-wrap select:focus,.field-wrap input:focus{border-color:var(--teal);background:rgba(255,255,255,0.12)}
+.pin-hint{font-size:10px;color:var(--text-3);margin-top:5px;text-align:left}
+.login-btn{
+  width:100%;padding:14px;background:rgba(93,184,192,0.2);border:1px solid rgba(93,184,192,0.4);
+  color:#fff;border-radius:10px;font-family:inherit;font-size:14px;font-weight:800;
+  cursor:pointer;transition:background var(--transition),border-color var(--transition);margin-top:8px;
+}
+.login-btn:hover:not(:disabled){background:rgba(93,184,192,0.35);border-color:rgba(93,184,192,0.7)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-error{color:var(--orange);font-size:12px;font-weight:600;margin-top:10px;display:none}
+.back-link{display:inline-block;margin-top:20px;color:var(--text-3);font-size:12px;font-weight:600;text-decoration:none;transition:color var(--transition)}
+.back-link:hover{color:var(--text-2)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* === APP SHELL === */
+.app{display:none;flex-direction:column;height:100vh;position:relative;z-index:1}
+.app.visible{display:flex}
+
+/* Header */
+.app-header{
+  background:var(--surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);height:var(--header-h);
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;
+}
+.portal-btn{
+  display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;
+  font-size:11px;font-weight:700;color:var(--text-3);background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.1);text-decoration:none;transition:all var(--transition);white-space:nowrap;
+}
+.portal-btn:hover{color:#fff;background:rgba(255,255,255,0.13);border-color:rgba(255,255,255,0.22)}
+.dj-badge{
+  font-size:13px;font-weight:800;color:#fff;text-align:center;
+  flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 12px;
+}
+.logout-btn{
+  background:none;border:1px solid rgba(255,255,255,0.12);border-radius:20px;
+  color:var(--text-3);font-family:inherit;font-size:11px;font-weight:700;
+  cursor:pointer;padding:5px 12px;transition:all var(--transition);white-space:nowrap;
+}
+.logout-btn:hover{color:#fff;border-color:rgba(255,255,255,0.3)}
+
+/* Month nav */
+.month-nav{
+  display:flex;align-items:center;justify-content:center;gap:0;
+  height:var(--month-h);background:rgba(255,255,255,0.03);
+  border-bottom:1px solid var(--border-sub);flex-shrink:0;
+}
+.month-nav button{
+  background:none;border:none;color:var(--text-3);font-size:18px;cursor:pointer;
+  width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  border-radius:10px;transition:all var(--transition);-webkit-tap-highlight-color:transparent;
+}
+.month-nav button:hover{color:#fff;background:rgba(255,255,255,0.08)}
+.month-label{font-size:15px;font-weight:800;min-width:150px;text-align:center;letter-spacing:-.01em}
+
+/* Tab bar */
+.tab-bar{
+  display:flex;border-bottom:1px solid var(--border);height:var(--tab-h);
+  background:rgba(255,255,255,0.03);flex-shrink:0;
+}
+.tab{
+  flex:1;background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--text-3);font-family:inherit;font-size:12px;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;cursor:pointer;
+  transition:color var(--transition),border-color var(--transition);
+  -webkit-tap-highlight-color:transparent;
+}
+.tab.active{color:#fff;border-bottom-color:var(--teal)}
+.tab[data-tab="schedule"].active{border-bottom-color:var(--love-pink)}
+.tab[data-tab="hours"].active{border-bottom-color:var(--green)}
+
+/* Status bar */
+.status-bar{
+  height:var(--status-h);display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;letter-spacing:.06em;flex-shrink:0;
+  border-bottom:1px solid transparent;transition:all var(--transition);
+}
+.status-bar.pending{color:var(--orange);border-bottom-color:rgba(241,90,41,0.2)}
+.status-bar.saving{color:var(--teal)}
+.status-bar.saved{color:rgba(76,175,80,0.9)}
+.status-bar.error{color:var(--orange);background:rgba(241,90,41,0.08)}
+
+/* Main scrollable content */
+.main-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0}
+
+/* === LOADING === */
+.loading-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:14px;color:var(--text-3);font-size:13px;font-weight:600}
+.spinner{width:28px;height:28px;border:2px solid rgba(255,255,255,0.1);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* === FINALIZED BANNER === */
+.finalized-banner{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 16px;background:rgba(76,175,80,0.12);
+  border-bottom:1px solid rgba(76,175,80,0.25);
+  font-size:11px;font-weight:800;color:#81c784;letter-spacing:.06em;text-transform:uppercase;
+}
+
+/* === CALENDAR === */
+.cal-wrap{padding:12px}
+.cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
+}
+.cal-day-hdr{
+  padding:6px 2px;text-align:center;font-size:9px;font-weight:800;
+  color:var(--text-3);letter-spacing:.08em;text-transform:uppercase;
+}
+.cal-cell{
+  padding:8px 4px 6px;border-radius:8px;cursor:pointer;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);
+  transition:background var(--transition),border-color var(--transition);
+  -webkit-tap-highlight-color:transparent;user-select:none;min-height:52px;
+  display:flex;flex-direction:column;
+}
+.cal-cell:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.14)}
+.cal-cell.empty{background:none;border-color:transparent;cursor:default;pointer-events:none}
+.cal-cell.today{border-color:rgba(93,184,192,0.4)}
+.cal-cell.expanded{background:rgba(93,184,192,0.12);border-color:rgba(93,184,192,0.5)}
+.cal-date-num{font-size:13px;font-weight:800;text-align:center;flex:1;display:flex;align-items:center;justify-content:center}
+.cal-bar{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:auto;overflow:hidden}
+.cal-bar-fill{height:100%;border-radius:2px;transition:width .3s ease}
+
+/* === SLOT PANEL === */
+.slot-panel{
+  margin:8px 0 0;background:rgba(255,255,255,0.05);
+  border:1px solid rgba(93,184,192,0.3);border-radius:14px;padding:16px;
+}
+.slot-panel-hdr{
+  font-size:13px;font-weight:800;margin-bottom:4px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.slot-hint{font-size:10px;color:var(--text-3);margin-bottom:12px;font-weight:600}
+.slot-pills{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pill{
+  padding:9px 6px;border-radius:8px;font-family:inherit;font-size:11px;font-weight:700;
+  cursor:pointer;border:1px solid;text-align:center;
+  transition:background var(--transition),border-color var(--transition),color var(--transition);
+  -webkit-tap-highlight-color:transparent;
+}
+.pill.avail{background:rgba(93,184,192,0.2);border-color:rgba(93,184,192,0.5);color:var(--teal)}
+.pill.avail:hover:not(:disabled){background:rgba(93,184,192,0.35);border-color:rgba(93,184,192,0.8)}
+.pill.unavail{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:var(--text-3)}
+.pill.unavail:hover:not(:disabled){background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:var(--text-2)}
+.pill:disabled{cursor:default;opacity:.7}
+.slot-close{background:none;border:none;color:var(--text-3);font-size:16px;cursor:pointer;padding:2px 6px;border-radius:6px;transition:all var(--transition)}
+.slot-close:hover{color:#fff;background:rgba(255,255,255,0.1)}
+
+/* === SCHEDULE === */
+.schedule-wrap{padding:16px}
+.schedule-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px}
+.schedule-header h2{font-size:15px;font-weight:900}
+.print-btn{
+  padding:7px 14px;border-radius:20px;font-family:inherit;font-size:11px;font-weight:800;
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:var(--text-2);
+  cursor:pointer;transition:all var(--transition);white-space:nowrap;
+}
+.print-btn:hover{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.3);color:#fff}
+.schedule-list{display:flex;flex-direction:column;gap:8px}
+.schedule-item{
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface);border:1px solid var(--border-sub);border-radius:12px;padding:14px 16px;
+  transition:background var(--transition);
+}
+.schedule-item:hover{background:rgba(255,255,255,0.09)}
+.venue-badge{
+  padding:4px 10px;border-radius:20px;font-size:9px;font-weight:900;
+  text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;flex-shrink:0;
+}
+.venue-badge.ark{background:rgba(93,184,192,0.2);color:var(--teal);border:1px solid rgba(93,184,192,0.3)}
+.venue-badge.hip{background:rgba(43,57,144,0.3);color:#8fa4ff;border:1px solid rgba(43,57,144,0.4)}
+.venue-badge.love{background:rgba(233,30,140,0.2);color:#f48fb1;border:1px solid rgba(233,30,140,0.3)}
+.schedule-info{flex:1;min-width:0}
+.schedule-slot{font-size:13px;font-weight:800;color:#fff}
+.schedule-date{font-size:11px;font-weight:600;color:var(--text-3);margin-top:2px}
+
+/* === HOURS === */
+.hours-wrap{padding:16px}
+.hours-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.hours-card{
+  background:var(--surface);border:1px solid var(--border-sub);border-radius:14px;
+  padding:16px 12px;text-align:center;
+}
+.hours-card.accent{border-top:2px solid rgba(93,184,192,0.5)}
+.hours-card-label{font-size:9px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.hours-card-value{font-size:26px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.hours-card-sub{font-size:10px;font-weight:600;color:var(--text-3);margin-top:4px}
+.hours-breakdown{
+  background:var(--surface);border:1px solid var(--border-sub);border-radius:14px;padding:16px;
+}
+.breakdown-title{font-size:10px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+.breakdown-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-sub);font-size:13px;font-weight:700}
+.breakdown-row:last-child{border-bottom:none}
+.breakdown-row span:last-child{color:var(--teal);font-weight:900}
+
+/* === EMPTY STATE === */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 24px;text-align:center}
+.empty-icon{font-size:40px;margin-bottom:14px;opacity:.6}
+.empty-title{font-size:16px;font-weight:800;margin-bottom:6px}
+.empty-sub{font-size:12px;color:var(--text-3);font-weight:600;line-height:1.5}
+
+/* === TOAST === */
+.toast{
+  position:fixed;bottom:24px;right:20px;padding:11px 18px;border-radius:10px;
+  font-size:12px;font-weight:700;color:#fff;pointer-events:none;z-index:500;
+  background:rgba(30,40,80,0.95);backdrop-filter:blur(12px);border:1px solid var(--border);
+  transform:translateY(20px);opacity:0;transition:all .25s ease;
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{background:rgba(180,30,20,0.9);border-color:rgba(241,90,41,0.5)}
+.toast.success{background:rgba(20,100,60,0.9);border-color:rgba(76,175,80,0.5)}
+
+/* === RESPONSIVE === */
+@media(max-width:400px){
+  .hours-cards{grid-template-columns:1fr 1fr}
+  .hours-card:last-child{grid-column:1/-1}
+  .hours-card-value{font-size:22px}
+  .slot-pills{grid-template-columns:1fr}
+}
+
+@media print{
+  .app-header,.month-nav,.tab-bar,.status-bar,.bg-fixed,.toast{display:none!important}
+  .main-content{overflow:visible!important}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-fixed">
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+</div>
+
+<!-- ===== LOGIN ===== -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-venues">
+      <span class="login-v ark">ARKbar</span>
+      <div class="login-dot"></div>
+      <span class="login-v love">Love Beach</span>
+    </div>
+    <div class="login-title">DJ Portal</div>
+    <div class="login-sub">Sign in to manage your availability</div>
+
+    <div class="field-wrap">
+      <div class="field-label">Your Name</div>
+      <select id="djSelect">
+        <option value="">Loading DJ list…</option>
+      </select>
+    </div>
+
+    <div class="field-wrap">
+      <div class="field-label">PIN</div>
+      <input id="pinInput" type="password" inputmode="numeric" maxlength="8"
+             placeholder="Enter your PIN" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="pin-hint">Contact management if you don't have a PIN.</div>
+    </div>
+
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Enter Portal</button>
+    <div class="login-error" id="loginError"></div>
+    <a class="back-link" href="/">← Back to portal</a>
+  </div>
+</div>
+
+<!-- ===== APP SHELL ===== -->
+<div class="app" id="mainApp">
+
+  <header class="app-header">
+    <a class="portal-btn" href="/">← Portal</a>
+    <div class="dj-badge" id="djBadge">—</div>
+    <button class="logout-btn" onclick="logout()">Log out</button>
+  </header>
+
+  <div class="month-nav">
+    <button onclick="prevMonth()" aria-label="Previous month">&#8592;</button>
+    <div class="month-label" id="monthLabel">— —</div>
+    <button onclick="nextMonth()" aria-label="Next month">&#8594;</button>
+  </div>
+
+  <nav class="tab-bar">
+    <button class="tab active" data-tab="calendar" onclick="switchTab('calendar')">Calendar</button>
+    <button class="tab" data-tab="schedule" onclick="switchTab('schedule')">Schedule</button>
+    <button class="tab" data-tab="hours" onclick="switchTab('hours')">Hours</button>
+  </nav>
+
+  <div class="status-bar" id="statusBar"></div>
+
+  <main class="main-content" id="mainContent">
+    <div class="loading-msg"><div class="spinner"></div>Loading…</div>
+  </main>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STATE =====
+let djName = '', isResident = false, djRate = 0;
+let currentYear, currentMonth;
+let availability = {};   // dateKey → { slotKey: 'available'|'unavailable' }
+let schedule = [];       // [{venue, date, slot}]
+let isFinalized = false;
+let expandedDate = null;
+let saveTimer = null;
+let saveState = 'idle';  // 'idle'|'pending'|'saving'|'saved'|'error'
+let currentTab = 'calendar';
+let toastTimer;
+
+// ===== CONSTANTS =====
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const ALL_SLOTS = [
+  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+  '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
+  '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
+];
+
+const $ = id => document.getElementById(id);
+const pad2 = n => String(n).padStart(2, '0');
+const makeDK = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
+const ordinal = n => { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); };
+
+function getMonthStr() { return `${MONTHS[currentMonth]} ${currentYear}`; }
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+  $('monthLabel').textContent = getMonthStr();
+  loadDJList();
+});
+
+async function loadDJList() {
+  try {
+    const data = await fetch('/api/djs').then(r => r.json());
+    const sel = $('djSelect');
+    sel.innerHTML = '<option value="">Select your name…</option>';
+    (data.djs || []).forEach(dj => {
+      const opt = document.createElement('option');
+      opt.value = dj.name;
+      opt.textContent = dj.name;
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    $('djSelect').innerHTML = '<option value="">Could not load DJ list</option>';
+  }
+}
+
+// ===== AUTH =====
+async function doLogin() {
+  const name = $('djSelect').value;
+  const pin  = $('pinInput').value.trim();
+  const errEl = $('loginError');
+  errEl.style.display = 'none';
+
+  if (!name) { errEl.textContent = 'Please select your name.'; errEl.style.display = 'block'; return; }
+  if (!pin)  { errEl.textContent = 'Please enter your PIN.';  errEl.style.display = 'block'; return; }
+
+  const btn = $('loginBtn');
+  btn.textContent = 'Checking…';
+  btn.disabled = true;
+
+  try {
+    const data = await fetch('/api/dj/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, pin }),
+    }).then(r => r.json());
+
+    if (data.success) {
+      djName = data.name;
+      isResident = data.isResident;
+      djRate = data.rate;
+      $('loginWrap').style.display = 'none';
+      $('mainApp').classList.add('visible');
+      $('djBadge').textContent = djName;
+      $('monthLabel').textContent = getMonthStr();
+      await loadMonth();
+    } else {
+      errEl.textContent = data.error || 'Login failed. Check your name and PIN.';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = 'Cannot connect. Try refreshing.';
+    errEl.style.display = 'block';
+  }
+
+  btn.textContent = 'Enter Portal';
+  btn.disabled = false;
+}
+
+function logout() {
+  djName = ''; isResident = false; djRate = 0;
+  availability = {}; schedule = []; expandedDate = null;
+  clearTimeout(saveTimer);
+  $('loginWrap').style.display = '';
+  $('mainApp').classList.remove('visible');
+  $('pinInput').value = '';
+  $('djSelect').value = '';
+}
+
+// ===== DATA LOADING =====
+async function loadMonth() {
+  $('mainContent').innerHTML = '<div class="loading-msg"><div class="spinner"></div>Loading…</div>';
+  expandedDate = null;
+  setSaveState('idle');
+
+  try {
+    const month = getMonthStr();
+    const enc = encodeURIComponent;
+    const [availData, schedData] = await Promise.all([
+      fetch(`/api/dj/availability/${enc(djName)}/${enc(month)}`).then(r => r.json()),
+      fetch(`/api/dj/schedule/${enc(djName)}/${enc(month)}`).then(r => r.json()),
+    ]);
+
+    availability = availData.availability || {};
+    schedule     = schedData.schedule    || [];
+    isFinalized  = availData.isFinalized || false;
+
+    renderCurrentTab();
+  } catch(e) {
+    $('mainContent').innerHTML = `<div class="loading-msg">Error loading data.<br><small>${e.message}</small></div>`;
+  }
+}
+
+// ===== NAVIGATION =====
+function prevMonth() {
+  if (saveState === 'pending') { saveAvailability(); }
+  currentMonth--;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  $('monthLabel').textContent = getMonthStr();
+  loadMonth();
+}
+function nextMonth() {
+  if (saveState === 'pending') { saveAvailability(); }
+  currentMonth++;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  $('monthLabel').textContent = getMonthStr();
+  loadMonth();
+}
+
+// ===== TABS =====
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderCurrentTab();
+}
+function renderCurrentTab() {
+  if (currentTab === 'calendar') renderCalendar();
+  else if (currentTab === 'schedule') renderSchedule();
+  else renderHours();
+}
+
+// ===== CALENDAR =====
+function renderCalendar() {
+  const year = currentYear, month = currentMonth;
+  const firstDay = new Date(year, month, 1).getDay();   // 0=Sun
+  const startOffset = (firstDay + 6) % 7;               // Mon-first offset
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = makeDK(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate());
+
+  let html = '';
+
+  if (isFinalized) {
+    html += `<div class="finalized-banner">&#128274; ${getMonthStr()} is finalised — read only</div>`;
+  }
+
+  html += '<div class="cal-wrap"><div class="cal-grid">';
+
+  // Day headers (Mon–Sun)
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    html += `<div class="cal-day-hdr">${d}</div>`;
+  });
+
+  // Leading empty cells
+  for (let i = 0; i < startOffset; i++) html += '<div class="cal-cell empty"></div>';
+
+  // Date cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dk = makeDK(year, month + 1, d);
+    const slotMap = availability[dk] || {};
+    const avail = Object.values(slotMap).filter(s => s === 'available').length;
+    const total = ALL_SLOTS.length;
+    const defaultAvail = isResident ? total : 0;
+    const count = Object.keys(slotMap).length === 0 ? defaultAvail : avail;
+    const pct = total > 0 ? Math.round(count / total * 100) : 0;
+
+    const barColor = count === total
+      ? 'rgba(93,184,192,0.9)'
+      : count === 0
+        ? 'rgba(255,80,80,0.7)'
+        : 'rgba(241,90,41,0.85)';
+
+    const isExpanded = expandedDate === dk;
+    const isToday = dk === today;
+
+    html += `<div class="cal-cell${isExpanded ? ' expanded' : ''}${isToday ? ' today' : ''}"
+                  onclick="toggleDate('${dk}')">
+      <div class="cal-date-num">${d}</div>
+      <div class="cal-bar"><div class="cal-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+    </div>`;
+  }
+
+  html += '</div>';
+
+  // Slot panel (shown below grid)
+  if (expandedDate) html += buildSlotPanel(expandedDate);
+
+  html += '</div>';
+  $('mainContent').innerHTML = html;
+  updateStatusBar();
+}
+
+function toggleDate(dk) {
+  expandedDate = expandedDate === dk ? null : dk;
+  renderCalendar();
+}
+
+function buildSlotPanel(dk) {
+  const [y, m, d] = dk.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dayName = DAYS_LONG[dateObj.getDay()];
+  const monthName = MONTHS[m - 1];
+  const slotMap = availability[dk] || {};
+
+  const lockLabel = isFinalized ? ' &#128274;' : '';
+  const hint = isFinalized
+    ? 'This month is locked — no changes allowed.'
+    : isResident
+      ? 'Teal = available. Tap to mark yourself unavailable.'
+      : 'Tap to mark yourself available for a slot.';
+
+  let pills = '';
+  for (const slot of ALL_SLOTS) {
+    const status = slotMap[slot] !== undefined ? slotMap[slot] : (isResident ? 'available' : 'unavailable');
+    const isAvail = status === 'available';
+    const cls = `pill ${isAvail ? 'avail' : 'unavail'}`;
+    const onclick = isFinalized ? '' : `onclick="toggleSlot('${dk}','${slot.replace(/'/g, "\\'")}')"`;
+    const disabled = isFinalized ? 'disabled' : '';
+    pills += `<button class="${cls}" ${onclick} ${disabled}>${slot}</button>`;
+  }
+
+  return `<div class="slot-panel">
+    <div class="slot-panel-hdr">
+      <span>${dayName}, ${ordinal(d)} ${monthName}${lockLabel}</span>
+      <button class="slot-close" onclick="toggleDate('${dk}')">&#x2715;</button>
+    </div>
+    <div class="slot-hint">${hint}</div>
+    <div class="slot-pills">${pills}</div>
+  </div>`;
+}
+
+// ===== SLOT TOGGLE =====
+function toggleSlot(dk, slot) {
+  if (isFinalized) return;
+
+  // Initialise day from defaults if not yet set
+  if (!availability[dk]) {
+    availability[dk] = {};
+    for (const s of ALL_SLOTS) availability[dk][s] = isResident ? 'available' : 'unavailable';
+  }
+  // Ensure slot entry exists
+  if (availability[dk][slot] === undefined) {
+    availability[dk][slot] = isResident ? 'available' : 'unavailable';
+  }
+
+  const cur = availability[dk][slot];
+  availability[dk][slot] = cur === 'available' ? 'unavailable' : 'available';
+
+  renderCalendar();
+  startSaveTimer();
+}
+
+// ===== AUTO-SAVE =====
+function startSaveTimer() {
+  setSaveState('pending');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveAvailability, 1500);
+}
+
+function setSaveState(state) {
+  saveState = state;
+  updateStatusBar();
+}
+
+function updateStatusBar() {
+  const bar = $('statusBar');
+  if (!bar) return;
+  if (currentTab !== 'calendar') { bar.textContent = ''; bar.className = 'status-bar'; return; }
+  const msgs = { pending: 'Unsaved changes…', saving: 'Saving…', saved: 'Saved ✓', error: 'Save failed — tap to retry', idle: '' };
+  bar.textContent = msgs[saveState] || '';
+  bar.className = `status-bar ${saveState !== 'idle' ? saveState : ''}`;
+  if (saveState === 'error') bar.onclick = saveAvailability;
+  else bar.onclick = null;
+}
+
+async function saveAvailability() {
+  clearTimeout(saveTimer);
+  setSaveState('saving');
+  const month = getMonthStr();
+  const slots = [];
+  for (const [date, slotMap] of Object.entries(availability)) {
+    for (const [slot, status] of Object.entries(slotMap)) {
+      slots.push({ date, slot, status });
+    }
+  }
+  try {
+    const data = await fetch('/api/dj/availability', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: djName, month, slots }),
+    }).then(r => r.json());
+
+    setSaveState(data.success ? 'saved' : 'error');
+    if (data.success) {
+      setTimeout(() => { if (saveState === 'saved') setSaveState('idle'); }, 3000);
+    } else {
+      showToast(data.error || 'Save failed', 'error');
+    }
+  } catch(e) {
+    setSaveState('error');
+    showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+// ===== SCHEDULE =====
+function renderSchedule() {
+  updateStatusBar();
+  const monthStr = getMonthStr();
+
+  if (schedule.length === 0) {
+    $('mainContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">&#128203;</div>
+        <div class="empty-title">No confirmed bookings yet</div>
+        <div class="empty-sub">Management hasn't assigned you any slots for ${monthStr}.</div>
+      </div>`;
+    return;
+  }
+
+  const venueCls = { ARKbar: 'ark', HIP: 'hip', 'Love Beach': 'love' };
+
+  let items = '';
+  for (const { venue, date, slot } of schedule) {
+    const [y, m, d] = date.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const label = `${DAYS_LONG[dateObj.getDay()]} ${ordinal(d)} ${MONTHS[m - 1]}`;
+    const cls = venueCls[venue] || 'ark';
+    items += `<div class="schedule-item">
+      <span class="venue-badge ${cls}">${venue}</span>
+      <div class="schedule-info">
+        <div class="schedule-slot">${slot}</div>
+        <div class="schedule-date">${label}</div>
+      </div>
+    </div>`;
+  }
+
+  $('mainContent').innerHTML = `<div class="schedule-wrap">
+    <div class="schedule-header">
+      <h2>Bookings — ${monthStr}</h2>
+      <button class="print-btn" onclick="printSchedule()">&#128438; Print</button>
+    </div>
+    <div class="schedule-list">${items}</div>
+  </div>`;
+}
+
+function printSchedule() {
+  const monthStr = getMonthStr();
+  const rows = schedule.map(({ venue, date, slot }) => {
+    const [y, m, d] = date.split('-').map(Number);
+    const label = `${DAYS_LONG[new Date(y, m-1, d).getDay()]} ${ordinal(d)} ${MONTHS[m-1]}`;
+    return `<tr><td>${label}</td><td>${venue}</td><td>${slot}</td></tr>`;
+  }).join('');
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>${djName} — ${monthStr}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+  body{padding:28px;color:#1c2340;background:#fff}
+  h1{font-size:22px;font-weight:900;margin-bottom:4px}
+  p{font-size:11px;color:#888;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse}
+  th{padding:8px 12px;text-align:left;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #2B3990;color:#2B3990}
+  td{padding:11px 12px;font-size:12px;font-weight:600;border-bottom:1px solid #eee}
+  tr:nth-child(even) td{background:#f8f9ff}
+  @media print{button{display:none!important}}</style>
+  </head><body>
+  <h1>${djName}</h1>
+  <p>Confirmed schedule — ${monthStr}</p>
+  <table><thead><tr><th>Date</th><th>Venue</th><th>Time Slot</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  </body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 350);
+}
+
+// ===== HOURS =====
+function renderHours() {
+  updateStatusBar();
+  const monthStr = getMonthStr();
+  const counts = { ARKbar: 0, HIP: 0, 'Love Beach': 0 };
+  let total = 0;
+  for (const { venue } of schedule) {
+    if (counts[venue] !== undefined) counts[venue]++;
+    total++;
+  }
+  const cost = total * djRate;
+
+  const empty = total === 0 ? `
+    <div class="empty-state" style="margin-top:16px">
+      <div class="empty-icon">&#128202;</div>
+      <div class="empty-title">No confirmed hours yet</div>
+      <div class="empty-sub">Hours appear once management assigns your roster slots.</div>
+    </div>` : '';
+
+  $('mainContent').innerHTML = `<div class="hours-wrap">
+    <div class="hours-cards">
+      <div class="hours-card">
+        <div class="hours-card-label">Total Hours</div>
+        <div class="hours-card-value">${total}h</div>
+        <div class="hours-card-sub">${monthStr}</div>
+      </div>
+      <div class="hours-card">
+        <div class="hours-card-label">Rate</div>
+        <div class="hours-card-value" style="font-size:22px">&#3647;${djRate.toLocaleString()}</div>
+        <div class="hours-card-sub">per hour</div>
+      </div>
+      <div class="hours-card accent">
+        <div class="hours-card-label">Amount Owed</div>
+        <div class="hours-card-value" style="color:var(--teal);font-size:${cost >= 10000 ? '20px' : '26px'}">&#3647;${cost.toLocaleString()}</div>
+        <div class="hours-card-sub">Total</div>
+      </div>
+    </div>
+    <div class="hours-breakdown">
+      <div class="breakdown-title">Breakdown by Venue</div>
+      <div class="breakdown-row"><span>ARKbar</span><span>${counts.ARKbar}h</span></div>
+      <div class="breakdown-row"><span>HIP</span><span>${counts.HIP}h</span></div>
+      <div class="breakdown-row"><span>Love Beach</span><span>${counts['Love Beach']}h</span></div>
+    </div>
+    ${empty}
+  </div>`;
+}
+
+// ===== TOAST =====
+function showToast(msg, type = '') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), type === 'error' ? 4000 : 2500);
+}
+</script>
+</body>
+</html>

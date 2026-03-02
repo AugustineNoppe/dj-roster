@@ -379,6 +379,225 @@ app.post('/api/roster/clear', async (req, res) => {
   }
 });
 
+/* == DJ PORTAL — NEW SHEETS / CONSTANTS =================================== */
+const DJ_AVAIL_SHEET  = 'DJ Availability';
+const FINALIZED_SHEET = 'Finalized Months';
+const DJ_PINS_SHEET   = 'DJ PINs';
+
+cache.finalized = { data: null, time: 0, ttl: 5 * 60 * 1000 };
+
+async function fetchFinalized() {
+  const c = cache.finalized;
+  if (c.data !== null && (Date.now() - c.time) < c.ttl) return c.data;
+  const sheets = getSheets();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID, range: `${FINALIZED_SHEET}!A2:A`,
+  }).catch(() => ({ data: { values: [] } }));
+  const months = (response.data.values || []).map(r => r[0]).filter(Boolean);
+  c.data = { months };
+  c.time = Date.now();
+  return c.data;
+}
+
+/* -- Static: DJ Portal ---------------------------------------------------- */
+app.get('/dj', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dj.html')));
+
+/* -- POST /api/dj/login --------------------------------------------------- */
+app.post('/api/dj/login', async (req, res) => {
+  try {
+    const { name, pin } = req.body;
+    if (!name || !pin) return res.json({ success: false, error: 'Name and PIN required' });
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_PINS_SHEET}!A2:B`,
+    }).catch(() => ({ data: { values: [] } }));
+    const rows = response.data.values || [];
+    const match = rows.find(r =>
+      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() &&
+      r[1] && String(r[1]).trim() === String(pin).trim()
+    );
+    if (!match) return res.json({ success: false, error: 'Invalid name or PIN' });
+    const djName = match[0].trim();
+    const djData = await fetchDJs();
+    const djInfo = (djData.djs || []).find(d => d.name.toLowerCase() === djName.toLowerCase());
+    res.json({ success: true, name: djName, isResident: RESIDENTS.includes(djName), rate: djInfo ? djInfo.rate : 0 });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- GET /api/dj/availability/:name/:month --------------------------------- */
+app.get('/api/dj/availability/:name/:month', async (req, res) => {
+  try {
+    const name  = decodeURIComponent(req.params.name);
+    const month = decodeURIComponent(req.params.month);
+    const isResident = RESIDENTS.includes(name);
+    const finalized = await fetchFinalized();
+    const isFinalized = finalized.months.includes(month);
+
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
+    }).catch(() => ({ data: { values: [] } }));
+
+    const stored = {};
+    for (const row of (response.data.values || [])) {
+      if (!row[0] || row[0].trim().toLowerCase() !== name.trim().toLowerCase()) continue;
+      if (row[3] !== month) continue;
+      const dk = parseDateKey(row[1]);
+      if (!dk || !row[2]) continue;
+      const ns = normalizeSlot(row[2]);
+      if (!stored[dk]) stored[dk] = {};
+      stored[dk][ns] = row[4] || (isResident ? 'available' : 'unavailable');
+    }
+
+    const parts = month.split(' ');
+    const monthIdx = MONTH_NAMES.indexOf(parts[0]);
+    const year = parseInt(parts[1]);
+    const availability = {};
+
+    if (monthIdx >= 0 && !isNaN(year)) {
+      const days = new Date(year, monthIdx + 1, 0).getDate();
+      for (let d = 1; d <= days; d++) {
+        const dk = makeDateKey(year, monthIdx + 1, d);
+        availability[dk] = {};
+        for (const slot of ALL_SLOTS) {
+          const ns = normalizeSlot(slot);
+          availability[dk][ns] = (stored[dk] && stored[dk][ns] !== undefined)
+            ? stored[dk][ns]
+            : (isResident ? 'available' : 'unavailable');
+        }
+      }
+    }
+
+    res.json({ success: true, availability, isFinalized, isResident });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- POST /api/dj/availability -------------------------------------------- */
+app.post('/api/dj/availability', async (req, res) => {
+  try {
+    const { name, month, slots } = req.body;
+    if (!name || !month || !Array.isArray(slots)) return res.json({ success: false, error: 'Missing fields' });
+    const finalized = await fetchFinalized();
+    if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalized and cannot be edited' });
+
+    const sheets = getSheets();
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
+    }).catch(() => ({ data: { values: [] } }));
+
+    const keepRows = (existing.data.values || []).filter(r =>
+      !(r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() && r[3] === month)
+    );
+    const newRows = slots.map(({ date, slot, status }) => [name, date, slot, month, status]);
+    const allRows = [...keepRows, ...newRows];
+
+    await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E` });
+    if (allRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2`,
+        valueInputOption: 'RAW', requestBody: { values: allRows },
+      });
+    }
+    res.json({ success: true, saved: newRows.length });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- GET /api/dj/schedule/:name/:month ------------------------------------ */
+app.get('/api/dj/schedule/:name/:month', async (req, res) => {
+  try {
+    const name  = decodeURIComponent(req.params.name);
+    const month = decodeURIComponent(req.params.month);
+    const [arkData, hipData, loveData] = await Promise.all([
+      fetchRoster('arkbar', month),
+      fetchRoster('hip',    month),
+      fetchRoster('love',   month),
+    ]);
+    const schedule = [];
+    for (const { venue, data } of [{ venue: 'ARKbar', data: arkData }, { venue: 'HIP', data: hipData }, { venue: 'Love Beach', data: loveData }]) {
+      for (const row of (data.roster || [])) {
+        if (row[2] && row[2].trim().toLowerCase() === name.trim().toLowerCase()) {
+          schedule.push({ venue, date: row[0], slot: normalizeSlot(row[1]) });
+        }
+      }
+    }
+    schedule.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.slot < b.slot ? -1 : 1);
+    res.json({ success: true, schedule });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- GET /api/finalized --------------------------------------------------- */
+app.get('/api/finalized', async (req, res) => {
+  try {
+    const finalized = await fetchFinalized();
+    const month = req.query.month;
+    res.json({ success: true, finalized: finalized.months, isFinalized: month ? finalized.months.includes(month) : false });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- POST /api/roster/finalize -------------------------------------------- */
+app.post('/api/roster/finalize', async (req, res) => {
+  try {
+    const { month, password } = req.body;
+    if (password !== process.env.ADMIN_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
+    if (!month) return res.json({ success: false, error: 'Month required' });
+
+    const finalized = await fetchFinalized();
+    if (finalized.months.includes(month)) return res.json({ success: false, error: `${month} is already finalized` });
+
+    const [arkData, hipData, loveData, djData] = await Promise.all([
+      fetchRoster('arkbar', month), fetchRoster('hip', month),
+      fetchRoster('love', month),   fetchDJs(),
+    ]);
+
+    const djMap = {};
+    (djData.djs || []).forEach(d => { djMap[d.name.toLowerCase()] = d; });
+
+    const hours = {};
+    for (const { key, data } of [{ key: 'arkbar', data: arkData }, { key: 'hip', data: hipData }, { key: 'love', data: loveData }]) {
+      for (const row of (data.roster || [])) {
+        const dj = row[2];
+        if (!dj || dj === 'Guest DJ') continue;
+        if (!hours[dj]) hours[dj] = { arkbar: 0, hip: 0, love: 0, total: 0 };
+        hours[dj][key]++;
+        hours[dj].total++;
+      }
+    }
+
+    const report = [];
+    let grandTotal = 0, grandCost = 0;
+    Object.keys(hours).sort().forEach(djName => {
+      const h = hours[djName];
+      const info = djMap[djName.toLowerCase()];
+      const rate = info ? info.rate : 0;
+      const cost = h.total * rate;
+      grandTotal += h.total; grandCost += cost;
+      report.push({ name: djName, arkbar: h.arkbar, hip: h.hip, love: h.love, total: h.total, rate, cost });
+    });
+
+    const sheets = getSheets();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID, range: `${FINALIZED_SHEET}!A:C`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[month, new Date().toISOString(), grandCost]] },
+    }).catch(err => console.error('Finalized Months write:', err.message));
+
+    cache.finalized.data = null;
+    res.json({ success: true, month, report, grandTotal, grandCost });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 /* == CACHE STATUS (debug) ================================================= */
 app.get('/api/cache-status', (req, res) => {
   const age = entry => entry.data ? Math.round((Date.now() - entry.time) / 1000) + 's' : null;
