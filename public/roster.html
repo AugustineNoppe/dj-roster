@@ -611,11 +611,41 @@ function getMonthString() { return `${MONTHS[currentMonth]} ${currentYear}`; }
 function updateMonthLabel() { $('monthLabel').textContent = getMonthString(); }
 
 // === INIT ===
+// === SESSION PERSISTENCE ===
+const MGMT_SESSION_KEY = 'mgmtSession';
+const MGMT_SESSION_TTL = 12 * 60 * 60 * 1000; // 12 hours
+
+function saveMgmtSession(pw) {
+  // Use sessionStorage so password is cleared when browser/tab is fully closed
+  sessionStorage.setItem(MGMT_SESSION_KEY, JSON.stringify({ pw, loginTime: Date.now() }));
+}
+
+function clearMgmtSession() {
+  sessionStorage.removeItem(MGMT_SESSION_KEY);
+}
+
+function restoreMgmtSession() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(MGMT_SESSION_KEY));
+    if (!s || !s.pw || Date.now() - s.loginTime > MGMT_SESSION_TTL) return null;
+    return s.pw;
+  } catch { return null; }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const now = new Date();
   currentYear = now.getFullYear();
   currentMonth = now.getMonth();
   updateMonthLabel();
+
+  // Restore session on page refresh (within same browser session)
+  const savedPw = restoreMgmtSession();
+  if (savedPw) {
+    adminPassword = savedPw;
+    $('loginWrap').style.display = 'none';
+    $('mainApp').classList.add('visible');
+    loadAll();
+  }
 });
 
 // === PASSWORD TOGGLE ===
@@ -644,6 +674,7 @@ async function doLogin() {
     const data = await res.json();
     if (data.success) {
       adminPassword = pw;
+      saveMgmtSession(pw);
       $('loginWrap').style.display = 'none';
       $('mainApp').classList.add('visible');
       loadAll();
