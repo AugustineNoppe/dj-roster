@@ -939,19 +939,6 @@ async function assignDJ(sel) {
       }
     }
 
-    if (slotIdx >= 0) {
-      const existingIdxs = allSlots
-        .map((s,i) => rosterAssignments[`${date}|${s}`] === dj ? i : -1)
-        .filter(i => i >= 0);
-      if (existingIdxs.length > 0) {
-        const min = Math.min(...existingIdxs);
-        const max = Math.max(...existingIdxs);
-        if (slotIdx !== min - 1 && slotIdx !== max + 1) {
-          showToast(`${dj}'s slots must be one unbroken block`, 'error'); sel.value = ''; return;
-        }
-      }
-    }
-
     if (type === 'hip' && rosterAssignments[`${date}|${slot}`] === dj) {
       showToast(`${dj} is already on ARKbar at ${slot}`, 'error'); sel.value = ''; return;
     }
