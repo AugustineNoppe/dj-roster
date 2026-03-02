@@ -200,6 +200,30 @@ async function fetchAvailability(month) {
     }
   }
 
+  // Auto-populate Davoted's fixed recurring monthly schedule
+  if (year !== undefined && monthIdx >= 0) {
+    const DAVOTED_ARKBAR_SLOTS = {
+      1: ['14:00\u201315:00','15:00\u201316:00'],
+      3: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
+      4: ['14:00\u201315:00','15:00\u201316:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
+      5: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
+    };
+    const DAVOTED_LOVE_SLOTS = {
+      2: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
+      3: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
+    };
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dk = makeDateKey(year, monthIdx + 1, d);
+      const dow = new Date(year, monthIdx, d).getDay();
+      const slots = [...(DAVOTED_ARKBAR_SLOTS[dow] || []), ...(DAVOTED_LOVE_SLOTS[dow] || [])];
+      for (const slot of slots) {
+        const ns = normalizeSlot(slot);
+        (map[dk] ??= {})[ns] ??= [];
+        if (!map[dk][ns].includes('Davoted')) map[dk][ns].push('Davoted');
+      }
+    }
+  }
+
   const result = { success: true, availability: map, blackouts };
   cache.availability.set(month, { data: result, time: Date.now() });
   return result;
