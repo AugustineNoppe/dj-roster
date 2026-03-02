@@ -37,9 +37,18 @@ const makeDateKey = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
 
 function parseDateKey(dateStr) {
   if (!dateStr) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  const m = dateStr.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
-  if (m) return `${m[3]}-${pad2(SHORT_MONTHS[m[2]] || 0)}-${pad2(m[1])}`;
+  const s = String(dateStr).trim();
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // D Mon YYYY  e.g. "19 Mar 2026"
+  const mDMY = s.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+  if (mDMY) return `${mDMY[3]}-${pad2(SHORT_MONTHS[mDMY[2]] || 0)}-${pad2(mDMY[1])}`;
+  // M/D/YYYY or MM/DD/YYYY  (Google Sheets en-US auto-format)
+  const mMDY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mMDY) return `${mMDY[3]}-${pad2(mMDY[1])}-${pad2(mMDY[2])}`;
+  // YYYY/MM/DD
+  const mYMD = s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (mYMD) return `${mYMD[1]}-${mYMD[2]}-${mYMD[3]}`;
   return null;
 }
 
@@ -160,8 +169,11 @@ async function fetchAvailability(month) {
   }
 
   // Include portal submissions (DJ Availability sheet) — column layout: name, date, slot, month, status
+  // status is 'available' for freelance DJs (who only save their available slots) and
+  // 'unavailable' for residents (who save their blackout slots). Skip explicit unavailability;
+  // treat a missing status column as available so old/manually-entered rows still appear.
   for (const [dj, dateRaw, slot, rowMonth, status] of (portalRes.data.values || [])) {
-    if (!dj || !dateRaw || !slot || rowMonth !== month || status !== 'available') continue;
+    if (!dj || !dateRaw || !slot || rowMonth !== month || status === 'unavailable') continue;
     const dk = parseDateKey(dateRaw);
     if (!dk) continue;
     const ns = normalizeSlot(slot);
