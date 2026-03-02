@@ -37,9 +37,18 @@ const makeDateKey = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
 
 function parseDateKey(dateStr) {
   if (!dateStr) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  const m = dateStr.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
-  if (m) return `${m[3]}-${pad2(SHORT_MONTHS[m[2]] || 0)}-${pad2(m[1])}`;
+  const s = String(dateStr).trim();
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // D Mon YYYY  e.g. "19 Mar 2026"
+  const mDMY = s.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+  if (mDMY) return `${mDMY[3]}-${pad2(SHORT_MONTHS[mDMY[2]] || 0)}-${pad2(mDMY[1])}`;
+  // M/D/YYYY or MM/DD/YYYY  (Google Sheets en-US auto-format)
+  const mMDY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mMDY) return `${mMDY[3]}-${pad2(mMDY[1])}-${pad2(mMDY[2])}`;
+  // YYYY/MM/DD
+  const mYMD = s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (mYMD) return `${mYMD[1]}-${mYMD[2]}-${mYMD[3]}`;
   return null;
 }
 
@@ -138,10 +147,13 @@ async function fetchAvailability(month) {
   const year = parseInt(parts[1]);
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
-  const [availRes, blackouts] = await Promise.all([
+  const [availRes, portalRes, blackouts] = await Promise.all([
     sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID, range: 'DJ Availability_Datasheet!A2:F',
-    }),
+    }).catch(() => ({ data: { values: [] } })),
+    sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
+    }).catch(() => ({ data: { values: [] } })),
     fetchBlackouts(month),
   ]);
 
@@ -149,6 +161,19 @@ async function fetchAvailability(month) {
   const map = {};
   for (const [, dj, , dateRaw, , slot] of filtered) {
     if (!dateRaw || !slot || !dj) continue;
+    const dk = parseDateKey(dateRaw);
+    if (!dk) continue;
+    const ns = normalizeSlot(slot);
+    (map[dk] ??= {})[ns] ??= [];
+    if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
+  }
+
+  // Include portal submissions (DJ Availability sheet) — column layout: name, date, slot, month, status
+  // status is 'available' for freelance DJs (who only save their available slots) and
+  // 'unavailable' for residents (who save their blackout slots). Skip explicit unavailability;
+  // treat a missing status column as available so old/manually-entered rows still appear.
+  for (const [dj, dateRaw, slot, rowMonth, status] of (portalRes.data.values || [])) {
+    if (!dj || !dateRaw || !slot || rowMonth !== month || status === 'unavailable') continue;
     const dk = parseDateKey(dateRaw);
     if (!dk) continue;
     const ns = normalizeSlot(slot);
@@ -502,6 +527,7 @@ app.post('/api/dj/availability', async (req, res) => {
         valueInputOption: 'RAW', requestBody: { values: allRows },
       });
     }
+    cache.availability.delete(month);
     res.json({ success: true, saved: newRows.length });
   } catch (err) {
     res.json({ success: false, error: err.message });

@@ -605,6 +605,7 @@ const LOVE_DJS = {
 // === HELPERS ===
 const pad2 = n => String(n).padStart(2,'0');
 const makeDateStr = (y,m,d) => `${y}-${pad2(m+1)}-${pad2(d)}`;
+const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
 const $ = id => document.getElementById(id);
 
 function getMonthString() { return `${MONTHS[currentMonth]} ${currentYear}`; }
@@ -829,9 +830,10 @@ function renderGrid() {
 // === CELL BUILDER ===
 function buildCell(dateStr, slot, type) {
   const assignMap = type === 'hip' ? hipAssignments : rosterAssignments;
-  const key = `${dateStr}|${slot}`;
+  const slotKey = normalizeSlot(slot);
+  const key = `${dateStr}|${slotKey}`;
   const assigned = assignMap[key] || '';
-  const avail = (availability[dateStr] && availability[dateStr][slot]) || [];
+  const avail = (availability[dateStr] && availability[dateStr][slotKey]) || [];
 
   let options = [];
 
