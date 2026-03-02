@@ -22,7 +22,19 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // Find existing open PR for this branch
+            // Check if branch has any commits ahead of main
+            const comparison = await github.rest.repos.compareCommitsWithBasehead({
+              owner, repo,
+              basehead: `main...${branch}`
+            }).catch(() => null);
+
+            if (!comparison || comparison.data.ahead_by === 0) {
+              console.log('Branch is not ahead of main — nothing to merge.');
+              return;
+            }
+            console.log(`Branch is ${comparison.data.ahead_by} commit(s) ahead of main.`);
+
+            // Find or create an open PR for this branch
             const { data: prs } = await github.rest.pulls.list({
               owner, repo,
               head: `${owner}:${branch}`,
@@ -33,26 +45,49 @@ jobs:
             let prNumber;
 
             if (prs.length === 0) {
-              // Create a new PR
-              const { data: pr } = await github.rest.pulls.create({
-                owner, repo,
-                title: `Claude update: ${new Date().toISOString().slice(0,10)}`,
-                head: branch,
-                base: 'main',
-                body: 'Automated update from Claude Code session.'
-              });
-              prNumber = pr.number;
-              console.log(`Created PR #${prNumber}`);
+              try {
+                const { data: pr } = await github.rest.pulls.create({
+                  owner, repo,
+                  title: `Claude update: ${new Date().toISOString().slice(0,10)}`,
+                  head: branch,
+                  base: 'main',
+                  body: 'Automated update from Claude Code session.'
+                });
+                prNumber = pr.number;
+                console.log(`Created PR #${prNumber}`);
+              } catch (err) {
+                console.log(`Could not create PR: ${err.message}`);
+                return;
+              }
             } else {
               prNumber = prs[0].number;
               console.log(`Found existing PR #${prNumber}`);
             }
 
-            // Merge the PR
-            await github.rest.pulls.merge({
-              owner, repo,
-              pull_number: prNumber,
-              merge_method: 'squash'
-            });
+            // Wait for GitHub to mark the PR as mergeable
+            let mergeable = false;
+            for (let i = 0; i < 6; i++) {
+              await new Promise(r => setTimeout(r, 3000));
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+              if (pr.merged) { console.log('PR already merged.'); return; }
+              if (pr.state === 'closed') { console.log('PR closed — skipping.'); return; }
+              if (pr.mergeable === true) { mergeable = true; break; }
+              console.log(`Waiting for mergeable status (attempt ${i + 1}/6)…`);
+            }
 
-            console.log(`Merged PR #${prNumber} into main`);
+            if (!mergeable) {
+              console.log('PR is not mergeable (possible conflict). Skipping auto-merge.');
+              return;
+            }
+
+            // Merge the PR
+            try {
+              await github.rest.pulls.merge({
+                owner, repo,
+                pull_number: prNumber,
+                merge_method: 'merge'
+              });
+              console.log(`Merged PR #${prNumber} into main`);
+            } catch (err) {
+              console.log(`Merge failed: ${err.message}`);
+            }
