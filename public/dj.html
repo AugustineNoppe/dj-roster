@@ -10,6 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* iOS Safari: prevent auto-zoom on input focus; prevent double-tap zoom */
+input,select,textarea{font-size:16px!important;touch-action:manipulation}
+button,a,[role="button"]{touch-action:manipulation}
 :root{
   --navy:#2B3990;--teal:#5DB8C0;--orange:#F15A29;--love-pink:#e91e8c;
   --green:#4caf50;--green-dim:rgba(76,175,80,0.15);
@@ -178,7 +181,7 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   padding:8px 4px 6px;border-radius:8px;cursor:pointer;
   background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);
   transition:background var(--transition),border-color var(--transition);
-  -webkit-tap-highlight-color:transparent;user-select:none;min-height:52px;
+  -webkit-tap-highlight-color:transparent;user-select:none;min-height:52px;touch-action:manipulation;
   display:flex;flex-direction:column;
 }
 .cal-cell:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.14)}
@@ -204,7 +207,7 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   padding:9px 6px;border-radius:8px;font-family:inherit;font-size:11px;font-weight:700;
   cursor:pointer;border:1px solid;text-align:center;
   transition:background var(--transition),border-color var(--transition),color var(--transition);
-  -webkit-tap-highlight-color:transparent;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
 }
 .pill.avail{background:rgba(93,184,192,0.2);border-color:rgba(93,184,192,0.5);color:var(--teal)}
 .pill.avail:hover:not(:disabled){background:rgba(93,184,192,0.35);border-color:rgba(93,184,192,0.8)}
