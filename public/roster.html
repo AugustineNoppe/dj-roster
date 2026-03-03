@@ -342,6 +342,14 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 }
 .fin-table tfoot td.r{text-align:right;color:var(--teal)}
 
+/* === ACCOUNTING TABLE: collapse Rate+Cost on narrow mobile === */
+.fin-col-combined{display:none}
+@media(max-width:499px){
+  .fin-col-rate,.fin-col-cost{display:none}
+  .fin-col-combined{display:table-cell}
+  .fin-table thead th,.fin-table tbody td,.fin-table tfoot td{padding:8px 6px}
+}
+
 /* === PREVIEW BANNER === */
 .preview-banner{
   display:flex;align-items:center;justify-content:center;gap:8px;
@@ -424,8 +432,8 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   .main-content{padding:8px}
   .td-date{min-width:66px;padding:4px 6px;font-size:10px}
   .td-date .dow{font-size:8px}
-  .td-slot{min-width:66px;padding:2px}
-  .slot-select{min-height:32px;padding:4px 2px}
+  .td-slot{min-width:88px;padding:2px}
+  .slot-select{min-height:32px;padding:4px 2px;font-size:11px}
   .roster-table thead th{font-size:8px;padding:6px 2px}
   .th-section-label{font-size:8px;padding:4px}
   .status-bar{padding:8px 10px;flex-wrap:wrap;gap:8px}
@@ -1766,8 +1774,9 @@ function showFinalizeReport(data, isPreview = false) {
     <td class="r">${dj.hip   > 0 ? dj.hip   + 'h' : '\u2014'}</td>
     <td class="r">${dj.love  > 0 ? dj.love  + 'h' : '\u2014'}</td>
     <td class="r"><strong>${dj.total}h</strong></td>
-    <td class="r">${BAHT}${dj.rate.toLocaleString()}/h</td>
-    <td class="r" style="color:var(--teal);font-weight:800">${BAHT}${dj.cost.toLocaleString()}</td>
+    <td class="fin-col-rate r">${BAHT}${dj.rate.toLocaleString()}/h</td>
+    <td class="fin-col-cost r" style="color:var(--teal);font-weight:800">${BAHT}${dj.cost.toLocaleString()}</td>
+    <td class="fin-col-combined r"><span style="font-size:10px;opacity:.65">${BAHT}${dj.rate.toLocaleString()}/h &times; ${dj.total}h</span><br><strong style="color:var(--teal)">${BAHT}${dj.cost.toLocaleString()}</strong></td>
   </tr>`).join('');
 
   const headerIcon  = isPreview ? '&#128196;' : '&#128274;';
@@ -1802,14 +1811,15 @@ function showFinalizeReport(data, isPreview = false) {
       <table class="fin-table">
         <thead><tr>
           <th>DJ</th><th class="r">ARKbar</th><th class="r">HIP</th><th class="r">Love Beach</th>
-          <th class="r">Total</th><th class="r">Rate</th><th class="r">Cost</th>
+          <th class="r">Total</th><th class="fin-col-rate r">Rate</th><th class="fin-col-cost r">Cost</th><th class="fin-col-combined r">Rate &amp; Cost</th>
         </tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr>
           <td colspan="4">Grand Total</td>
           <td class="r">${grandTotal}h</td>
-          <td></td>
-          <td class="r">${BAHT}${grandCost.toLocaleString()}</td>
+          <td class="fin-col-rate"></td>
+          <td class="fin-col-cost r">${BAHT}${grandCost.toLocaleString()}</td>
+          <td class="fin-col-combined r">${BAHT}${grandCost.toLocaleString()}</td>
         </tr></tfoot>
       </table>
     </div>
