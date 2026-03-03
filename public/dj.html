@@ -604,8 +604,15 @@ async function loadMonth() {
     ]);
 
     availability = availData.availability || {};
-    schedule     = schedData.schedule    || [];
     isFinalized  = availData.isFinalized || false;
+    // Only keep schedule entries where the DJ's submitted availability matches the slot.
+    // Residents default to 'available'; casuals default to 'unavailable'.
+    const rawSchedule = schedData.schedule || [];
+    schedule = rawSchedule.filter(({ date, slot }) => {
+      const slotMap = availability[date] || {};
+      const status = slotMap[slot] !== undefined ? slotMap[slot] : (isResident ? 'available' : 'unavailable');
+      return status === 'available';
+    });
     signoffs = new Set((signoffData.signoffs || []).map(s => `${s.date}|${s.slot}|${s.venue}`));
 
     renderCurrentTab();
