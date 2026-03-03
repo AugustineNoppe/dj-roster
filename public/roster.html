@@ -1396,14 +1396,32 @@ async function loadHours() {
     const [arkData, loveData, djData] = await Promise.all([arkRes.json(), loveRes.json(), djRes.json()]);
     const arkHours = {}, loveHours = {};
     (arkData.roster || []).forEach(r => { if (r[2]) arkHours[r[2]] = (arkHours[r[2]] || 0) + 1; });
-    (loveData.roster || []).forEach(r => { if (r[2]) loveHours[r[2]] = (loveHours[r[2]] || 0) + 1; });
-    renderHours(djData.djs || [], arkHours, loveHours);
+
+    // Only count Love Beach hours for slots where the DJ has matching submitted availability.
+    // Track DJs who appear on the Love Beach roster but have no confirmed slots at all.
+    const loveAssigned = new Set(), loveConfirmed = new Set();
+    (loveData.roster || []).forEach(r => {
+      if (!r[2]) return;
+      const djName = r[2];
+      if (djName === 'Guest DJ') return;
+      loveAssigned.add(djName);
+      if (!RESIDENTS.includes(djName)) {
+        const slotAvail = (availability[r[0]] && availability[r[0]][normalizeSlot(r[1])]) || [];
+        if (!slotAvail.includes(djName)) return; // no availability → ⚠ slot, exclude
+      }
+      loveConfirmed.add(djName);
+      loveHours[djName] = (loveHours[djName] || 0) + 1;
+    });
+    // DJs assigned to Love Beach but with zero confirmed slots → flag as unconfirmed
+    const loveUnconfirmed = new Set([...loveAssigned].filter(dj => !loveConfirmed.has(dj)));
+
+    renderHours(djData.djs || [], arkHours, loveHours, loveUnconfirmed);
   } catch(e) {
     $('mainContent').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
   }
 }
 
-function renderHours(djs, arkHours, loveHours) {
+function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
   checkFinalized();
   const normalize = name => name ? name.trim().toLowerCase() : '';
   const arkNorm = {}, loveNorm = {};
@@ -1412,7 +1430,7 @@ function renderHours(djs, arkHours, loveHours) {
 
   const totals = {};
   djs.forEach(d => {
-    const unconfirmed = FIXED_GUEST_DJS.has(d.name) || d.name === 'Guest DJ';
+    const unconfirmed = FIXED_GUEST_DJS.has(d.name) || d.name === 'Guest DJ' || loveUnconfirmed.has(d.name);
     totals[d.name] = unconfirmed ? 0 : (arkNorm[normalize(d.name)] || 0) + (loveNorm[normalize(d.name)] || 0);
   });
 
@@ -1428,7 +1446,7 @@ function renderHours(djs, arkHours, loveHours) {
   });
 
   const rows = sorted.map(dj => {
-    const isUnconfirmed = FIXED_GUEST_DJS.has(dj.name) || dj.name === 'Guest DJ';
+    const isUnconfirmed = FIXED_GUEST_DJS.has(dj.name) || dj.name === 'Guest DJ' || loveUnconfirmed.has(dj.name);
     const ark  = isUnconfirmed ? 0 : (arkNorm[normalize(dj.name)] || 0);
     const love = isUnconfirmed ? 0 : (loveNorm[normalize(dj.name)] || 0);
     const total = ark + love;
@@ -1715,7 +1733,16 @@ async function previewMonth() {
     const arkNorm = {}, hipNorm = {}, loveNorm = {};
     (arkRes.roster || []).forEach(r => { if (r[2]) { const k = norm(r[2]); arkNorm[k] = (arkNorm[k]||0)+1; } });
     (hipRes.roster || []).forEach(r => { if (r[2]) { const k = norm(r[2]); hipNorm[k] = (hipNorm[k]||0)+1; } });
-    (loveRes.roster || []).forEach(r => { if (r[2]) { const k = norm(r[2]); loveNorm[k] = (loveNorm[k]||0)+1; } });
+    (loveRes.roster || []).forEach(r => {
+      if (!r[2]) return;
+      const djName = r[2];
+      if (djName !== 'Guest DJ' && !RESIDENTS.includes(djName)) {
+        const slotAvail = (availability[r[0]] && availability[r[0]][normalizeSlot(r[1])]) || [];
+        if (!slotAvail.includes(djName)) return; // no confirmed availability → exclude
+      }
+      const k = norm(djName);
+      loveNorm[k] = (loveNorm[k] || 0) + 1;
+    });
     const report = djs
       .map(dj => {
         const ark  = arkNorm[norm(dj.name)]  || 0;
