@@ -1470,11 +1470,16 @@ function renderHours(djs, arkHours, loveHours) {
 // === DJ DETAIL MODAL ===
 async function showDJDetail(djName) {
   const month = getMonthString();
-  const [arkRes, hipRes, loveRes] = await Promise.all([
-    fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`).then(r=>r.json()),
-    fetch(`/api/roster?venue=hip&month=${encodeURIComponent(month)}`).then(r=>r.json()),
-    fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`).then(r=>r.json()),
+  const enc = encodeURIComponent;
+  const [arkRes, hipRes, loveRes, signoffRes] = await Promise.all([
+    fetch(`/api/roster?venue=arkbar&month=${enc(month)}`).then(r=>r.json()),
+    fetch(`/api/roster?venue=hip&month=${enc(month)}`).then(r=>r.json()),
+    fetch(`/api/roster?venue=love&month=${enc(month)}`).then(r=>r.json()),
+    fetch(`/api/dj/signoffs/${enc(djName)}/${enc(month)}`).then(r=>r.json()).catch(()=>({signoffs:[]})),
   ]);
+
+  const signoffSet = new Set((signoffRes.signoffs || []).map(s => `${s.date}|${s.slot}|${s.venue}`));
+  const VENUE_LABEL = { arkbar:'ARKbar', hip:'HIP', love:'Love Beach' };
 
   const norm = n => n ? n.trim().toLowerCase() : '';
   const djNorm = norm(djName);
@@ -1501,18 +1506,32 @@ async function showDJDetail(djName) {
     : '<span style="color:var(--text-faint)">\u2014</span>';
 
   let tableRows = '';
+  let grandSignedCount = 0;
   dates.forEach(date => {
     const d = dayData[date];
     const dow = new Date(date).getDay();
     const dayLabel = `${DAYS[dow]} ${date.split('-')[2]} ${MONTHS[currentMonth].slice(0,3)}`;
     const as = d.arkbar.sort(), hs = d.hip.sort(), ls = d.love.sort();
     arkTotal += as.length; hipTotal += hs.length; loveTotal += ls.length;
+    const dayTotal = as.length + hs.length + ls.length;
+    const signedCount = [['arkbar',as],['hip',hs],['love',ls]].reduce(
+      (sum, [vk, slots]) => sum + slots.filter(s => signoffSet.has(`${date}|${s}|${VENUE_LABEL[vk]}`)).length, 0);
+    grandSignedCount += signedCount;
+    let signoffCell = '\u2014';
+    if (signedCount > 0) {
+      const all = signedCount === dayTotal;
+      const col = all ? '#69f0ae' : '#ffb74d';
+      const bg  = all ? 'rgba(105,240,174,0.12)' : 'rgba(255,183,77,0.12)';
+      const brd = all ? 'rgba(105,240,174,0.3)'  : 'rgba(255,183,77,0.3)';
+      signoffCell = `<span style="background:${bg};border:1px solid ${brd};color:${col};border-radius:4px;padding:2px 7px;font-size:10px;font-weight:800;white-space:nowrap">${signedCount}/${dayTotal}h signed</span>`;
+    }
     tableRows += `<tr style="border-bottom:1px solid var(--border-subtle)">
       <td style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap">${dayLabel}</td>
       <td style="padding:8px 6px;font-size:10px">${formatSlots(as)}</td>
       <td style="padding:8px 6px;font-size:10px">${formatSlots(hs)}</td>
       <td style="padding:8px 6px;font-size:10px">${formatSlots(ls)}</td>
-      <td style="padding:8px 12px;font-size:12px;font-weight:800;color:#fff;text-align:right">${as.length+hs.length+ls.length}h</td>
+      <td style="padding:8px 12px;text-align:right;color:var(--text-faint)">${signoffCell}</td>
+      <td style="padding:8px 12px;font-size:12px;font-weight:800;color:#fff;text-align:right">${dayTotal}h</td>
     </tr>`;
   });
 
@@ -1560,6 +1579,7 @@ async function showDJDetail(djName) {
         <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">ARKbar</th>
         <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">HIP</th>
         <th style="padding:10px 6px;text-align:left;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Love Beach</th>
+        <th style="padding:10px 12px;text-align:right;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Signed Off</th>
         <th style="padding:10px 12px;text-align:right;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Day Total</th>
       </tr></thead>
       <tbody style="color:var(--text-secondary)">${tableRows}</tbody>
@@ -1568,6 +1588,9 @@ async function showDJDetail(djName) {
         <td style="padding:12px 6px;font-size:12px;font-weight:800">${arkTotal}h</td>
         <td style="padding:12px 6px;font-size:12px;font-weight:800">${hipTotal}h</td>
         <td style="padding:12px 6px;font-size:12px;font-weight:800">${loveTotal}h</td>
+        <td style="padding:12px;text-align:right">${grandSignedCount > 0
+          ? `<span style="font-weight:800;font-size:12px;color:${grandSignedCount===grandTotal?'#69f0ae':'#ffb74d'}">${grandSignedCount}/${grandTotal}h signed</span>`
+          : '<span style="color:var(--text-faint)">\u2014</span>'}</td>
         <td style="padding:12px;font-size:14px;font-weight:900;color:var(--teal);text-align:right">${grandTotal}h \u00B7 \u0E3F${totalCost.toLocaleString()}</td>
       </tr></tfoot>
     </table>
