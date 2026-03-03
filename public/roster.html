@@ -1711,7 +1711,7 @@ async function previewMonth() {
         const cost = dj.name === 'Guest DJ' ? 0 : total * dj.rate;
         return { name: dj.name, arkbar: ark, hip, love, total, rate: dj.rate, cost };
       })
-      .filter(dj => dj.total > 0)
+      .filter(dj => dj.total > 0 && dj.name !== 'Guest DJ' && !FIXED_GUEST_DJS.has(dj.name))
       .sort((a, b) => b.total - a.total);
     const grandTotal = report.reduce((s, d) => s + d.total, 0);
     const grandCost  = report.reduce((s, d) => s + d.cost,  0);
@@ -1750,8 +1750,15 @@ async function finalizeMonth() {
 }
 
 function showFinalizeReport(data, isPreview = false) {
-  const { month, report = [], grandTotal = 0, grandCost = 0 } = data;
+  const { month } = data;
   const BAHT = '\u0E3F';
+
+  // Exclude unconfirmed guest DJs (always shown with ⚠ on the roster) and zero-hour entries
+  const report = (data.report || []).filter(dj =>
+    dj.total > 0 && dj.name !== 'Guest DJ' && !FIXED_GUEST_DJS.has(dj.name)
+  );
+  const grandTotal = report.reduce((s, d) => s + d.total, 0);
+  const grandCost  = report.reduce((s, d) => s + d.cost,  0);
 
   const rows = report.map(dj => `<tr>
     <td style="font-weight:700;color:#fff">${dj.name}</td>
