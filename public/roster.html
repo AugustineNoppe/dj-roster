@@ -13,7 +13,7 @@
 /* === RESET & TOKENS === */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* iOS Safari: prevent auto-zoom on input focus; prevent double-tap zoom */
-input,select,textarea{font-size:16px!important;touch-action:manipulation}
+input,select,textarea{touch-action:manipulation}
 button,a,[role="button"]{touch-action:manipulation}
 :root{
   --navy:#2B3990;--navy-dark:#1a2570;--teal:#5DB8C0;--teal-light:#eaf6f7;
@@ -52,7 +52,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .pw-field{position:relative;width:100%;margin-bottom:12px}
 .pw-field input{
   width:100%;padding:14px 52px 14px 18px;border:1px solid rgba(255,255,255,0.15);
-  border-radius:10px;font-family:inherit;font-size:16px;text-align:center;
+  border-radius:10px;font-family:inherit;font-size:15px;text-align:center;
   letter-spacing:.05em;outline:none;background:rgba(255,255,255,0.08);color:#fff;
   transition:border-color var(--transition),background var(--transition);
 }
@@ -170,7 +170,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 
 .slot-select{
   width:100%;padding:5px 3px;border:1.5px solid transparent;border-radius:6px;
-  font-family:inherit;font-size:16px;font-weight:700;color:#1c2340;background:transparent;
+  font-family:inherit;font-size:10px;font-weight:700;color:#1c2340;background:transparent;
   cursor:pointer;outline:none;transition:all .15s;appearance:none;-webkit-appearance:none;
   text-align:center;min-height:28px;
 }
@@ -178,7 +178,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .slot-select:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(43,57,144,0.1)}
 .slot-select.assigned{color:#fff!important;font-weight:800!important}
 .slot-select.unassigned{color:#9aa0b8}
-.slot-select.no-avail{background:#f5f5f5;color:#ccc;cursor:not-allowed}
+.slot-select.no-avail{background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:10px}
 
 /* Locked state */
 .roster-locked .slot-select:not(.no-avail){pointer-events:none;opacity:.95}
@@ -434,6 +434,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   .td-date .dow{font-size:8px}
   .td-slot{min-width:88px;padding:2px}
   .slot-select{min-height:32px;padding:4px 2px;font-size:11px}
+  .dj-name{font-size:11px}
   .roster-table thead th{font-size:8px;padding:6px 2px}
   .th-section-label{font-size:8px;padding:4px}
   .status-bar{padding:8px 10px;flex-wrap:wrap;gap:8px}
@@ -1650,9 +1651,9 @@ function editDJ(djName, currentRate) {
   modal.innerHTML = `<div style="background:rgba(15,20,45,0.98);border:1px solid rgba(93,184,192,0.3);border-radius:18px;padding:28px 26px;width:min(360px,calc(100vw - 32px));box-shadow:0 32px 80px rgba(0,0,0,0.6)">
     <div style="font-size:17px;font-weight:900;margin-bottom:18px">Edit DJ — ${djName}</div>
     <label style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:6px">Display Name</label>
-    <input id="djEditName" type="text" value="${djName.replace(/"/g,'&quot;')}" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.07);color:#fff;font-family:inherit;font-size:16px;font-weight:600;outline:none;margin-bottom:14px;box-sizing:border-box">
+    <input id="djEditName" type="text" value="${djName.replace(/"/g,'&quot;')}" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.07);color:#fff;font-family:inherit;font-size:14px;font-weight:600;outline:none;margin-bottom:14px;box-sizing:border-box">
     <label style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:6px">Hourly Rate (&#3647;)</label>
-    <input id="djEditRate" type="number" min="0" value="${currentRate}" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.07);color:#fff;font-family:inherit;font-size:16px;font-weight:600;outline:none;margin-bottom:22px;box-sizing:border-box">
+    <input id="djEditRate" type="number" min="0" value="${currentRate}" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.07);color:#fff;font-family:inherit;font-size:14px;font-weight:600;outline:none;margin-bottom:22px;box-sizing:border-box">
     <div style="display:flex;gap:10px">
       <button onclick="closeDJEdit()" style="flex:1;padding:12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:var(--text-secondary)">Cancel</button>
       <button onclick="saveDJEdit()" style="flex:1;padding:12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;background:var(--teal);border:none;color:#0b1020">Save</button>
