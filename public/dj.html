@@ -968,8 +968,8 @@ function renderSchedule() {
     $('mainContent').innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">&#128203;</div>
-        <div class="empty-title">No confirmed bookings yet</div>
-        <div class="empty-sub">Management hasn't assigned you any slots for ${monthStr}.</div>
+        <div class="empty-title">No confirmed bookings</div>
+        <div class="empty-sub">No slots for ${monthStr} match your submitted availability.</div>
       </div>`;
     return;
   }
