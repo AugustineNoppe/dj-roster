@@ -155,7 +155,16 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 
 /* === CALENDAR === */
 .cal-instruction-note{
-  margin:6px 12px 2px;font-size:12px;color:var(--muted);text-align:center;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:8px 12px 4px;padding:10px 16px;border-radius:10px;
+  font-size:12px;font-weight:700;letter-spacing:.03em;text-align:center;
+  border:1px solid;
+}
+.cal-instruction-note.resident{
+  background:rgba(241,90,41,0.12);border-color:rgba(241,90,41,0.35);color:#f8a07a;
+}
+.cal-instruction-note.casual{
+  background:rgba(93,184,192,0.12);border-color:rgba(93,184,192,0.35);color:var(--teal);
 }
 .cal-wrap{padding:12px}
 .cal-grid{
@@ -644,7 +653,7 @@ function renderCalendar() {
     html += `<div class="finalized-banner">&#128274; ${getMonthStr()} is finalised — read only</div>`;
   }
 
-  html += `<p class="cal-instruction-note">${isResident ? 'Select your unavailable dates.' : 'Select your available dates.'}</p>`;
+  html += `<div class="cal-instruction-note ${isResident ? 'resident' : 'casual'}">${isResident ? '&#128683; Select your unavailable dates.' : '&#9989; Select your available dates.'}</div>`;
 
   html += '<div class="cal-wrap"><div class="cal-grid">';
 
