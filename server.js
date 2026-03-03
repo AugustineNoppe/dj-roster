@@ -616,6 +616,27 @@ app.post('/api/dj/signoff', async (req, res) => {
   }
 });
 
+/* -- POST /api/dj/signoff-batch ------------------------------------------- */
+app.post('/api/dj/signoff-batch', async (req, res) => {
+  try {
+    const { name, date, slots, month, password } = req.body;
+    if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
+    if (!name || !date || !month || !Array.isArray(slots) || slots.length === 0)
+      return res.json({ success: false, error: 'Missing fields' });
+    const sheets = getSheets();
+    const ts = new Date().toISOString();
+    const rows = slots.map(({ slot, venue }) => [date, normalizeSlot(slot), name, venue, month, ts, 'sign']);
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
+      valueInputOption: 'RAW',
+      requestBody: { values: rows },
+    });
+    res.json({ success: true, count: rows.length });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 /* -- POST /api/dj/unsignoff-day ------------------------------------------- */
 app.post('/api/dj/unsignoff-day', async (req, res) => {
   try {
