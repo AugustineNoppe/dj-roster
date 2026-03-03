@@ -1401,8 +1401,8 @@ function renderHours(djs, arkHours, loveHours) {
     const cost = dj.name === 'Guest DJ' ? 0 : total * dj.rate;
     const barClass = `hours-bar-fill${isResident ? ' resident' : total === 0 ? ' zero' : ''}`;
     const isSoundBogie = dj.name === 'Sound Bogie';
-    const djTarget = isSoundBogie ? 35 : RESIDENT_TARGET;
-    const djTargetLabel = isSoundBogie ? '30\u201340' : RESIDENT_TARGET;
+    const djTarget = isSoundBogie ? 35 : has80Target ? RESIDENT_MIN : RESIDENT_TARGET;
+    const djTargetLabel = isSoundBogie ? '30\u201340' : has80Target ? RESIDENT_MIN : RESIDENT_TARGET;
     let badge = '';
     if (has80Target || isSoundBogie) {
       badge = total >= djTarget
