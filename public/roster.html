@@ -234,7 +234,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   border:1px solid var(--border);border-radius:var(--radius);padding:18px;
 }
 .card-label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
-.card-value{font-size:20px;font-weight:900;color:#fff}
+.card-value{font-size:26px;font-weight:900;color:#fff}
 .card-sub{font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);margin-top:2px}
 
 .hours-table-wrap{
@@ -242,7 +242,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
 }
 .hours-table-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.hours-table-header h2{font-size:13px;font-weight:800}
+.hours-table-header h2{font-size:14px;font-weight:800}
 .hours-table{width:100%;border-collapse:collapse}
 .hours-table thead th{
   padding:9px 14px;text-align:left;font-size:10px;font-weight:800;color:rgba(255,255,255,0.35);
@@ -256,7 +256,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 
 .dj-name-cell{display:flex;align-items:center;gap:10px}
 .dj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.dj-name{font-weight:700;font-size:11px;color:#fff}
+.dj-name{font-weight:700;font-size:12px;color:#fff}
 .hours-bar-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .hours-bar-bg{flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;min-width:60px}
 .hours-bar-fill{height:100%;border-radius:3px;background:var(--teal)}
@@ -304,7 +304,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   padding:20px 24px 16px;border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;
 }
-.fin-modal-hdr h2{font-size:15px;font-weight:900}
+.fin-modal-hdr h2{font-size:17px;font-weight:900}
 .fin-modal-hdr-btns{display:flex;align-items:center;gap:8px}
 .fin-modal-body{padding:20px 24px}
 .fin-print-btn{
@@ -324,7 +324,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   padding:12px;text-align:center;
 }
 .fin-card-label{font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
-.fin-card-val{font-size:16px;font-weight:900}
+.fin-card-val{font-size:20px;font-weight:900}
 .fin-table{width:100%;border-collapse:collapse;font-size:12px}
 .fin-table thead th{
   padding:9px 12px;text-align:left;font-size:9px;font-weight:800;color:var(--text-muted);
@@ -1477,7 +1477,7 @@ function renderHours(djs, arkHours, loveHours) {
     ${minWarning}
     <div class="summary-row">
       <div class="summary-card"><div class="card-label">Total Hours</div><div class="card-value">${totalHours}h</div><div class="card-sub">${getMonthString()}</div></div>
-      <div class="summary-card"><div class="card-label">Total Cost</div><div class="card-value" style="font-size:16px">\u0E3F${totalCost.toLocaleString()}</div><div class="card-sub">All venues</div></div>
+      <div class="summary-card"><div class="card-label">Total Cost</div><div class="card-value" style="font-size:20px">\u0E3F${totalCost.toLocaleString()}</div><div class="card-sub">All venues</div></div>
       <div class="summary-card"><div class="card-label">ARKbar / HIP</div><div class="card-value">${arkTotal}h</div><div class="card-sub">Hours booked</div></div>
       <div class="summary-card"><div class="card-label">Love Beach</div><div class="card-value">${loveTotal}h</div><div class="card-sub">Hours booked</div></div>
     </div>
@@ -1493,8 +1493,8 @@ function renderHours(djs, arkHours, loveHours) {
         <tbody>${rows}
           <tr class="totals-row">
             <td>Total</td><td class="right">${arkTotal}h</td><td class="right">${loveTotal}h</td>
-            <td><div class="hours-val" style="font-size:13px;color:var(--navy)">${totalHours}h</div></td>
-            <td></td><td class="right" style="font-size:13px;color:var(--navy)">\u0E3F${totalCost.toLocaleString()}</td>
+            <td><div class="hours-val" style="font-size:14px;color:var(--navy)">${totalHours}h</div></td>
+            <td></td><td class="right" style="font-size:14px;color:var(--navy)">\u0E3F${totalCost.toLocaleString()}</td>
           </tr>
         </tbody>
       </table>
