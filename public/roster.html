@@ -339,6 +339,14 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 }
 .fin-table tfoot td.r{text-align:right;color:var(--teal)}
 
+/* === PREVIEW BANNER === */
+.preview-banner{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:rgba(241,90,41,0.12);border:2px solid rgba(241,90,41,0.45);border-radius:10px;
+  padding:12px 20px;margin-bottom:16px;
+  font-size:11px;font-weight:900;color:#ff8a65;text-transform:uppercase;letter-spacing:.12em;text-align:center;
+}
+
 /* === RESIDENT HOURS SIDEBAR === */
 .hours-toggle{
   position:fixed;right:0;top:50%;transform:translateY(-50%);
@@ -1461,7 +1469,7 @@ function renderHours(djs, arkHours, loveHours) {
       <div class="hours-table-header">
         <h2>Hours by DJ \u2014 ${getMonthString()}</h2>
         <div style="display:flex;align-items:center;gap:8px" id="finalizeArea">
-          <button class="finalize-btn" id="finalizeBtn" onclick="finalizeMonth()">Finalise Month</button>
+          <button class="finalize-btn" id="finalizeBtn" onclick="previewMonth()">Finalise Month</button>
         </div>
       </div>
       <table class="hours-table">
@@ -1675,6 +1683,41 @@ async function checkFinalized() {
   } catch(e) { /* silently ignore */ }
 }
 
+async function previewMonth() {
+  const month = getMonthString();
+  const enc = encodeURIComponent;
+  const norm = n => n ? n.trim().toLowerCase() : '';
+  try {
+    const [arkRes, hipRes, loveRes, djRes] = await Promise.all([
+      fetch(`/api/roster?venue=arkbar&month=${enc(month)}`).then(r => r.json()),
+      fetch(`/api/roster?venue=hip&month=${enc(month)}`).then(r => r.json()),
+      fetch(`/api/roster?venue=love&month=${enc(month)}`).then(r => r.json()),
+      fetch('/api/djs').then(r => r.json()),
+    ]);
+    const djs = djRes.djs || [];
+    const arkNorm = {}, hipNorm = {}, loveNorm = {};
+    (arkRes.roster || []).forEach(r => { if (r[2]) { const k = norm(r[2]); arkNorm[k] = (arkNorm[k]||0)+1; } });
+    (hipRes.roster || []).forEach(r => { if (r[2]) { const k = norm(r[2]); hipNorm[k] = (hipNorm[k]||0)+1; } });
+    (loveRes.roster || []).forEach(r => { if (r[2]) { const k = norm(r[2]); loveNorm[k] = (loveNorm[k]||0)+1; } });
+    const report = djs
+      .map(dj => {
+        const ark  = arkNorm[norm(dj.name)]  || 0;
+        const hip  = hipNorm[norm(dj.name)]  || 0;
+        const love = loveNorm[norm(dj.name)] || 0;
+        const total = ark + hip + love;
+        const cost = dj.name === 'Guest DJ' ? 0 : total * dj.rate;
+        return { name: dj.name, arkbar: ark, hip, love, total, rate: dj.rate, cost };
+      })
+      .filter(dj => dj.total > 0)
+      .sort((a, b) => b.total - a.total);
+    const grandTotal = report.reduce((s, d) => s + d.total, 0);
+    const grandCost  = report.reduce((s, d) => s + d.cost,  0);
+    showFinalizeReport({ month, report, grandTotal, grandCost }, true);
+  } catch(e) {
+    showToast('Preview error: ' + e.message, 'error');
+  }
+}
+
 async function finalizeMonth() {
   const month = getMonthString();
   if (!confirm(`Finalise ${month}?\n\nThis will lock the month — DJs will no longer be able to edit availability for this period.\n\nThis cannot be undone.`)) return;
@@ -1703,7 +1746,7 @@ async function finalizeMonth() {
   }
 }
 
-function showFinalizeReport(data) {
+function showFinalizeReport(data, isPreview = false) {
   const { month, report = [], grandTotal = 0, grandCost = 0 } = data;
   const BAHT = '\u0E3F';
 
@@ -1717,18 +1760,29 @@ function showFinalizeReport(data) {
     <td class="r" style="color:var(--teal);font-weight:800">${BAHT}${dj.cost.toLocaleString()}</td>
   </tr>`).join('');
 
+  const headerIcon  = isPreview ? '&#128196;' : '&#128274;';
+  const headerLabel = isPreview ? `${month} \u2014 Accounting Preview` : `${month} \u2014 Accounting Report`;
+  const previewBanner = isPreview
+    ? `<div class="preview-banner">&#9888; PREVIEW \u2014 NOT FINALISED \u2014 No data has been saved</div>`
+    : '';
+  const extraBtns = isPreview
+    ? `<button class="finalize-btn" style="font-size:11px;padding:7px 14px" onclick="closeFinalizeModal();finalizeMonth()">&#128274; Finalise Month</button>`
+    : '';
+
   const modal = document.createElement('div');
   modal.className = 'fin-modal-overlay';
   modal.id = 'finalizeModal';
   modal.innerHTML = `<div class="fin-modal">
     <div class="fin-modal-hdr">
-      <h2>&#128274; ${month} — Accounting Report</h2>
+      <h2>${headerIcon} ${headerLabel}</h2>
       <div class="fin-modal-hdr-btns">
-        <button class="fin-print-btn" onclick="printFinalizeReport()">&#128438; Print</button>
+        ${extraBtns}
+        <button class="fin-print-btn" onclick="printFinalizeReport(${isPreview})">&#128438; ${isPreview ? 'Print Preview' : 'Print'}</button>
         <button class="fin-close-btn" onclick="closeFinalizeModal()">&#x2715;</button>
       </div>
     </div>
     <div class="fin-modal-body" id="finalizeReportBody">
+      ${previewBanner}
       <div class="fin-summary">
         <div class="fin-card"><div class="fin-card-label">Total Hours</div><div class="fin-card-val">${grandTotal}h</div></div>
         <div class="fin-card"><div class="fin-card-label">Total Cost</div><div class="fin-card-val" style="color:var(--teal);font-size:18px">${BAHT}${grandCost.toLocaleString()}</div></div>
@@ -1757,11 +1811,14 @@ function showFinalizeReport(data) {
 
 function closeFinalizeModal() { const m = $('finalizeModal'); if (m) m.remove(); }
 
-function printFinalizeReport() {
+function printFinalizeReport(isPreview = false) {
   const body = $('finalizeReportBody');
   if (!body) return;
   const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html><head><title>Accounting Report</title>
+  const previewCss = isPreview
+    ? `.preview-banner{display:block!important;background:#fff3e0;border:2px solid #f57c00;color:#bf360c;border-radius:6px;padding:10px 16px;margin-bottom:20px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;text-align:center}`
+    : `.preview-banner{display:none}`;
+  w.document.write(`<!DOCTYPE html><html><head><title>${isPreview ? 'PREVIEW \u2014 ' : ''}Accounting Report</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
   body{padding:24px;background:#fff;color:#1c2340}
@@ -1775,6 +1832,7 @@ function printFinalizeReport() {
   th.r,td.r{text-align:right}
   td{padding:9px 10px;font-size:11px;font-weight:600;border-bottom:1px solid #eee}
   tfoot td{font-weight:800;border-top:2px solid #2B3990;color:#1c2340}
+  ${previewCss}
   @media print{button{display:none!important}}</style>
   </head><body>${body.innerHTML}</body></html>`);
   w.document.close();
