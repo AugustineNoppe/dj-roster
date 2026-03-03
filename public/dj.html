@@ -832,17 +832,15 @@ async function confirmSignoff() {
       const { date } = _signoffPending;
       const daySlots = (window._schedDaySlots || {})[date] || [];
       const unsigned = daySlots.filter(({ slot, venue }) => !signoffs.has(`${date}|${slot}|${venue}`));
-      const results = await Promise.all(unsigned.map(({ slot, venue }) =>
-        fetch('/api/dj/signoff', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: djName, date, slot, venue, month, password }),
-        }).then(r => r.json())
-      ));
-      if (results.some(r => r.error === 'Unauthorized')) { showErr('Incorrect password.'); return; }
-      if (results.every(r => r.success)) {
+      const data = await fetch('/api/dj/signoff-batch', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: djName, date, slots: unsigned, month, password }),
+      }).then(r => r.json());
+      if (data.error === 'Unauthorized') { showErr('Incorrect password.'); return; }
+      if (data.success) {
         unsigned.forEach(({ slot, venue }) => signoffs.add(`${date}|${slot}|${venue}`));
         closeSignoffModal(); renderCurrentTab();
-      } else showErr('Some slots could not be signed off.');
+      } else showErr(data.error || 'Some slots could not be signed off.');
 
     } else if (_signoffPending.type === 'undo') {
       const { date } = _signoffPending;
