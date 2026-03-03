@@ -606,11 +606,46 @@ app.post('/api/dj/signoff', async (req, res) => {
     if (!name || !date || !slot || !venue || !month) return res.json({ success: false, error: 'Missing fields' });
     const sheets = getSheets();
     await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:F`,
+      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
       valueInputOption: 'RAW',
-      requestBody: { values: [[date, normalizeSlot(slot), name, venue, month, new Date().toISOString()]] },
+      requestBody: { values: [[date, normalizeSlot(slot), name, venue, month, new Date().toISOString(), 'sign']] },
     });
     res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- POST /api/dj/unsignoff-day ------------------------------------------- */
+app.post('/api/dj/unsignoff-day', async (req, res) => {
+  try {
+    const { name, date, month, password } = req.body;
+    if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
+    if (!name || !date || !month) return res.json({ success: false, error: 'Missing fields' });
+    const sheets = getSheets();
+    // Read all signoffs for this DJ/month to find what to unsign on this date
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
+    }).catch(() => ({ data: { values: [] } }));
+    const rows = (response.data.values || []).filter(r =>
+      r[2] && r[2].trim().toLowerCase() === name.trim().toLowerCase() && r[4] === month && r[0] === date
+    );
+    // Determine which slot|venue combos are currently net-signed
+    const net = {};
+    rows.forEach(r => { const k = `${r[1]}|${r[3]}`; net[k] = (r[6] || 'sign'); });
+    const toUnsign = Object.entries(net).filter(([,action]) => action === 'sign').map(([k]) => k);
+    if (toUnsign.length === 0) return res.json({ success: true, unsignedCount: 0 });
+    const ts = new Date().toISOString();
+    const unsignRows = toUnsign.map(k => {
+      const [slot, venue] = k.split('|');
+      return [date, slot, name, venue, month, ts, 'unsign'];
+    });
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
+      valueInputOption: 'RAW',
+      requestBody: { values: unsignRows },
+    });
+    res.json({ success: true, unsignedCount: unsignRows.length });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -623,11 +658,16 @@ app.get('/api/dj/signoffs/:name/:month', async (req, res) => {
     const month = decodeURIComponent(req.params.month);
     const sheets = getSheets();
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:F`,
+      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
     }).catch(() => ({ data: { values: [] } }));
-    const signoffs = (response.data.values || [])
-      .filter(r => r[2] && r[2].trim().toLowerCase() === name.trim().toLowerCase() && r[4] === month)
-      .map(r => ({ date: r[0], slot: normalizeSlot(r[1]), venue: r[3] }));
+    // Process log: last action per date|slot|venue wins
+    const latest = {};
+    for (const r of (response.data.values || [])) {
+      if (!r[2] || r[2].trim().toLowerCase() !== name.trim().toLowerCase() || r[4] !== month) continue;
+      const key = `${r[0]}|${normalizeSlot(r[1])}|${r[3]}`;
+      latest[key] = { date: r[0], slot: normalizeSlot(r[1]), venue: r[3], action: r[6] || 'sign' };
+    }
+    const signoffs = Object.values(latest).filter(e => e.action === 'sign').map(({ date, slot, venue }) => ({ date, slot, venue }));
     res.json({ success: true, signoffs });
   } catch (err) {
     res.json({ success: false, error: err.message });

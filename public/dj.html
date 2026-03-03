@@ -290,7 +290,13 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 
 /* === GROUPED SCHEDULE === */
 .sched-day-group{background:var(--surface);border:1px solid var(--border-sub);border-radius:14px;padding:14px 16px;margin-bottom:8px}
-.sched-day-hdr{font-size:14px;font-weight:900;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border-sub)}
+.sched-day-hdr{font-size:14px;font-weight:900;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border-sub);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.day-signoff-btn{padding:4px 12px;border-radius:20px;font-family:inherit;font-size:10px;font-weight:800;background:rgba(93,184,192,0.12);border:1px solid rgba(93,184,192,0.35);color:var(--teal);cursor:pointer;transition:all var(--transition);white-space:nowrap;flex-shrink:0}
+.day-signoff-btn:hover{background:rgba(93,184,192,0.25);border-color:rgba(93,184,192,0.6)}
+.day-signoff-btn.partial{background:transparent;border:1px dashed rgba(93,184,192,0.3);color:rgba(93,184,192,0.5)}
+.day-signoff-btn.partial:hover{background:rgba(93,184,192,0.1);color:var(--teal);border-style:solid}
+.day-signoff-btn.all-signed{background:rgba(105,240,174,0.1);border-color:rgba(105,240,174,0.4);color:#69f0ae}
+.day-signoff-btn.all-signed:hover{background:rgba(105,240,174,0.2)}
 .sched-venue-row{display:flex;align-items:center;gap:10px;padding:7px 0}
 .sched-venue-row+.sched-venue-row{border-top:1px solid var(--border-sub)}
 .sched-times{font-size:13px;font-weight:700;color:var(--text-2);flex:1}
@@ -766,15 +772,37 @@ function toggleAllSlots(dk) {
 }
 
 // ===== SIGN-OFF =====
-let _signoffPending = null; // { date, slot, venue }
+let _signoffPending = null; // { type:'slot'|'day'|'undo', date, slot?, venue? }
 
-function startSignoff(date, slot, venue) {
-  _signoffPending = { date, slot, venue };
-  $('signoffDesc').textContent = `Confirm sign-off for ${slot} at ${venue} on ${date}.`;
+function _openSignoffModal(desc) {
+  $('signoffDesc').textContent = desc;
   $('signoffPwd').value = '';
   $('signoffErr').style.display = 'none';
   $('signoffOverlay').style.display = 'flex';
   setTimeout(() => $('signoffPwd').focus(), 50);
+}
+
+function startSignoff(date, slot, venue) {
+  _signoffPending = { type: 'slot', date, slot, venue };
+  _openSignoffModal(`Confirm sign-off for ${slot} at ${venue} on ${date}.`);
+}
+
+function startSignoffDay(date) {
+  const daySlots = (window._schedDaySlots || {})[date] || [];
+  const unsigned = daySlots.filter(({ slot, venue }) => !signoffs.has(`${date}|${slot}|${venue}`));
+  if (!unsigned.length) return;
+  _signoffPending = { type: 'day', date };
+  const n = unsigned.length;
+  _openSignoffModal(`Sign off all ${n} remaining slot${n !== 1 ? 's' : ''} for ${date}?`);
+}
+
+function startUndoDay(date) {
+  const daySlots = (window._schedDaySlots || {})[date] || [];
+  const signed = daySlots.filter(({ slot, venue }) => signoffs.has(`${date}|${slot}|${venue}`));
+  if (!signed.length) return;
+  _signoffPending = { type: 'undo', date };
+  const n = signed.length;
+  _openSignoffModal(`Undo sign-off for all ${n} slot${n !== 1 ? 's' : ''} on ${date}?`);
 }
 
 function closeSignoffModal() {
@@ -786,24 +814,51 @@ async function confirmSignoff() {
   if (!_signoffPending) return;
   const password = $('signoffPwd').value;
   if (!password) { showErr('Enter the management password.'); return; }
-  const { date, slot, venue } = _signoffPending;
   const month = getMonthStr();
+
+  function showErr(msg) { $('signoffErr').textContent = msg; $('signoffErr').style.display = 'block'; }
+
   try {
-    const data = await fetch('/api/dj/signoff', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: djName, date, slot, venue, month, password }),
-    }).then(r => r.json());
-    if (data.success) {
-      signoffs.add(`${date}|${slot}|${venue}`);
-      closeSignoffModal();
-      renderCurrentTab();
-    } else {
-      showErr(data.error === 'Unauthorized' ? 'Incorrect password.' : (data.error || 'Sign-off failed.'));
+    if (_signoffPending.type === 'slot') {
+      const { date, slot, venue } = _signoffPending;
+      const data = await fetch('/api/dj/signoff', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: djName, date, slot, venue, month, password }),
+      }).then(r => r.json());
+      if (data.success) { signoffs.add(`${date}|${slot}|${venue}`); closeSignoffModal(); renderCurrentTab(); }
+      else showErr(data.error === 'Unauthorized' ? 'Incorrect password.' : (data.error || 'Sign-off failed.'));
+
+    } else if (_signoffPending.type === 'day') {
+      const { date } = _signoffPending;
+      const daySlots = (window._schedDaySlots || {})[date] || [];
+      const unsigned = daySlots.filter(({ slot, venue }) => !signoffs.has(`${date}|${slot}|${venue}`));
+      const results = await Promise.all(unsigned.map(({ slot, venue }) =>
+        fetch('/api/dj/signoff', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: djName, date, slot, venue, month, password }),
+        }).then(r => r.json())
+      ));
+      if (results.some(r => r.error === 'Unauthorized')) { showErr('Incorrect password.'); return; }
+      if (results.every(r => r.success)) {
+        unsigned.forEach(({ slot, venue }) => signoffs.add(`${date}|${slot}|${venue}`));
+        closeSignoffModal(); renderCurrentTab();
+      } else showErr('Some slots could not be signed off.');
+
+    } else if (_signoffPending.type === 'undo') {
+      const { date } = _signoffPending;
+      const data = await fetch('/api/dj/unsignoff-day', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: djName, date, month, password }),
+      }).then(r => r.json());
+      if (data.success) {
+        const daySlots = (window._schedDaySlots || {})[date] || [];
+        daySlots.forEach(({ slot, venue }) => signoffs.delete(`${date}|${slot}|${venue}`));
+        closeSignoffModal(); renderCurrentTab();
+      } else showErr(data.error === 'Unauthorized' ? 'Incorrect password.' : (data.error || 'Undo failed.'));
     }
   } catch(e) {
     showErr('Connection error — try again.');
   }
-  function showErr(msg) { $('signoffErr').textContent = msg; $('signoffErr').style.display = 'block'; }
 }
 
 // ===== AUTO-SAVE =====
@@ -908,11 +963,32 @@ function renderSchedule() {
     byDate[date][venue].push(slot);
   }
 
+  // Build per-date slot list for day-level sign-off; store globally for onclick handlers
+  window._schedDaySlots = {};
+  for (const date of Object.keys(byDate)) {
+    window._schedDaySlots[date] = [];
+    for (const venue of venueOrder) {
+      if (!byDate[date][venue]) continue;
+      for (const slot of byDate[date][venue]) window._schedDaySlots[date].push({ slot, venue });
+    }
+  }
+
   let groups = '';
   for (const date of Object.keys(byDate).sort()) {
     const [y, m, d] = date.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
     const label = `${DAYS_LONG[dateObj.getDay()]}, ${ordinal(d)} ${MONTHS[m - 1]}`;
+
+    // Day-level sign-off state
+    const daySlots = window._schedDaySlots[date];
+    const signedCount = daySlots.filter(({slot, venue}) => signoffs.has(`${date}|${slot}|${venue}`)).length;
+    const allSigned = signedCount === daySlots.length;
+    const partial   = signedCount > 0 && !allSigned;
+    const dayCls  = allSigned ? 'day-signoff-btn all-signed' : partial ? 'day-signoff-btn partial' : 'day-signoff-btn';
+    const dayLabel = allSigned ? 'Undo Day' : 'Sign Off Day';
+    const dayClick = allSigned ? `startUndoDay('${date}')` : `startSignoffDay('${date}')`;
+    const dayBtn = `<button class="${dayCls}" onclick="${dayClick}">${dayLabel}</button>`;
+
     let venueRows = '';
     for (const venue of venueOrder) {
       if (!byDate[date][venue]) continue;
@@ -933,7 +1009,7 @@ function renderSchedule() {
       }
     }
     groups += `<div class="sched-day-group">
-      <div class="sched-day-hdr">${label}</div>
+      <div class="sched-day-hdr"><span>${label}</span>${dayBtn}</div>
       ${venueRows}
     </div>`;
   }
