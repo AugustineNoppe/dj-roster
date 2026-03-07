@@ -476,6 +476,34 @@ app.post('/api/dj/login', async (req, res) => {
   }
 });
 
+/* -- POST /api/dj/change-pin ----------------------------------------------- */
+app.post('/api/dj/change-pin', async (req, res) => {
+  try {
+    const { name, currentPin, newPin } = req.body;
+    if (!name || !currentPin || !newPin) return res.json({ success: false, error: 'Missing fields' });
+    if (!/^\d{4}$/.test(String(newPin))) return res.json({ success: false, error: 'New PIN must be exactly 4 digits' });
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_PINS_SHEET}!A2:B`,
+    }).catch(() => ({ data: { values: [] } }));
+    const rows = response.data.values || [];
+    const rowIndex = rows.findIndex(r =>
+      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() &&
+      r[1] && String(r[1]).trim() === String(currentPin).trim()
+    );
+    if (rowIndex === -1) return res.json({ success: false, error: 'Current PIN is incorrect' });
+    // Rows start at row 2 in the sheet (row 1 is the header); findIndex is 0-based
+    const sheetRow = rowIndex + 2;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID, range: `${DJ_PINS_SHEET}!B${sheetRow}`,
+      valueInputOption: 'RAW', requestBody: { values: [[String(newPin)]] },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 /* -- GET /api/dj/availability/:name/:month --------------------------------- */
 app.get('/api/dj/availability/:name/:month', async (req, res) => {
   try {
