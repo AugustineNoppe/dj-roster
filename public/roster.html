@@ -1723,12 +1723,14 @@ async function previewMonth() {
   const enc = encodeURIComponent;
   const norm = n => n ? n.trim().toLowerCase() : '';
   try {
-    const [arkRes, hipRes, loveRes, djRes] = await Promise.all([
+    const [arkRes, hipRes, loveRes, djRes, soRes] = await Promise.all([
       fetch(`/api/roster?venue=arkbar&month=${enc(month)}`).then(r => r.json()),
       fetch(`/api/roster?venue=hip&month=${enc(month)}`).then(r => r.json()),
       fetch(`/api/roster?venue=love&month=${enc(month)}`).then(r => r.json()),
       fetch('/api/djs').then(r => r.json()),
+      fetch(`/api/signoffs/${enc(month)}`).then(r => r.json()).catch(() => ({ signedOff: {} })),
     ]);
+    const signedOffMap = soRes.signedOff || {};
     const djs = djRes.djs || [];
     const arkNorm = {}, hipNorm = {}, loveNorm = {};
     (arkRes.roster || []).forEach(r => { if (r[2]) { const k = norm(r[2]); arkNorm[k] = (arkNorm[k]||0)+1; } });
@@ -1750,7 +1752,8 @@ async function previewMonth() {
         const love = loveNorm[norm(dj.name)] || 0;
         const total = ark + hip + love;
         const cost = dj.name === 'Guest DJ' ? 0 : total * dj.rate;
-        return { name: dj.name, arkbar: ark, hip, love, total, rate: dj.rate, cost };
+        const signedOff = signedOffMap[dj.name] || 0;
+        return { name: dj.name, arkbar: ark, hip, love, total, rate: dj.rate, cost, signedOff };
       })
       .filter(dj => dj.total > 0 && dj.name !== 'Guest DJ' && !FIXED_GUEST_DJS.has(dj.name))
       .sort((a, b) => b.total - a.total);
@@ -1779,6 +1782,12 @@ async function finalizeMonth() {
       showToast(`${month} finalised`, 'success');
       const area = $('finalizeArea');
       if (area) area.innerHTML = `<span class="finalized-pill">&#128274; Finalised</span>`;
+      // Fetch signoffs and inject into report before showing
+      try {
+        const soRes = await fetch(`/api/signoffs/${encodeURIComponent(month)}`).then(r => r.json());
+        const soMap = soRes.signedOff || {};
+        if (data.report) data.report = data.report.map(dj => ({ ...dj, signedOff: soMap[dj.name] || 0 }));
+      } catch(e) { /* non-fatal — signedOff will default to 0 */ }
       showFinalizeReport(data);
     } else {
       showToast(data.error || 'Finalise failed', 'error');
@@ -1798,8 +1807,10 @@ function showFinalizeReport(data, isPreview = false) {
   const report = (data.report || []).filter(dj =>
     dj.total > 0 && dj.name !== 'Guest DJ' && !FIXED_GUEST_DJS.has(dj.name)
   );
-  const grandTotal = report.reduce((s, d) => s + d.total, 0);
-  const grandCost  = report.reduce((s, d) => s + d.cost,  0);
+  const grandTotal     = report.reduce((s, d) => s + d.total, 0);
+  const grandCost      = report.reduce((s, d) => s + d.cost,  0);
+  const grandSignedOff = report.reduce((s, d) => s + (d.signedOff || 0), 0);
+  const soCol = (so, tot) => so >= tot ? '#69f0ae' : so > 0 ? '#ffb74d' : 'rgba(255,255,255,0.3)';
 
   const rows = report.map(dj => `<tr>
     <td style="font-weight:700;color:#fff">${dj.name}</td>
@@ -1807,6 +1818,7 @@ function showFinalizeReport(data, isPreview = false) {
     <td class="r">${dj.hip   > 0 ? dj.hip   + 'h' : '\u2014'}</td>
     <td class="r">${dj.love  > 0 ? dj.love  + 'h' : '\u2014'}</td>
     <td class="r"><strong>${dj.total}h</strong></td>
+    <td class="r" style="color:${soCol(dj.signedOff||0,dj.total)};font-weight:700">${dj.signedOff||0}/${dj.total}h</td>
     <td class="fin-col-rate r">${BAHT}${dj.rate.toLocaleString()}/h</td>
     <td class="fin-col-cost r" style="color:var(--teal);font-weight:800">${BAHT}${dj.cost.toLocaleString()}</td>
     <td class="fin-col-combined r"><span style="font-size:10px;opacity:.65">${BAHT}${dj.rate.toLocaleString()}/h &times; ${dj.total}h</span><br><strong style="color:var(--teal)">${BAHT}${dj.cost.toLocaleString()}</strong></td>
@@ -1838,18 +1850,20 @@ function showFinalizeReport(data, isPreview = false) {
       <div class="fin-summary">
         <div class="fin-card"><div class="fin-card-label">Total Hours</div><div class="fin-card-val">${grandTotal}h</div></div>
         <div class="fin-card"><div class="fin-card-label">Total Cost</div><div class="fin-card-val" style="color:var(--teal);font-size:18px">${BAHT}${grandCost.toLocaleString()}</div></div>
+        <div class="fin-card"><div class="fin-card-label">Signed Off</div><div class="fin-card-val" style="color:${soCol(grandSignedOff,grandTotal)};font-size:16px">${grandSignedOff}/${grandTotal}h</div></div>
         <div class="fin-card"><div class="fin-card-label">DJs Paid</div><div class="fin-card-val">${report.length}</div></div>
         <div class="fin-card"><div class="fin-card-label">Period</div><div class="fin-card-val" style="font-size:13px">${month}</div></div>
       </div>
       <table class="fin-table">
         <thead><tr>
           <th>DJ</th><th class="r">ARKbar</th><th class="r">HIP</th><th class="r">Love Beach</th>
-          <th class="r">Total</th><th class="fin-col-rate r">Rate</th><th class="fin-col-cost r">Cost</th><th class="fin-col-combined r">Rate &amp; Cost</th>
+          <th class="r">Total</th><th class="r">Signed Off</th><th class="fin-col-rate r">Rate</th><th class="fin-col-cost r">Cost</th><th class="fin-col-combined r">Rate &amp; Cost</th>
         </tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr>
           <td colspan="4">Grand Total</td>
           <td class="r">${grandTotal}h</td>
+          <td class="r" style="color:${soCol(grandSignedOff,grandTotal)};font-weight:800">${grandSignedOff}/${grandTotal}h</td>
           <td class="fin-col-rate"></td>
           <td class="fin-col-cost r">${BAHT}${grandCost.toLocaleString()}</td>
           <td class="fin-col-combined r">${BAHT}${grandCost.toLocaleString()}</td>
