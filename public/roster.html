@@ -1751,8 +1751,8 @@ async function previewMonth() {
         const hip  = hipNorm[norm(dj.name)]  || 0;
         const love = loveNorm[norm(dj.name)] || 0;
         const total = ark + hip + love;
-        const cost = dj.name === 'Guest DJ' ? 0 : total * dj.rate;
         const signedOff = signedOffMap[dj.name] || 0;
+        const cost = dj.name === 'Guest DJ' ? 0 : signedOff * dj.rate;
         return { name: dj.name, arkbar: ark, hip, love, total, rate: dj.rate, cost, signedOff };
       })
       .filter(dj => dj.total > 0 && dj.name !== 'Guest DJ' && !FIXED_GUEST_DJS.has(dj.name))
@@ -1807,12 +1807,14 @@ function showFinalizeReport(data, isPreview = false) {
   const report = (data.report || []).filter(dj =>
     dj.total > 0 && dj.name !== 'Guest DJ' && !FIXED_GUEST_DJS.has(dj.name)
   );
-  const grandTotal     = report.reduce((s, d) => s + d.total, 0);
-  const grandCost      = report.reduce((s, d) => s + d.cost,  0);
-  const grandSignedOff = report.reduce((s, d) => s + (d.signedOff || 0), 0);
+  // Normalise cost to signedOff × rate so both preview and finalise paths agree
+  const reportWithCost = report.map(dj => ({ ...dj, cost: (dj.signedOff || 0) * (dj.rate || 0) }));
+  const grandTotal     = reportWithCost.reduce((s, d) => s + d.total, 0);
+  const grandCost      = reportWithCost.reduce((s, d) => s + d.cost,  0);
+  const grandSignedOff = reportWithCost.reduce((s, d) => s + (d.signedOff || 0), 0);
   const soCol = (so, tot) => so >= tot ? '#69f0ae' : so > 0 ? '#ffb74d' : 'rgba(255,255,255,0.3)';
 
-  const rows = report.map(dj => `<tr>
+  const rows = reportWithCost.map(dj => `<tr>
     <td style="font-weight:700;color:#fff">${dj.name}</td>
     <td class="r">${dj.arkbar > 0 ? dj.arkbar + 'h' : '\u2014'}</td>
     <td class="r">${dj.hip   > 0 ? dj.hip   + 'h' : '\u2014'}</td>
@@ -1821,7 +1823,7 @@ function showFinalizeReport(data, isPreview = false) {
     <td class="r" style="color:${soCol(dj.signedOff||0,dj.total)};font-weight:700">${dj.signedOff||0}/${dj.total}h</td>
     <td class="fin-col-rate r">${BAHT}${dj.rate.toLocaleString()}/h</td>
     <td class="fin-col-cost r" style="color:var(--teal);font-weight:800">${BAHT}${dj.cost.toLocaleString()}</td>
-    <td class="fin-col-combined r"><span style="font-size:10px;opacity:.65">${BAHT}${dj.rate.toLocaleString()}/h &times; ${dj.total}h</span><br><strong style="color:var(--teal)">${BAHT}${dj.cost.toLocaleString()}</strong></td>
+    <td class="fin-col-combined r"><span style="font-size:10px;opacity:.65">${BAHT}${dj.rate.toLocaleString()}/h &times; ${dj.signedOff||0}h</span><br><strong style="color:var(--teal)">${BAHT}${dj.cost.toLocaleString()}</strong></td>
   </tr>`).join('');
 
   const headerIcon  = isPreview ? '&#128196;' : '&#128274;';
