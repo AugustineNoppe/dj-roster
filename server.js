@@ -723,6 +723,32 @@ app.get('/api/dj/signoffs/:name/:month', async (req, res) => {
   }
 });
 
+/* -- GET /api/signoffs/:month  (all DJs, for accounting report) ----------- */
+app.get('/api/signoffs/:month', async (req, res) => {
+  try {
+    const month = decodeURIComponent(req.params.month);
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
+    }).catch(() => ({ data: { values: [] } }));
+    // Last action wins per DJ+date+slot+venue key
+    const latest = {};
+    for (const r of (response.data.values || [])) {
+      if (!r[4] || r[4] !== month || !r[2]) continue;
+      const key = `${r[2]}|${r[0]}|${normalizeSlot(r[1])}|${r[3]}`;
+      latest[key] = { dj: r[2].trim(), action: r[6] || 'sign' };
+    }
+    // Count signed-off slots per DJ name
+    const signedOff = {};
+    for (const { dj, action } of Object.values(latest)) {
+      if (action === 'sign') signedOff[dj] = (signedOff[dj] || 0) + 1;
+    }
+    res.json({ success: true, signedOff });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 /* -- POST /api/djs/update ------------------------------------------------- */
 app.post('/api/djs/update', async (req, res) => {
   try {
