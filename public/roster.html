@@ -1279,8 +1279,9 @@ async function suggestRoster() {
     const isSat = dow === 6;
     const dateStr = makeDateStr(currentYear, currentMonth, d);
     const activeSlots = isSat ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS;
-    const afternoon = activeSlots.filter(s => s < '19:00\u201320:00');
-    const evening = activeSlots.filter(s => s >= '20:00\u201321:00');
+    const slotHour = s => parseInt(s.split(':')[0], 10);
+    const afternoon = activeSlots.filter(s => slotHour(s) < 19);
+    const evening = activeSlots.filter(s => slotHour(s) >= 20);
 
     [{ block:afternoon, rot:'afternoon' }, { block:evening, rot:'evening' }].forEach(({block, rot}) => {
       if (block.length === 0) return;
