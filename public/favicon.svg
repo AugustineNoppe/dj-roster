@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#343F3F"/>
+  <!-- Headphones -->
+  <path d="M8 16 C8 10.5 11.6 6 16 6 C20.4 6 24 10.5 24 16" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+  <rect x="6" y="15" width="4" height="7" rx="2" fill="#ffffff"/>
+  <rect x="22" y="15" width="4" height="7" rx="2" fill="#ffffff"/>
+  <!-- Music note accent -->
+  <text x="20" y="11" font-family="serif" font-size="8" fill="#6BBFBF" font-weight="bold">&#9834;</text>
+</svg>
