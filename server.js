@@ -89,6 +89,16 @@ function invalidateRoster(venue, month) {
   cache.roster.delete(`${venue}|${month}`);
 }
 
+// Per-venue mutex: serialises concurrent batch-assign requests for the same venue.
+const _batchLocks = new Map();
+function withVenueLock(venue, fn) {
+  const prev = _batchLocks.get(venue) || Promise.resolve();
+  let unlock;
+  const next = new Promise(r => { unlock = r; });
+  _batchLocks.set(venue, next);
+  return prev.then(fn).finally(unlock);
+}
+
 function invalidateAllRosters(month) {
   for (const key of cache.roster.keys()) {
     if (key.endsWith(`|${month}`)) cache.roster.delete(key);
@@ -375,40 +385,43 @@ app.post('/api/roster/assign', async (req, res) => {
 
 /* == BATCH ASSIGN ========================================================= */
 app.post('/api/roster/batch', async (req, res) => {
+  const { venue, month, assignments } = req.body;
   try {
-    const sheets = getSheets();
-    const { venue, month, assignments } = req.body;
-    const tab = tabName(venue);
-    let existingRows = [];
-    try {
-      existingRows = (await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
-      })).data.values || [];
-    } catch(e) {}
-    const rowMap = {};
-    existingRows.forEach((r, i) => {
-      if (r[0] && r[1] && r[3] === month) rowMap[`${r[0]}|${normalizeSlot(r[1])}`] = i;
-    });
-    const updateData = [], appendRows = [];
-    for (const { date, slot, dj } of assignments) {
-      const key = `${date}|${normalizeSlot(slot)}`;
-      if (rowMap[key] !== undefined) {
-        updateData.push({ range: `${tab}!A${rowMap[key] + 1}:D${rowMap[key] + 1}`, values: [[date, slot, dj, month]] });
-      } else {
-        appendRows.push([date, slot, dj, month]);
+    const result = await withVenueLock(venue, async () => {
+      const sheets = getSheets();
+      const tab = tabName(venue);
+      let existingRows = [];
+      try {
+        existingRows = (await sheets.spreadsheets.values.get({
+          spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
+        })).data.values || [];
+      } catch(e) {}
+      const rowMap = {};
+      existingRows.forEach((r, i) => {
+        if (r[0] && r[1] && r[3] === month) rowMap[`${r[0]}|${normalizeSlot(r[1])}`] = i;
+      });
+      const updateData = [], appendRows = [];
+      for (const { date, slot, dj } of assignments) {
+        const key = `${date}|${normalizeSlot(slot)}`;
+        if (rowMap[key] !== undefined) {
+          updateData.push({ range: `${tab}!A${rowMap[key] + 1}:D${rowMap[key] + 1}`, values: [[date, slot, dj, month]] });
+        } else {
+          appendRows.push([date, slot, dj, month]);
+        }
       }
-    }
-    const promises = [];
-    if (updateData.length) promises.push(sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: SHEET_ID, requestBody: { valueInputOption: 'RAW', data: updateData },
-    }));
-    if (appendRows.length) promises.push(sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
-      valueInputOption: 'RAW', requestBody: { values: appendRows },
-    }));
-    await Promise.all(promises);
-    invalidateRoster(venue, month);
-    res.json({ success: true, updated: updateData.length, appended: appendRows.length });
+      const promises = [];
+      if (updateData.length) promises.push(sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SHEET_ID, requestBody: { valueInputOption: 'RAW', data: updateData },
+      }));
+      if (appendRows.length) promises.push(sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
+        valueInputOption: 'RAW', requestBody: { values: appendRows },
+      }));
+      await Promise.all(promises);
+      invalidateRoster(venue, month);
+      return { updated: updateData.length, appended: appendRows.length };
+    });
+    res.json({ success: true, ...result });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
