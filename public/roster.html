@@ -600,13 +600,9 @@ const LOVE_SAT_SLOTS = [
   '22:00\u201323:00','23:00\u201300:00'
 ];
 
-const ARKBAR_ONLY = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
 const RESIDENTS = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
-const LOVE_ONLY = ['Laina'];
-const NO_HIP = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
 const RESIDENTS_LATE_NIGHT = ['Alex RedWhite','Raffo DJ'];
 const MORNING_SLOTS = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00','18:00\u201319:00'];
-const SOUND_BOGIE_RARE = ['17:00\u201318:00','18:00\u201319:00'];
 const RESIDENT_TARGET = 80;
 const RESIDENT_MIN = 88;   // monthly minimum — warning shown in Hours tab
 const SOUND_BOGIE_TARGET = 35;
@@ -874,35 +870,14 @@ function buildCell(dateStr, slot, type) {
 
   let options = [];
 
-  if (type === 'arkbar') {
-    options = avail.filter(dj => !LOVE_ONLY.includes(dj) && !RESIDENTS.includes(dj));
-    RESIDENTS.forEach(res => {
-      if (!avail.includes(res)) return;
-      const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
-      if (bo === 'full') return;
-      if (bo === 'morning' && MORNING_SLOTS.includes(slot)) return;
-      if (!options.includes(res)) options.push(res);
-    });
-    if (!options.includes('Guest DJ')) options.push('Guest DJ');
-  } else if (type === 'hip') {
-    options = avail.filter(dj => !LOVE_ONLY.includes(dj));
-    RESIDENTS.forEach(res => {
-      if (!avail.includes(res)) return;
-      const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
-      if (bo === 'full') return;
-      if (!options.includes(res)) options.push(res);
-    });
-    if (!options.includes('Guest DJ')) options.push('Guest DJ');
-  } else if (type === 'love') {
-    options = avail.filter(dj => !ARKBAR_ONLY.includes(dj) && !RESIDENTS.includes(dj));
-    RESIDENTS.forEach(res => {
-      if (!avail.includes(res)) return;
-      const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
-      if (bo === 'full') return;
-      if (!options.includes(res)) options.push(res);
-    });
-    if (!options.includes('Guest DJ')) options.push('Guest DJ');
-  }
+  options = avail.filter(dj => !RESIDENTS.includes(dj));
+  RESIDENTS.forEach(res => {
+    const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
+    if (bo === 'full') return;
+    if (type === 'arkbar' && bo === 'morning' && MORNING_SLOTS.includes(slot)) return;
+    if (!options.includes(res)) options.push(res);
+  });
+  if (!options.includes('Guest DJ')) options.push('Guest DJ');
 
   const isHip = type === 'hip';
   const isLove = type === 'love';
@@ -943,13 +918,6 @@ async function assignDJ(sel) {
   const venueParam = type === 'hip' ? 'hip' : type === 'love' ? 'love' : 'arkbar';
 
   if (dj) {
-    if (LOVE_ONLY.includes(dj) && type !== 'love') {
-      showToast(`${dj} only plays Love Beach Club`, 'error'); sel.value = ''; return;
-    }
-    if (ARKBAR_ONLY.includes(dj) && type === 'love') {
-      showToast(`${dj} only plays ARKbar / HIP`, 'error'); sel.value = ''; return;
-    }
-
     const dayAssignments = Object.entries(rosterAssignments).filter(([k,v]) => k.startsWith(date) && v === dj);
     if (dayAssignments.length >= 7) {
       showToast(`${dj} already has 7 slots on this day`, 'error'); sel.value = ''; return;
