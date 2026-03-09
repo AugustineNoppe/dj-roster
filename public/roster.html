@@ -878,6 +878,7 @@ function buildCell(dateStr, slot, type) {
   if (type === 'arkbar') {
     options = avail.filter(dj => !LOVE_ONLY.includes(dj) && !RESIDENTS.includes(dj));
     RESIDENTS.forEach(res => {
+      if (!avail.includes(res)) return;
       if (res === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return;
       const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
       if (bo === 'full') return;
@@ -888,6 +889,7 @@ function buildCell(dateStr, slot, type) {
   } else if (type === 'hip') {
     options = avail.filter(dj => !LOVE_ONLY.includes(dj));
     RESIDENTS.forEach(res => {
+      if (!avail.includes(res)) return;
       const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
       if (bo === 'full') return;
       if (!options.includes(res)) options.push(res);
@@ -896,6 +898,7 @@ function buildCell(dateStr, slot, type) {
   } else if (type === 'love') {
     options = avail.filter(dj => !ARKBAR_ONLY.includes(dj) && !RESIDENTS.includes(dj));
     RESIDENTS.forEach(res => {
+      if (!avail.includes(res)) return;
       const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
       if (bo === 'full') return;
       if (!options.includes(res)) options.push(res);

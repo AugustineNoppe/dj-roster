@@ -169,6 +169,18 @@ async function fetchAvailability(month) {
     if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
   }
 
+  // Build slot-specific unavailability map for residents from DJ Availability portal submissions.
+  // Residents submit 'unavailable' for slots they cannot do; these must override the default
+  // "residents are always available" assumption in the loop below.
+  const residentSlotBlocked = {}; // { djName: { dateKey: Set<normalizedSlot> } }
+  for (const [dj, dateRaw, slot, rowMonth, status] of (portalRes.data.values || [])) {
+    if (!dj || !dateRaw || !slot || rowMonth !== month || status !== 'unavailable') continue;
+    if (!RESIDENTS.includes(dj)) continue;
+    const dk = parseDateKey(dateRaw);
+    if (!dk) continue;
+    ((residentSlotBlocked[dj] ??= {})[dk] ??= new Set()).add(normalizeSlot(slot));
+  }
+
   // Include portal submissions (DJ Availability sheet) — column layout: name, date, slot, month, status
   // status is 'available' for freelance DJs (who only save their available slots) and
   // 'unavailable' for residents (who save their blackout slots). Skip explicit unavailability;
@@ -194,6 +206,7 @@ async function fetchAvailability(month) {
           const bo = blackouts[resident][dk];
           if (bo === 'full') continue;
           if (bo === 'morning' && MORNING_SLOTS.has(slot)) continue;
+          if (residentSlotBlocked[resident]?.[dk]?.has(ns)) continue;
           if (!arr.includes(resident)) arr.push(resident);
         }
         if (!arr.includes('Guest DJ')) arr.push('Guest DJ');
