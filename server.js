@@ -524,6 +524,9 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const month = decodeURIComponent(req.params.month);
     const isResident = RESIDENTS.includes(name);
     const isDavoted = name.trim().toLowerCase() === 'davoted';
+    const isSoundBogie = name.trim().toLowerCase() === 'sound bogie';
+    // Sound Bogie's always-unavailable early slots (every day) and full Sunday blackout
+    const SB_EARLY = new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']);
     // Davoted's fixed weekly slots — keyed by day-of-week (0=Sun … 6=Sat)
     const DAVOTED_PORTAL = {
       1: new Set(['14:00\u201315:00','15:00\u201316:00']),
@@ -554,6 +557,34 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const parts = month.split(' ');
     const monthIdx = MONTH_NAMES.indexOf(parts[0]);
     const year = parseInt(parts[1]);
+
+    // Sound Bogie: if no availability has been recorded for this month yet,
+    // write default unavailable rows to the sheet so the calendar is pre-populated.
+    // Early slots (14-17) are unavailable every day; all slots are unavailable on Sundays.
+    if (isSoundBogie && Object.keys(stored).length === 0 && monthIdx >= 0 && !isNaN(year)) {
+      const days = new Date(year, monthIdx + 1, 0).getDate();
+      const rowsToWrite = [];
+      for (let d = 1; d <= days; d++) {
+        const dk = makeDateKey(year, monthIdx + 1, d);
+        const dow = new Date(year, monthIdx, d).getDay();
+        const isSunday = dow === 0;
+        if (!stored[dk]) stored[dk] = {};
+        for (const slot of ALL_SLOTS) {
+          const ns = normalizeSlot(slot);
+          if (isSunday || SB_EARLY.has(ns)) {
+            stored[dk][ns] = 'unavailable';
+            rowsToWrite.push([name, dk, ns, month, 'unavailable']);
+          }
+        }
+      }
+      if (rowsToWrite.length > 0) {
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
+          valueInputOption: 'RAW', requestBody: { values: rowsToWrite },
+        });
+      }
+    }
+
     const availability = {};
 
     if (monthIdx >= 0 && !isNaN(year)) {
