@@ -606,7 +606,6 @@ const LOVE_ONLY = ['Laina'];
 const NO_HIP = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
 const RESIDENTS_LATE_NIGHT = ['Alex RedWhite','Raffo DJ'];
 const MORNING_SLOTS = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00','18:00\u201319:00'];
-const SOUND_BOGIE_BLOCKED = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
 const SOUND_BOGIE_RARE = ['17:00\u201318:00','18:00\u201319:00'];
 const RESIDENT_TARGET = 80;
 const RESIDENT_MIN = 88;   // monthly minimum — warning shown in Hours tab
@@ -879,7 +878,6 @@ function buildCell(dateStr, slot, type) {
     options = avail.filter(dj => !LOVE_ONLY.includes(dj) && !RESIDENTS.includes(dj));
     RESIDENTS.forEach(res => {
       if (!avail.includes(res)) return;
-      if (res === 'Sound Bogie' && SOUND_BOGIE_BLOCKED.includes(slot)) return;
       const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
       if (bo === 'full') return;
       if (bo === 'morning' && MORNING_SLOTS.includes(slot)) return;
@@ -1079,7 +1077,6 @@ async function suggestRoster() {
   const TARGETS = { 'Alex RedWhite':80, 'Raffo DJ':80, 'Sound Bogie':40 };
   const MAX_CONSECUTIVE = 3;
   const MAX_DAY_HOURS = 6;
-  const SOUND_BLOCKED = new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']);
 
   const ALL_ARKBAR_SLOTS = [
     '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
@@ -1127,7 +1124,6 @@ async function suggestRoster() {
     if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
     if (working[`${dateStr}|${slot}`]) return false;
     if (otherVenueDJs[dateStr]?.has(dj)) return false;
-    if (dj === 'Sound Bogie' && SOUND_BLOCKED.has(slot)) return false;
     const bo = residentBlackouts[dj]?.[dateStr];
     if (bo === 'full') return false;
     if (bo === 'morning' && MORNING_SLOTS.includes(slot)) return false;
