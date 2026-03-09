@@ -1697,7 +1697,7 @@ async function previewMonth() {
       fetch(`/api/roster?venue=hip&month=${enc(month)}`).then(r => r.json()),
       fetch(`/api/roster?venue=love&month=${enc(month)}`).then(r => r.json()),
       fetch('/api/djs').then(r => r.json()),
-      fetch(`/api/signoffs/${enc(month)}`).then(r => r.json()).catch(() => ({ signedOff: {} })),
+      fetch(`/api/signoffs/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }).then(r => r.json()).catch(() => ({ signedOff: {} })),
     ]);
     const signedOffMap = soRes.signedOff || {};
     const djs = djRes.djs || [];
@@ -1753,7 +1753,7 @@ async function finalizeMonth() {
       if (area) area.innerHTML = `<span class="finalized-pill">&#128274; Finalised</span>`;
       // Fetch signoffs and inject into report before showing
       try {
-        const soRes = await fetch(`/api/signoffs/${encodeURIComponent(month)}`).then(r => r.json());
+        const soRes = await fetch(`/api/signoffs/${encodeURIComponent(month)}`, { headers: { 'x-admin-password': adminPassword } }).then(r => r.json());
         const soMap = soRes.signedOff || {};
         if (data.report) data.report = data.report.map(dj => ({ ...dj, signedOff: soMap[dj.name] || 0 }));
       } catch(e) { /* non-fatal — signedOff will default to 0 */ }

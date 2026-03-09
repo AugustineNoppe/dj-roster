@@ -813,6 +813,9 @@ app.get('/api/dj/signoffs/:name/:month', async (req, res) => {
 
 /* -- GET /api/signoffs/:month  (all DJs, for accounting report) ----------- */
 app.get('/api/signoffs/:month', async (req, res) => {
+  if (req.headers['x-admin-password'] !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
   try {
     const month = decodeURIComponent(req.params.month);
     const sheets = getSheets();
