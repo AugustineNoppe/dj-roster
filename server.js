@@ -357,7 +357,7 @@ app.post('/api/roster/assign', async (req, res) => {
     let existingRows = [];
     try {
       existingRows = (await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
+        spreadsheetId: SHEET_ID, range: `${tab}!A2:D`,
       })).data.values || [];
     } catch(e) {}
     const normSlot = normalizeSlot(slot);
@@ -365,7 +365,7 @@ app.post('/api/roster/assign', async (req, res) => {
     if (rowIndex >= 0) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: `${tab}!A${rowIndex + 1}:D${rowIndex + 1}`,
+        range: `${tab}!A${rowIndex + 2}:D${rowIndex + 2}`,
         valueInputOption: 'RAW',
         requestBody: { values: [dj ? [date, slot, dj, month] : ['', '', '', '']] },
       });
