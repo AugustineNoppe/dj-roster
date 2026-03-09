@@ -613,6 +613,17 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 });
 
 /* -- POST /api/dj/availability -------------------------------------------- */
+// Cached sheet gid for the DJ Availability tab (needed for row-level deletes).
+let _djAvailSheetId = null;
+async function getDjAvailSheetId(sheets) {
+  if (_djAvailSheetId !== null) return _djAvailSheetId;
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID, fields: 'sheets.properties' });
+  const sheet = (meta.data.sheets || []).find(s => s.properties.title === DJ_AVAIL_SHEET);
+  if (!sheet) throw new Error('DJ Availability sheet not found');
+  _djAvailSheetId = sheet.properties.sheetId;
+  return _djAvailSheetId;
+}
+
 app.post('/api/dj/availability', async (req, res) => {
   try {
     const { name, month, slots } = req.body;
@@ -621,23 +632,43 @@ app.post('/api/dj/availability', async (req, res) => {
     if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalized and cannot be edited' });
 
     const sheets = getSheets();
+    const sheetId = await getDjAvailSheetId(sheets);
+
+    // Read existing rows to identify which sheet rows belong to this DJ+month.
     const existing = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
     }).catch(() => ({ data: { values: [] } }));
+    const rows = existing.data.values || [];
 
-    const keepRows = (existing.data.values || []).filter(r =>
-      !(r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() && r[3] === month)
-    );
-    const newRows = slots.map(({ date, slot, status }) => [name, date, slot, month, status]);
-    const allRows = [...keepRows, ...newRows];
+    // Collect 0-based sheet row indices (row 0 = header, row 1 = first data row).
+    const toDelete = [];
+    rows.forEach((r, i) => {
+      if (r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() && r[3] === month) {
+        toDelete.push(i + 1); // +1 because A2:E skips the header (index 0)
+      }
+    });
 
-    await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E` });
-    if (allRows.length > 0) {
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2`,
-        valueInputOption: 'RAW', requestBody: { values: allRows },
+    // Delete matching rows in reverse order so earlier indices stay valid.
+    if (toDelete.length > 0) {
+      const deleteRequests = toDelete.reverse().map(rowIdx => ({
+        deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: rowIdx, endIndex: rowIdx + 1 },
+        },
+      }));
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SHEET_ID, requestBody: { requests: deleteRequests },
       });
     }
+
+    // Append the new rows for this DJ+month.
+    const newRows = slots.map(({ date, slot, status }) => [name, date, slot, month, status]);
+    if (newRows.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
+        valueInputOption: 'RAW', requestBody: { values: newRows },
+      });
+    }
+
     cache.availability.delete(month);
     res.json({ success: true, saved: newRows.length });
   } catch (err) {
