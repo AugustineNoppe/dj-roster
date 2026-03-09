@@ -699,6 +699,18 @@ async function loadMonth() {
 
     availability = availData.availability || {};
     isFinalized  = availData.isFinalized || false;
+
+    // For Sound Bogie only: pre-populate unsubmitted months with 14:00–17:00 as unavailable
+    // so those slots are shown as blocked by default (he can still toggle them to available).
+    if (djName === 'Sound Bogie' && Object.keys(availability).length === 0 && !isFinalized) {
+      const SB_EARLY = new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']);
+      const daysInMo = new Date(currentYear, currentMonth + 1, 0).getDate();
+      for (let d = 1; d <= daysInMo; d++) {
+        const dk = makeDK(currentYear, currentMonth + 1, d);
+        availability[dk] = {};
+        for (const s of ALL_SLOTS) availability[dk][s] = SB_EARLY.has(s) ? 'unavailable' : 'available';
+      }
+    }
     // Only keep schedule entries where the DJ's submitted availability matches the slot.
     // Residents default to 'available'; casuals default to 'unavailable'.
     const rawSchedule = schedData.schedule || [];
@@ -858,11 +870,17 @@ function toggleSlot(dk, slot) {
   // Initialise day from defaults if not yet set
   if (!availability[dk]) {
     availability[dk] = {};
-    for (const s of ALL_SLOTS) availability[dk][s] = isResident ? 'available' : 'unavailable';
+    const SB_EARLY = new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']);
+    for (const s of ALL_SLOTS) {
+      availability[dk][s] = (isResident && !(djName === 'Sound Bogie' && SB_EARLY.has(s)))
+        ? 'available' : 'unavailable';
+    }
   }
   // Ensure slot entry exists
   if (availability[dk][slot] === undefined) {
-    availability[dk][slot] = isResident ? 'available' : 'unavailable';
+    const SB_EARLY = new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']);
+    availability[dk][slot] = (isResident && !(djName === 'Sound Bogie' && SB_EARLY.has(slot)))
+      ? 'available' : 'unavailable';
   }
 
   const cur = availability[dk][slot];
