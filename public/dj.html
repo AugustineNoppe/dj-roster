@@ -70,6 +70,8 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 .login-error{color:var(--orange);font-size:12px;font-weight:600;margin-top:10px;display:none}
 .back-link{display:inline-block;margin-top:20px;color:var(--text-3);font-size:12px;font-weight:600;text-decoration:none;transition:color var(--transition)}
 .back-link:hover{color:var(--text-2)}
+.forgot-pin-link{color:var(--text-3);font-size:12px;font-weight:600;text-decoration:none;transition:color var(--transition)}
+.forgot-pin-link:hover{color:var(--teal)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
 /* === APP SHELL === */
@@ -429,7 +431,34 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 
     <button class="login-btn" id="loginBtn" onclick="doLogin()">Enter Portal</button>
     <div class="login-error" id="loginError"></div>
+    <div style="margin-top:14px;text-align:center">
+      <a class="forgot-pin-link" href="#" onclick="showForgotPin();return false">Forgot PIN?</a>
+    </div>
     <a class="back-link" href="/">← Back to portal</a>
+  </div>
+</div>
+
+<!-- ===== FORGOT PIN PANEL ===== -->
+<div class="login-wrap" id="forgotPinWrap" style="display:none">
+  <div class="login-box">
+    <div class="login-title" style="font-size:20px;margin-bottom:8px">Forgot PIN</div>
+    <div class="login-sub" style="margin-bottom:24px">Enter your name and we'll let you know next steps</div>
+
+    <div class="field-wrap">
+      <div class="field-label">Your Name</div>
+      <input id="fpName" type="text" placeholder="Enter your name" autocomplete="name"
+             onkeydown="if(event.key==='Enter')submitForgotPin()">
+    </div>
+
+    <button class="login-btn" onclick="submitForgotPin()">Submit</button>
+
+    <div id="fpMessage" style="display:none;margin-top:16px;padding:12px 14px;border-radius:8px;background:rgba(93,184,192,0.12);border:1px solid rgba(93,184,192,0.35);color:var(--teal);font-size:13px;font-weight:600;text-align:center">
+      Please contact your manager to reset your PIN.
+    </div>
+
+    <div style="margin-top:18px;text-align:center">
+      <a class="forgot-pin-link" href="#" onclick="hideForgotPin();return false">← Back to login</a>
+    </div>
   </div>
 </div>
 
@@ -630,6 +659,23 @@ async function doLogin() {
 
   btn.textContent = 'Enter Portal';
   btn.disabled = false;
+}
+
+function showForgotPin() {
+  $('loginWrap').style.display = 'none';
+  $('forgotPinWrap').style.display = '';
+  $('fpName').value = '';
+  $('fpMessage').style.display = 'none';
+  setTimeout(() => $('fpName').focus(), 50);
+}
+function hideForgotPin() {
+  $('forgotPinWrap').style.display = 'none';
+  $('loginWrap').style.display = '';
+}
+function submitForgotPin() {
+  const name = $('fpName').value.trim();
+  if (!name) { $('fpName').focus(); return; }
+  $('fpMessage').style.display = 'block';
 }
 
 function logout() {
