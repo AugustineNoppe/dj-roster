@@ -294,6 +294,11 @@ app.post('/api/auth', (req, res) => {
   res.json({ success: req.body.password === process.env.ADMIN_PASSWORD });
 });
 
+/* == CONFIG ================================================================ */
+app.get('/api/config', (req, res) => {
+  res.json({ success: true, residents: RESIDENTS });
+});
+
 /* == API ROUTES =========================================================== */
 
 app.get('/api/djs', async (req, res) => {

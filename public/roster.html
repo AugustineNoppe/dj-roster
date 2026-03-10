@@ -601,7 +601,8 @@ const LOVE_SAT_SLOTS = [
   '22:00\u201323:00','23:00\u201300:00'
 ];
 
-const RESIDENTS = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
+// Populated from /api/config on load; fallback keeps the app functional if the fetch fails.
+let RESIDENTS = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
 const RESIDENTS_LATE_NIGHT = ['Alex RedWhite','Raffo DJ'];
 const MORNING_SLOTS = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00','18:00\u201319:00'];
 const RESIDENT_TARGET = 80;
@@ -765,16 +766,20 @@ async function loadAll() {
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   const month = getMonthString();
   try {
-    const [availRes, arkbarRes, hipRes, loveRes, djRes] = await Promise.all([
+    const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes] = await Promise.all([
       fetch(`/api/availability?month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=hip&month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`),
       fetch('/api/djs'),
+      fetch('/api/config'),
     ]);
-    const [availData, arkbarData, hipData, loveData, djData] = await Promise.all([
-      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json()
+    const [availData, arkbarData, hipData, loveData, djData, configData] = await Promise.all([
+      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json(), configRes.json()
     ]);
+    if (configData.success && Array.isArray(configData.residents) && configData.residents.length) {
+      RESIDENTS = configData.residents;
+    }
 
     availability = availData.availability || {};
     residentBlackouts = availData.blackouts || {};
