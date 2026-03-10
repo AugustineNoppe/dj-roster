@@ -917,9 +917,9 @@ function buildCell(dateStr, slot, type) {
 
   const djColor = assigned ? (getDJColor(assigned) || '#555') : '';
   const unsubmittedCell = assigned && assigned !== 'Guest DJ' && submittedDJs.get(assigned) !== 'submitted';
-  const color = unsubmittedCell ? '#F5A623' : djColor;
-  const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}`;
-  const styleAttr = assigned ? `style="background:${color};border-color:${color}${unsubmittedCell ? ';color:#1a2828' : ''}"` : '';
+  const color = unsubmittedCell ? '#f59e0b' : djColor;
+  const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}${unsubmittedCell ? ' unconfirmed' : ''}`;
+  const styleAttr = assigned ? `style="background:${color};border-color:${unsubmittedCell ? '#d97706' : color}${unsubmittedCell ? ';color:white' : ''}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
 
   const availSet = avail.length > 0 ? new Set(avail) : null;
@@ -930,7 +930,7 @@ function buildCell(dateStr, slot, type) {
     if (!isSelected && isSubmitted && availSet && !availSet.has(dj)) return;
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
     const unsubmitted = !isSelected && dj !== 'Guest DJ' && !isSubmitted;
-    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (unsubmitted ? `${dj} \u26A0` : dj);
+    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (unsubmitted || (isSelected && unsubmittedCell) ? `${dj} \u26A0` : dj);
     opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
   });
 
