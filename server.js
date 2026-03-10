@@ -151,8 +151,8 @@ const FIXED_AVAILABILITY = {
     allSlotsOnUnavailableDays: true
   },
   Sky: {
-    unavailableDays: [3, 5], // Wed, Fri — all slots
-    allSlotsOnUnavailableDays: true
+    availableDays: [3, 5], // Wed, Fri — all slots available
+    allSlotsOnAvailableDays: true
   },
   Donsine: {
     availableDays: [4, 5, 6, 0], // Thu, Fri, Sat, Sun
