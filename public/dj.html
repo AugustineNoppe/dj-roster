@@ -1069,6 +1069,8 @@ async function saveAvailability() {
   clearTimeout(saveTimer);
   setSaveState('saving');
   const month = getMonthStr();
+  // Snapshot current state so we can roll back if the save fails.
+  const snapshot = JSON.parse(JSON.stringify(availability));
   // Only persist slots that differ from the default (residents=available, guests=unavailable).
   // This prevents writing hundreds of default entries to the sheet on login.
   const defaultStatus = isResident ? 'available' : 'unavailable';
@@ -1084,15 +1086,20 @@ async function saveAvailability() {
       body: JSON.stringify({ name: djName, month, slots }),
     }).then(r => r.json());
 
-    setSaveState(data.success ? 'saved' : 'error');
     if (data.success) {
+      setSaveState('saved');
       setTimeout(() => { if (saveState === 'saved') setSaveState('idle'); }, 3000);
     } else {
-      showToast(data.error || 'Save failed', 'error');
+      availability = snapshot;
+      renderCalendar();
+      setSaveState('error');
+      showToast('Failed to save \u2014 please try again.', 'error');
     }
   } catch(e) {
+    availability = snapshot;
+    renderCalendar();
     setSaveState('error');
-    showToast('Save failed: ' + e.message, 'error');
+    showToast('Failed to save \u2014 please try again.', 'error');
   }
 }
 
