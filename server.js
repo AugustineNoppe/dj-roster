@@ -916,7 +916,7 @@ app.post('/api/roster/finalize', async (req, res) => {
     ]);
 
     const djMap = {};
-    (djData.djs || []).forEach(d => { djMap[d.name.toLowerCase()] = d; });
+    (djData.djs || []).forEach(d => { djMap[d.name.trim().toLowerCase()] = d; });
 
     const hours = {};
     for (const { key, data } of [{ key: 'arkbar', data: arkData }, { key: 'hip', data: hipData }, { key: 'love', data: loveData }]) {
@@ -933,7 +933,7 @@ app.post('/api/roster/finalize', async (req, res) => {
     let grandTotal = 0, grandCost = 0;
     Object.keys(hours).sort().forEach(djName => {
       const h = hours[djName];
-      const info = djMap[djName.toLowerCase()];
+      const info = djMap[djName.trim().toLowerCase()];
       const rate = info ? info.rate : 0;
       const cost = h.total * rate;
       grandTotal += h.total; grandCost += cost;
