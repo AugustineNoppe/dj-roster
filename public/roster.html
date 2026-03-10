@@ -543,32 +543,11 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
     <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
       <button class="btn-sm btn-suggest" onclick="suggestRoster()">&#9889; Auto-suggest</button>
-      <button class="btn-sm" id="btnOverride" onclick="showOverrideModal()" style="background:rgba(255,160,0,0.12);border-color:rgba(255,160,0,0.4);color:#ffa000">Override</button>
       <button class="btn-sm btn-clear" onclick="clearRoster()">Clear Roster</button>
       <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:#fff;">Print / PDF</button>
     </div>
   </footer>
-</div>
-
-<!-- Override Mode banner (amber, hidden by default) -->
-<div id="overrideBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:200;background:#e65100;color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;text-align:center;padding:6px 12px">
-  &#9888; OVERRIDE MODE ACTIVE — all DJs visible regardless of submission status
-  <button onclick="deactivateOverrideMode()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:inherit;font-weight:800">Deactivate</button>
-</div>
-
-<!-- Override Mode password modal -->
-<div id="overrideOverlay" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.7);align-items:center;justify-content:center">
-  <div style="background:#1a2040;border:1px solid rgba(255,160,0,0.4);border-radius:16px;padding:32px 28px;width:min(320px,90vw);text-align:center">
-    <h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:#ffa000">&#9888; Override Mode</h3>
-    <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:20px">Shows all DJs in dropdowns regardless of whether they have submitted availability. Enter admin password to confirm.</p>
-    <input type="password" id="overridePwd" placeholder="Admin password" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.08);color:#fff;font-family:inherit;font-size:14px;margin-bottom:8px" onkeydown="if(event.key==='Enter')confirmOverrideMode()">
-    <div id="overrideErr" style="font-size:11px;color:#ef5350;margin-bottom:10px;display:none"></div>
-    <div style="display:flex;gap:8px;justify-content:center">
-      <button onclick="closeOverrideModal()" style="padding:9px 20px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px">Cancel</button>
-      <button onclick="confirmOverrideMode()" style="padding:9px 20px;background:rgba(255,160,0,0.2);border:1px solid rgba(255,160,0,0.5);color:#ffa000;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:800">Activate</button>
-    </div>
-  </div>
 </div>
 
 <!-- Toast notification -->
@@ -600,7 +579,6 @@ let loveAssignments = {};
 let residentBlackouts = {};
 let djList = [];
 let submittedDJs = new Map(); // name → status ('pre-loaded' | 'submitted')
-let overrideMode = false;
 let isPublished = false;
 let toastTimer;
 
@@ -897,24 +875,15 @@ function buildCell(dateStr, slot, type) {
   const assigned = assignMap[key] || '';
   const avail = (availability[dateStr] && availability[dateStr][slotKey]) || [];
 
-  let options = [];
-
-  if (overrideMode) {
-    // Override: include every DJ from the full list, ignoring submission and slot availability.
-    options = djList.map(d => d.name).filter(dj => !RESIDENTS.includes(dj) && dj !== 'Guest DJ');
-  } else {
-    // Normal: only DJs who have any submission record AND are available for this specific slot.
-    options = avail.filter(dj => !RESIDENTS.includes(dj) && submittedDJs.has(dj));
-  }
+  // All non-resident DJs always appear — no submission gating for manual assignment.
+  const options = djList.map(d => d.name).filter(dj => !RESIDENTS.includes(dj) && dj !== 'Guest DJ');
   RESIDENTS.forEach(res => {
-    // If we have submitted availability data for this resident, enforce slot-level availability.
-    if (!overrideMode && submittedDJs.has(res) && !avail.includes(res)) return;
     const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
     if (bo === 'full') return;
     if (type === 'arkbar' && bo === 'morning' && MORNING_SLOTS.includes(slot)) return;
-    if (!options.includes(res)) options.push(res);
+    options.push(res);
   });
-  if (!options.includes('Guest DJ')) options.push('Guest DJ');
+  options.push('Guest DJ');
 
   const isHip = type === 'hip';
   const isLove = type === 'love';
@@ -931,16 +900,13 @@ function buildCell(dateStr, slot, type) {
 
   let opts = '<option value="">\u2014 assign \u2014</option>';
   options.forEach(dj => {
-    const arkKey = `${dateStr}|${slot}`;
-    const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[arkKey] === dj;
-    // Show ⚠ for any DJ who has not formally submitted (pre-loaded and Guest DJ exempt from warning).
-    const notSubmitted = dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted';
-    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (notSubmitted ? `${dj} \u26A0` : dj);
-    opts += `<option value="${dj}"${dj === assigned ? ' selected' : ''}>${label}</option>`;
+    const isSelected = dj === assigned;
+    const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
+    // ⚠ only on the currently assigned DJ when they haven't formally submitted.
+    const warn = isSelected && dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted';
+    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (warn ? `${dj} \u26A0` : dj);
+    opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
   });
-  if (assigned && !options.includes(assigned)) {
-    opts += `<option value="${assigned}" selected>${assigned} \u26A0</option>`;
-  }
 
   return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)">${opts}</select></td>`;
 }
@@ -1067,39 +1033,6 @@ async function clearRoster() {
     renderGrid();
     showToast('Cleared locally \u2014 check connection', 'error');
   }
-}
-
-// === OVERRIDE MODE ===
-function showOverrideModal() {
-  if (overrideMode) { deactivateOverrideMode(); return; }
-  $('overridePwd').value = '';
-  $('overrideErr').style.display = 'none';
-  $('overrideOverlay').style.display = 'flex';
-  setTimeout(() => $('overridePwd').focus(), 50);
-}
-function closeOverrideModal() {
-  $('overrideOverlay').style.display = 'none';
-}
-function confirmOverrideMode() {
-  const pw = $('overridePwd').value;
-  if (pw !== adminPassword) {
-    $('overrideErr').textContent = 'Incorrect password.';
-    $('overrideErr').style.display = 'block';
-    return;
-  }
-  overrideMode = true;
-  closeOverrideModal();
-  $('overrideBanner').style.display = 'block';
-  $('btnOverride').textContent = 'Override ON';
-  $('btnOverride').style.background = 'rgba(255,160,0,0.25)';
-  renderGrid();
-}
-function deactivateOverrideMode() {
-  overrideMode = false;
-  $('overrideBanner').style.display = 'none';
-  $('btnOverride').textContent = 'Override';
-  $('btnOverride').style.background = 'rgba(255,160,0,0.12)';
-  renderGrid();
 }
 
 // === AUTO-SUGGEST ===
@@ -1358,7 +1291,7 @@ async function suggestRoster() {
   // Include submitted casual DJs alongside the hardcoded weekly-pattern pool.
   const loveDJNames = [...new Set([
     ...Object.keys(LOVE_DJS),
-    ...[...submittedDJs.keys()].filter(name => !RESIDENTS.includes(name) && name !== 'Guest DJ'),
+    ...[...submittedDJs.entries()].filter(([name, status]) => !RESIDENTS.includes(name) && name !== 'Guest DJ' && status === 'submitted').map(([name]) => name),
   ])].sort();
   let loveRotAfternoon = 0, loveRotEvening = 0;
 
