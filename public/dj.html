@@ -171,6 +171,7 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   background:rgba(76,175,80,0.1);border-color:rgba(76,175,80,0.35);color:#81c784;cursor:default;
 }
 .submit-hint{font-size:10px;color:var(--text-3);font-weight:600;text-align:center}
+.submit-locked-msg{font-size:12px;color:var(--text-3);font-weight:600;text-align:center;padding:10px 0}
 
 /* === CALENDAR === */
 .cal-instruction-note{
@@ -551,6 +552,7 @@ let availability = {};   // dateKey → { slotKey: 'available'|'unavailable' }
 let schedule = [];       // [{venue, date, slot}]
 let signoffs = new Set(); // "date|slot|venue" keys for signed-off sets
 let isFinalized = false;
+let isLocked = false;
 let submissionStatus = 'none'; // 'none'|'pre-loaded'|'submitted'
 let expandedDate = null;
 let saveTimer = null;
@@ -761,6 +763,7 @@ async function loadMonth() {
     availability = availData.availability || {};
     isFinalized  = availData.isFinalized || false;
     submissionStatus = availData.submissionStatus || 'none';
+    isLocked = submissionStatus === 'submitted';
     // Only keep schedule entries where the DJ's submitted availability matches the slot.
     // Residents default to 'available'; casuals default to 'unavailable'.
     const rawSchedule = schedData.schedule || [];
@@ -851,7 +854,8 @@ function renderCalendar() {
     const isToday = dk === today;
 
     html += `<div class="cal-cell${isExpanded ? ' expanded' : ''}${isToday ? ' today' : ''}"
-                  onclick="toggleDate('${dk}')">
+                  style="${isLocked ? 'opacity:0.6;cursor:default' : ''}"
+                  ${isLocked ? '' : `onclick="toggleDate('${dk}')"`}>
       <div class="cal-date-num">${d}</div>
       <div class="cal-bar"><div class="cal-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
     </div>`;
@@ -866,13 +870,14 @@ function renderCalendar() {
 
   // Submit Availability button
   if (!isFinalized) {
-    const isSubmitted = submissionStatus === 'submitted';
-    html += `<div class="submit-wrap">
-      <button class="submit-btn${isSubmitted ? ' submitted' : ''}" ${isSubmitted ? 'disabled' : ''} onclick="submitAvailability()">
-        ${isSubmitted ? '&#10003; Submitted' : 'Submit Availability'}
-      </button>
-      ${isSubmitted ? '' : '<div class="submit-hint">Submit to confirm your availability with management.</div>'}
-    </div>`;
+    if (isLocked) {
+      html += `<div class="submit-wrap"><div class="submit-locked-msg">&#128274; Availability submitted. Contact management to make changes.</div></div>`;
+    } else {
+      html += `<div class="submit-wrap">
+        <button class="submit-btn" onclick="submitAvailability()">Submit Availability</button>
+        <div class="submit-hint">Submit to confirm your availability with management.</div>
+      </div>`;
+    }
   }
 
   $('mainContent').innerHTML = html;
@@ -891,20 +896,22 @@ function buildSlotPanel(dk) {
   const monthName = MONTHS[m - 1];
   const slotMap = availability[dk] || {};
 
-  const lockLabel = isFinalized ? ' &#128274;' : '';
+  const lockLabel = (isFinalized || isLocked) ? ' &#128274;' : '';
   const hint = isFinalized
     ? 'This month is locked — no changes allowed.'
-    : isResident
-      ? 'Teal = available. Tap to mark yourself unavailable.'
-      : 'Tap to mark yourself available for a slot.';
+    : isLocked
+      ? 'Availability submitted — contact management to make changes.'
+      : isResident
+        ? 'Teal = available. Tap to mark yourself unavailable.'
+        : 'Tap to mark yourself available for a slot.';
 
   let pills = '';
   for (const slot of ALL_SLOTS) {
     const status = slotMap[slot] !== undefined ? slotMap[slot] : (isResident ? 'available' : 'unavailable');
     const isAvail = status === 'available';
     const cls = `pill ${isAvail ? 'avail' : 'unavail'}`;
-    const onclick = isFinalized ? '' : `onclick="toggleSlot('${dk}','${slot.replace(/'/g, "\\'")}')"`;
-    const disabled = isFinalized ? 'disabled' : '';
+    const onclick = (isFinalized || isLocked) ? '' : `onclick="toggleSlot('${dk}','${slot.replace(/'/g, "\\'")}')"`;
+    const disabled = (isFinalized || isLocked) ? 'disabled' : '';
     pills += `<button class="${cls}" ${onclick} ${disabled}>${slot}</button>`;
   }
 
@@ -912,7 +919,7 @@ function buildSlotPanel(dk) {
     const st = slotMap[s] !== undefined ? slotMap[s] : (isResident ? 'available' : 'unavailable');
     return st === 'available';
   });
-  const selectAllBtn = isFinalized ? '' :
+  const selectAllBtn = (isFinalized || isLocked) ? '' :
     `<button class="select-all-btn" onclick="toggleAllSlots('${dk}')">${allAvail ? 'Deselect All' : 'Select All'}</button>`;
 
   return `<div class="slot-panel">
@@ -927,7 +934,7 @@ function buildSlotPanel(dk) {
 
 // ===== SLOT TOGGLE =====
 function toggleSlot(dk, slot) {
-  if (isFinalized) return;
+  if (isFinalized || isLocked) return;
 
   // Initialise day from defaults if not yet set
   if (!availability[dk]) {
