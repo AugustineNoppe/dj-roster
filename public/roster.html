@@ -1289,6 +1289,14 @@ async function suggestRoster() {
     arkbarAssignments = { ...working };
     renderGrid();
     updateHoursPanel();
+    // Apply consistent assignDJ styling to every auto-suggested slot so that
+    // unconfirmed DJs get amber colouring and the correct CSS class, matching
+    // the behaviour that runs when a user picks a DJ manually.
+    [...toSave, ...hipToSave].forEach(({dateStr, slot, type: slotType}) => {
+      const sel = [...document.querySelectorAll(`select[data-date="${dateStr}"][data-type="${slotType}"]`)]
+        .find(s => s.dataset.slot === slot);
+      if (sel) assignDJ(sel);
+    });
 
     const summary = RESIDENTS.map(r => `${r}: ${djHours[r] || 0}h`).join(' \u00B7 ');
     showToast(`Saving ${totalSlots} slots...`, 'success');
@@ -1396,6 +1404,14 @@ async function suggestRoster() {
   rosterAssignments = loveAssignments;
   renderGrid();
   updateHoursPanel();
+  // Apply consistent assignDJ styling to every auto-suggested slot so that
+  // unconfirmed DJs get amber colouring and the correct CSS class, matching
+  // the behaviour that runs when a user picks a DJ manually.
+  loveToSave.forEach(({dateStr, slot, type: slotType}) => {
+    const sel = [...document.querySelectorAll(`select[data-date="${dateStr}"][data-type="${slotType}"]`)]
+      .find(s => s.dataset.slot === slot);
+    if (sel) assignDJ(sel);
+  });
   showToast(`Saving ${loveToSave.length} Love Beach slots...`, 'success');
 
   try {
