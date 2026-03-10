@@ -893,16 +893,18 @@ function buildCell(dateStr, slot, type) {
   }
 
   console.log('submittedDJs at render:', submittedDJs);
-  const color = assigned ? (DJ_COLORS[assigned] || '#555') : '';
+  const djColor = assigned ? (DJ_COLORS[assigned] || '#555') : '';
+  const unsubmittedCell = assigned && assigned !== 'Guest DJ' && submittedDJs.get(assigned) !== 'submitted';
+  const color = unsubmittedCell ? '#F5A623' : djColor;
   const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}`;
-  const styleAttr = assigned ? `style="background:${color};border-color:${color}"` : '';
+  const styleAttr = assigned ? `style="background:${color};border-color:${color}${unsubmittedCell ? ';color:#1a2828' : ''}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
 
   let opts = '<option value="">\u2014 assign \u2014</option>';
   options.forEach(dj => {
     const isSelected = dj === assigned;
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
-    const unsubmitted = dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted';
+    const unsubmitted = !isSelected && dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted';
     const label = arkBooked ? `${dj} \u26A0 ARKbar` : (unsubmitted ? `${dj} \u26A0` : dj);
     opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
   });
