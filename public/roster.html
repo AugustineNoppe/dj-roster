@@ -168,8 +168,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .td-slot.hip-slot{background:rgba(241,90,41,0.04);border-color:rgba(241,90,41,0.15)}
 .td-slot.love-slot{background:rgba(233,30,140,0.03);border-color:rgba(233,30,140,0.12)}
 .td-slot.empty-slot{background:#f9f9f9}
-.cell-warn-badge{position:absolute;top:2px;right:3px;font-size:10px;line-height:1;pointer-events:none;z-index:2;opacity:.85}
-
 .slot-select{
   width:100%;padding:5px 3px;border:1.5px solid transparent;border-radius:6px;
   font-family:inherit;font-size:10px;font-weight:700;color:#1c2340;background:transparent;
@@ -894,23 +892,22 @@ function buildCell(dateStr, slot, type) {
     return `<td class="${tdClass} empty-slot"><select class="slot-select no-avail" disabled><option>\u2014</option></select></td>`;
   }
 
+  console.log('submittedDJs at render:', submittedDJs);
   const color = assigned ? (DJ_COLORS[assigned] || '#555') : '';
   const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}`;
   const styleAttr = assigned ? `style="background:${color};border-color:${color}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
-  // Badge shown on the visible pill when the assigned DJ hasn't formally submitted.
-  const cellWarn = assigned && assigned !== 'Guest DJ' && submittedDJs.get(assigned) !== 'submitted';
 
   let opts = '<option value="">\u2014 assign \u2014</option>';
   options.forEach(dj => {
     const isSelected = dj === assigned;
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
-    const label = arkBooked ? `${dj} \u26A0 ARKbar` : dj;
+    const unsubmitted = dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted';
+    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (unsubmitted ? `${dj} \u26A0` : dj);
     opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
   });
 
-  const warnBadge = cellWarn ? '<span class="cell-warn-badge">\u26A0</span>' : '';
-  return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)">${opts}</select>${warnBadge}</td>`;
+  return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)">${opts}</select></td>`;
 }
 
 // === ASSIGN DJ ===
