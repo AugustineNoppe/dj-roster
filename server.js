@@ -19,6 +19,9 @@ function getSheets() {
 
 const SHEET_ID = process.env.SPREADSHEET_ID;
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
+// DJs with server-injected fixed schedules who are not residents.
+// Their blackout entries must also be tracked so a blackout can suppress a fixed slot.
+const FIXED_SCHEDULE_DJS = ['Davoted'];
 const ALL_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
   '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
@@ -133,8 +136,10 @@ async function fetchBlackouts(month) {
 
   const blackouts = {};
   RESIDENTS.forEach(r => { blackouts[r] = {}; });
+  FIXED_SCHEDULE_DJS.forEach(dj => { blackouts[dj] = {}; });
   for (const [dj, dateRaw, monthLabel, , type] of (response.data.values || [])) {
-    if (!dj || !dateRaw || !blackouts[dj]) continue;
+    if (!dj || !dateRaw) continue;
+    if (!blackouts[dj]) blackouts[dj] = {}; // handle any DJ present in the sheet
     if (month && monthLabel !== month) continue;
     const dk = parseDateKey(dateRaw);
     if (dk) blackouts[dj][dk] = type || 'full';
@@ -239,8 +244,12 @@ async function fetchAvailability(month) {
     for (let d = 1; d <= daysInMonth; d++) {
       const dk = makeDateKey(year, monthIdx + 1, d);
       const dow = new Date(year, monthIdx, d).getDay();
+      // A blackout for Davoted suppresses his fixed slots for that day.
+      const davotedBo = blackouts['Davoted']?.[dk];
+      if (davotedBo === 'full') continue;
       const slots = [...(DAVOTED_ARKBAR_SLOTS[dow] || []), ...(DAVOTED_LOVE_SLOTS[dow] || [])];
       for (const slot of slots) {
+        if (davotedBo === 'morning' && MORNING_SLOTS.has(slot)) continue;
         const ns = normalizeSlot(slot);
         (map[dk] ??= {})[ns] ??= [];
         if (!map[dk][ns].includes('Davoted')) map[dk][ns].push('Davoted');
