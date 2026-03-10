@@ -546,7 +546,7 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 
 <script>
 // ===== STATE =====
-let djName = '', isResident = false, djRate = 0;
+let djName = '', djPin = '', isResident = false, djRate = 0;
 let currentYear, currentMonth;
 let availability = {};   // dateKey → { slotKey: 'available'|'unavailable' }
 let schedule = [];       // [{venue, date, slot}]
@@ -582,7 +582,7 @@ const SESSION_TTL = 12 * 60 * 60 * 1000; // 12 hours
 
 function saveSession() {
   localStorage.setItem(SESSION_KEY, JSON.stringify({
-    name: djName, isResident, rate: djRate, loginTime: Date.now()
+    name: djName, pin: djPin, isResident, rate: djRate, loginTime: Date.now()
   }));
 }
 
@@ -595,6 +595,7 @@ function restoreSession() {
     const s = JSON.parse(localStorage.getItem(SESSION_KEY));
     if (!s || !s.name || Date.now() - s.loginTime > SESSION_TTL) return false;
     djName = s.name;
+    djPin = s.pin || '';
     isResident = !!s.isResident;
     djRate = s.rate || 0;
     return true;
@@ -657,6 +658,7 @@ async function doLogin() {
 
     if (data.success) {
       djName = data.name;
+      djPin = pin;
       isResident = data.isResident;
       djRate = data.rate;
       saveSession();
@@ -1087,7 +1089,7 @@ async function submitAvailability() {
 
   try {
     const saveData = await fetch('/api/dj/availability', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-dj-pin': djPin },
       body: JSON.stringify({ name: djName, month, slots }),
     }).then(r => r.json());
 
@@ -1100,7 +1102,7 @@ async function submitAvailability() {
     }
 
     const submitData = await fetch('/api/dj/availability/submit', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-dj-pin': djPin },
       body: JSON.stringify({ name: djName, month }),
     }).then(r => r.json());
 
