@@ -2,6 +2,58 @@ const express = require('express');
 const path = require('path');
 const { google } = require('googleapis');
 const app = express();
+
+/* == SECURITY HEADERS (helmet-equivalent) ================================= */
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'");
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
+/* == CORS ================================================================== */
+const ALLOWED_ORIGINS = new Set([
+  'https://djroster.ark-bar.com',
+  'http://localhost:8080',
+]);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    if (ALLOWED_ORIGINS.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password');
+      res.setHeader('Vary', 'Origin');
+    } else {
+      return res.status(403).json({ success: false, error: 'Origin not allowed' });
+    }
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
+/* == RATE LIMITER ========================================================== */
+// Simple in-memory sliding-window counter — 10 requests per IP per 60 s.
+const _rateCounts = new Map(); // ip -> [timestamp, ...]
+const RATE_WINDOW_MS = 60 * 1000;
+const RATE_MAX = 10;
+function rateLimiter(req, res, next) {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const hits = (_rateCounts.get(ip) || []).filter(t => now - t < RATE_WINDOW_MS);
+  if (hits.length >= RATE_MAX) {
+    return res.status(429).json({ success: false, error: 'Too many attempts, please try again later.' });
+  }
+  hits.push(now);
+  _rateCounts.set(ip, hits);
+  next();
+}
+
 app.use(express.json());
 
 /* == GOOGLE SHEETS AUTH (cached singleton) ================================ */
@@ -299,7 +351,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 /* == AUTH ================================================================== */
-app.post('/api/auth', (req, res) => {
+app.post('/api/auth', rateLimiter, (req, res) => {
   res.json({ success: req.body.password === process.env.ADMIN_PASSWORD });
 });
 
@@ -496,7 +548,7 @@ async function fetchFinalized() {
 app.get('/dj', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dj.html')));
 
 /* -- POST /api/dj/login --------------------------------------------------- */
-app.post('/api/dj/login', async (req, res) => {
+app.post('/api/dj/login', rateLimiter, async (req, res) => {
   try {
     const { name, pin } = req.body;
     if (!name || !pin) return res.json({ success: false, error: 'Name and PIN required' });
@@ -520,7 +572,7 @@ app.post('/api/dj/login', async (req, res) => {
 });
 
 /* -- POST /api/dj/change-pin ----------------------------------------------- */
-app.post('/api/dj/change-pin', async (req, res) => {
+app.post('/api/dj/change-pin', rateLimiter, async (req, res) => {
   try {
     const { name, currentPin, newPin } = req.body;
     if (!name || !currentPin || !newPin) return res.json({ success: false, error: 'Missing fields' });
