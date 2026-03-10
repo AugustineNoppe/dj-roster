@@ -473,6 +473,15 @@ body {
     </div>
 
     <div class="field">
+      <div class="field-label">Enter your PIN</div>
+      <input id="residentPinInput" type="password" inputmode="numeric" maxlength="4"
+             placeholder="••••" autocomplete="current-password"
+             oninput="residentPin=this.value.replace(/\D/g,'')"
+             onkeydown="if(event.key==='Enter')goStep2()"
+             style="width:100%;padding:14px 16px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius-sm);font-family:'Montserrat',sans-serif;font-size:14px!important;font-weight:600;color:white;background:rgba(255,255,255,0.08);outline:none;box-sizing:border-box;">
+    </div>
+
+    <div class="field">
       <div class="field-label">Month</div>
       <div class="custom-select" id="cs-mo">
         <div class="custom-select-trigger" onclick="toggleSelect('cs-mo')">
@@ -554,6 +563,7 @@ const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 let isResident = false;
 let blackoutDates = new Map(); // dateLabel -> 'morning' | 'full'
+let residentPin = '';
 let st={}, djName='', moKey='', moLabel='';
 const selectVals = { 'cs-dj': '', 'cs-mo': '' };
 const selectKeys = { 'cs-mo': {} };
@@ -1047,11 +1057,16 @@ async function doSubmit() {
   btn.disabled=true; btn.textContent='Submitting...';
 
   if (isResident) {
+    if (!residentPin) {
+      btn.disabled=false; btn.textContent='✓ Submit Availability';
+      alert('Please enter your PIN before submitting.');
+      return;
+    }
     const dates = [...blackoutDates.entries()].map(([date, type]) => ({ date, type }));
     try {
       const res = await fetch('/api/blackout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-dj-pin': residentPin },
         body: JSON.stringify({ dj: djName, month: moLabel, dates })
       });
       const data = await res.json();
