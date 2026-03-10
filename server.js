@@ -444,8 +444,11 @@ app.post('/api/roster/batch', async (req, res) => {
 /* == CLEAR ROSTER ========================================================= */
 app.post('/api/roster/clear', async (req, res) => {
   try {
-    const sheets = getSheets();
     const { venue, month } = req.body;
+    if (!month || !/^[A-Za-z]+ \d{4}$/.test(month.trim())) {
+      return res.status(400).json({ success: false, error: 'Invalid or missing month' });
+    }
+    const sheets = getSheets();
     const tab = tabName(venue);
     let existingRows = [];
     try {
