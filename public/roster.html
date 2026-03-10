@@ -900,11 +900,14 @@ function buildCell(dateStr, slot, type) {
   const styleAttr = assigned ? `style="background:${color};border-color:${color}${unsubmittedCell ? ';color:#1a2828' : ''}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
 
+  const availSet = avail.length > 0 ? new Set(avail) : null;
   let opts = '<option value="">\u2014 assign \u2014</option>';
   options.forEach(dj => {
     const isSelected = dj === assigned;
+    const isSubmitted = submittedDJs.get(dj) === 'submitted';
+    if (!isSelected && isSubmitted && availSet && !availSet.has(dj)) return;
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
-    const unsubmitted = !isSelected && dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted';
+    const unsubmitted = !isSelected && dj !== 'Guest DJ' && !isSubmitted;
     const label = arkBooked ? `${dj} \u26A0 ARKbar` : (unsubmitted ? `${dj} \u26A0` : dj);
     opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
   });
