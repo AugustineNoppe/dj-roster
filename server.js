@@ -609,7 +609,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       }
       if (rowsToWrite.length > 0) {
         await sheets.spreadsheets.values.append({
-          spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
+          spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
           valueInputOption: 'RAW', requestBody: { values: rowsToWrite },
         });
       }
