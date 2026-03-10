@@ -996,7 +996,7 @@ async function assignDJ(sel) {
 
   try {
     const res = await fetch('/api/roster/assign', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
       body: JSON.stringify({ venue:venueParam, date, slot, dj, month:getMonthString() })
     });
     const data = await res.json();
@@ -1027,7 +1027,7 @@ async function clearRoster() {
     const venuesToClear = venueParam === 'arkbar' ? ['arkbar','hip'] : [venueParam];
     await Promise.all(venuesToClear.map(v =>
       fetch('/api/roster/clear', {
-        method:'POST', headers:{'Content-Type':'application/json'},
+        method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
         body: JSON.stringify({ venue:v, month })
       })
     ));
@@ -1269,11 +1269,11 @@ async function suggestRoster() {
     try {
       const saves = [];
       if (toSave.length > 0) saves.push(fetch('/api/roster/batch', {
-        method:'POST', headers:{'Content-Type':'application/json'},
+        method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
         body: JSON.stringify({ venue:'arkbar', month, assignments:toSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
       }));
       if (hipToSave.length > 0) saves.push(fetch('/api/roster/batch', {
-        method:'POST', headers:{'Content-Type':'application/json'},
+        method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
         body: JSON.stringify({ venue:'hip', month, assignments:hipToSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
       }));
       const results = await Promise.all(saves);
@@ -1373,7 +1373,7 @@ async function suggestRoster() {
 
   try {
     const res = await fetch('/api/roster/batch', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
       body: JSON.stringify({ venue:'love', month, assignments:loveToSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
     });
     const data = await res.json();

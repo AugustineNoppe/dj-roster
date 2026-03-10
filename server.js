@@ -27,7 +27,7 @@ app.use((req, res, next) => {
     if (ALLOWED_ORIGINS.has(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password, x-dj-pin');
       res.setHeader('Vary', 'Origin');
     } else {
       return res.status(403).json({ success: false, error: 'Origin not allowed' });
@@ -364,6 +364,35 @@ app.post('/api/auth', rateLimiter, (req, res) => {
   res.json({ success: req.body.password === process.env.ADMIN_PASSWORD });
 });
 
+/* -- Reusable auth middleware ---------------------------------------------- */
+function requireAdmin(req, res, next) {
+  if (req.headers['x-admin-password'] !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorised' });
+  }
+  next();
+}
+
+async function requireDJAuth(req, res, next) {
+  const { name } = req.body;
+  const pin = req.headers['x-dj-pin'];
+  if (!name || !pin) return res.status(401).json({ success: false, error: 'Unauthorised' });
+  try {
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_PINS_SHEET}!A2:B`,
+    }).catch(() => ({ data: { values: [] } }));
+    const rows = response.data.values || [];
+    const valid = rows.some(r =>
+      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() &&
+      r[1] && String(r[1]).trim() === String(pin).trim()
+    );
+    if (!valid) return res.status(401).json({ success: false, error: 'Unauthorised' });
+    next();
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Auth error' });
+  }
+}
+
 /* == CONFIG ================================================================ */
 app.get('/api/config', (req, res) => {
   res.json({ success: true, residents: RESIDENTS });
@@ -401,7 +430,7 @@ app.get('/api/roster', async (req, res) => {
 });
 
 /* == BLACKOUT SUBMISSION ================================================== */
-app.post('/api/blackout', async (req, res) => {
+app.post('/api/blackout', requireAdmin, async (req, res) => {
   try {
     const { dj, month, dates } = req.body;
     if (!dj || !month || !Array.isArray(dates)) return res.json({ success: false, error: 'Missing fields' });
@@ -428,7 +457,7 @@ app.post('/api/blackout', async (req, res) => {
 });
 
 /* == ASSIGN SINGLE CELL =================================================== */
-app.post('/api/roster/assign', async (req, res) => {
+app.post('/api/roster/assign', requireAdmin, async (req, res) => {
   try {
     const sheets = getSheets();
     const { venue, date, slot, dj, month } = req.body;
@@ -463,7 +492,7 @@ app.post('/api/roster/assign', async (req, res) => {
 });
 
 /* == BATCH ASSIGN ========================================================= */
-app.post('/api/roster/batch', async (req, res) => {
+app.post('/api/roster/batch', requireAdmin, async (req, res) => {
   const { venue, month, assignments } = req.body;
   try {
     const result = await withVenueLock(venue, async () => {
@@ -507,7 +536,7 @@ app.post('/api/roster/batch', async (req, res) => {
 });
 
 /* == CLEAR ROSTER ========================================================= */
-app.post('/api/roster/clear', async (req, res) => {
+app.post('/api/roster/clear', requireAdmin, async (req, res) => {
   try {
     const { venue, month } = req.body;
     if (!month || !/^[A-Za-z]+ \d{4}$/.test(month.trim())) {
@@ -776,7 +805,7 @@ function generatePreloadRows(name, month, monthIdx, year) {
   return rows;
 }
 
-app.post('/api/dj/availability', async (req, res) => {
+app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
   try {
     const { name, month, slots } = req.body;
     if (!name || !month || !Array.isArray(slots)) return res.json({ success: false, error: 'Missing fields' });
@@ -829,7 +858,7 @@ app.post('/api/dj/availability', async (req, res) => {
 });
 
 /* -- POST /api/dj/availability/submit ------------------------------------- */
-app.post('/api/dj/availability/submit', async (req, res) => {
+app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
   try {
     const { name, month } = req.body;
     if (!name || !month) return res.json({ success: false, error: 'Missing fields' });
