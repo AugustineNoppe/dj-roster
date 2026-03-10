@@ -373,7 +373,7 @@ function requireAdmin(req, res, next) {
 }
 
 async function requireDJAuth(req, res, next) {
-  const { name } = req.body;
+  const name = req.body.name || req.body.dj;
   const pin = req.headers['x-dj-pin'];
   if (!name || !pin) return res.status(401).json({ success: false, error: 'Unauthorised' });
   try {
