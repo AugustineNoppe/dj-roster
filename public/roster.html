@@ -543,11 +543,32 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
     <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
       <button class="btn-sm btn-suggest" onclick="suggestRoster()">&#9889; Auto-suggest</button>
+      <button class="btn-sm" id="btnOverride" onclick="showOverrideModal()" style="background:rgba(255,160,0,0.12);border-color:rgba(255,160,0,0.4);color:#ffa000">Override</button>
       <button class="btn-sm btn-clear" onclick="clearRoster()">Clear Roster</button>
       <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:#fff;">Print / PDF</button>
     </div>
   </footer>
+</div>
+
+<!-- Override Mode banner (amber, hidden by default) -->
+<div id="overrideBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:200;background:#e65100;color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;text-align:center;padding:6px 12px">
+  &#9888; OVERRIDE MODE ACTIVE — all DJs visible regardless of submission status
+  <button onclick="deactivateOverrideMode()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:inherit;font-weight:800">Deactivate</button>
+</div>
+
+<!-- Override Mode password modal -->
+<div id="overrideOverlay" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.7);align-items:center;justify-content:center">
+  <div style="background:#1a2040;border:1px solid rgba(255,160,0,0.4);border-radius:16px;padding:32px 28px;width:min(320px,90vw);text-align:center">
+    <h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:#ffa000">&#9888; Override Mode</h3>
+    <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:20px">Shows all DJs in dropdowns regardless of whether they have submitted availability. Enter admin password to confirm.</p>
+    <input type="password" id="overridePwd" placeholder="Admin password" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.08);color:#fff;font-family:inherit;font-size:14px;margin-bottom:8px" onkeydown="if(event.key==='Enter')confirmOverrideMode()">
+    <div id="overrideErr" style="font-size:11px;color:#ef5350;margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button onclick="closeOverrideModal()" style="padding:9px 20px;background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px">Cancel</button>
+      <button onclick="confirmOverrideMode()" style="padding:9px 20px;background:rgba(255,160,0,0.2);border:1px solid rgba(255,160,0,0.5);color:#ffa000;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:800">Activate</button>
+    </div>
+  </div>
 </div>
 
 <!-- Toast notification -->
@@ -578,6 +599,8 @@ let hipAssignments = {};
 let loveAssignments = {};
 let residentBlackouts = {};
 let djList = [];
+let submittedDJs = new Set(); // DJs who have submitted availability for current month
+let overrideMode = false;
 let isPublished = false;
 let toastTimer;
 
@@ -622,10 +645,6 @@ const DJ_COLORS = {
 
 // HIP weekly rotation (4 slots per night, one DJ)
 const HIP_ROTATION = { 1:'Vozka', 4:'Tobi' };
-
-// Fixed-schedule guest DJs — shown with ⚠ in dropdowns and hours table to flag unconfirmed slots.
-// Their hours and cost are hidden (zeroed) until availability is confirmed.
-const FIXED_GUEST_DJS = new Set(['Davoted', 'Vozka', 'Tobi']);
 
 // Love Beach DJ availability (weekly patterns)
 const LOVE_DJS = {
@@ -767,20 +786,23 @@ async function loadAll() {
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   const month = getMonthString();
   try {
-    const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes] = await Promise.all([
-      fetch(`/api/availability?month=${encodeURIComponent(month)}`),
-      fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`),
-      fetch(`/api/roster?venue=hip&month=${encodeURIComponent(month)}`),
-      fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`),
+    const enc = encodeURIComponent;
+    const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes, submissionsRes] = await Promise.all([
+      fetch(`/api/availability?month=${enc(month)}`),
+      fetch(`/api/roster?venue=arkbar&month=${enc(month)}`),
+      fetch(`/api/roster?venue=hip&month=${enc(month)}`),
+      fetch(`/api/roster?venue=love&month=${enc(month)}`),
       fetch('/api/djs'),
       fetch('/api/config'),
+      fetch(`/api/dj/submissions/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
     ]);
-    const [availData, arkbarData, hipData, loveData, djData, configData] = await Promise.all([
-      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json(), configRes.json()
+    const [availData, arkbarData, hipData, loveData, djData, configData, submissionsData] = await Promise.all([
+      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json(), configRes.json(), submissionsRes.json()
     ]);
     if (configData.success && Array.isArray(configData.residents) && configData.residents.length) {
       RESIDENTS = configData.residents;
     }
+    submittedDJs = new Set((submissionsData.submitted || []).map(s => s.name));
 
     availability = availData.availability || {};
     residentBlackouts = availData.blackouts || {};
@@ -877,7 +899,8 @@ function buildCell(dateStr, slot, type) {
 
   let options = [];
 
-  options = avail.filter(dj => !RESIDENTS.includes(dj));
+  // Non-resident DJs: only include if they have submitted availability, or admin is in override mode.
+  options = avail.filter(dj => !RESIDENTS.includes(dj) && (overrideMode || submittedDJs.has(dj)));
   RESIDENTS.forEach(res => {
     const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
     if (bo === 'full') return;
@@ -903,7 +926,8 @@ function buildCell(dateStr, slot, type) {
   options.forEach(dj => {
     const arkKey = `${dateStr}|${slot}`;
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[arkKey] === dj;
-    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (FIXED_GUEST_DJS.has(dj) ? `${dj} \u26A0` : dj);
+    const unsubmitted = !RESIDENTS.includes(dj) && dj !== 'Guest DJ' && !submittedDJs.has(dj);
+    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (unsubmitted ? `${dj} \u26A0` : dj);
     opts += `<option value="${dj}"${dj === assigned ? ' selected' : ''}>${label}</option>`;
   });
   if (assigned && !options.includes(assigned)) {
@@ -1037,6 +1061,39 @@ async function clearRoster() {
   }
 }
 
+// === OVERRIDE MODE ===
+function showOverrideModal() {
+  if (overrideMode) { deactivateOverrideMode(); return; }
+  $('overridePwd').value = '';
+  $('overrideErr').style.display = 'none';
+  $('overrideOverlay').style.display = 'flex';
+  setTimeout(() => $('overridePwd').focus(), 50);
+}
+function closeOverrideModal() {
+  $('overrideOverlay').style.display = 'none';
+}
+function confirmOverrideMode() {
+  const pw = $('overridePwd').value;
+  if (pw !== adminPassword) {
+    $('overrideErr').textContent = 'Incorrect password.';
+    $('overrideErr').style.display = 'block';
+    return;
+  }
+  overrideMode = true;
+  closeOverrideModal();
+  $('overrideBanner').style.display = 'block';
+  $('btnOverride').textContent = 'Override ON';
+  $('btnOverride').style.background = 'rgba(255,160,0,0.25)';
+  renderGrid();
+}
+function deactivateOverrideMode() {
+  overrideMode = false;
+  $('overrideBanner').style.display = 'none';
+  $('btnOverride').textContent = 'Override';
+  $('btnOverride').style.background = 'rgba(255,160,0,0.12)';
+  renderGrid();
+}
+
 // === AUTO-SUGGEST ===
 async function suggestRoster() {
   if (isPublished) { showToast('Unlock roster before auto-suggesting', 'error'); return; }
@@ -1124,8 +1181,44 @@ async function suggestRoster() {
     return zoneSlots.every(slot => working[`${yesterday}|${slot}`] === dj);
   }
 
+  // === Baseline pass: re-use prev-month same-dow assignments where DJ is still available ===
+  const prevYear  = currentMonth === 0 ? currentYear - 1 : currentYear;
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const prevMonthStr = `${MONTHS[prevMonth]} ${prevYear}`;
+  const venue = currentVenue === 'love' ? 'love' : (currentVenue === 'hip' ? 'hip' : 'arkbar');
+  let prevRosterMap = {}; // "dow|slot" → dj
+  try {
+    const prevData = await fetch(`/api/roster?venue=${venue}&month=${encodeURIComponent(prevMonthStr)}`).then(r => r.json());
+    (prevData.roster || []).forEach(([date, slot, dj]) => {
+      if (!date || !slot || !dj || dj === 'Guest DJ') return;
+      const dow = new Date(date).getDay();
+      const key = `${dow}|${normalizeSlot(slot)}`;
+      if (!prevRosterMap[key]) prevRosterMap[key] = dj;
+    });
+  } catch(e) { /* baseline unavailable — continue without it */ }
+
+  const baselineToSave = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = makeDateStr(currentYear, currentMonth, d);
+    const dow = new Date(currentYear, currentMonth, d).getDay();
+    const slotsForVenue = isLove
+      ? (dow === 6 ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS)
+      : ALL_ARKBAR_SLOTS;
+    for (const slot of slotsForVenue) {
+      if (working[`${dateStr}|${slot}`]) continue; // already assigned
+      const prevDJ = prevRosterMap[`${dow}|${normalizeSlot(slot)}`];
+      if (!prevDJ) continue;
+      if (!RESIDENTS.includes(prevDJ)) continue; // baseline only for residents
+      if (!canAssign(prevDJ, dateStr, slot)) continue;
+      if (wouldBreakConsecutive(prevDJ, dateStr, [slot])) continue;
+      working[`${dateStr}|${slot}`] = prevDJ;
+      addSlot(prevDJ, dateStr, slot);
+      baselineToSave.push({ dateStr, slot, type: isLove ? 'love' : (venue === 'hip' ? 'hip' : 'arkbar'), dj: prevDJ });
+    }
+  }
+
   if (!isLove) {
-    const toSave = [];
+    const toSave = [...baselineToSave];
 
     // Pass 1: Late Night - strict 3-day rotation
     for (let d = 1; d <= daysInMonth; d++) {
@@ -1240,8 +1333,9 @@ async function suggestRoster() {
   }
 
   // Love Beach auto-suggest
-  const loveToSave = [];
-  const loveWorking = { ...loveAssignments };
+  // Seed loveWorking from working so baseline entries are respected.
+  const loveToSave = [...baselineToSave];
+  const loveWorking = { ...working };
   const LOVE_AFTERNOON = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
   const LOVE_EVENING = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'];
   const loveDJNames = Object.keys(LOVE_DJS).sort();
@@ -1411,7 +1505,7 @@ function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
 
   const totals = {};
   djs.forEach(d => {
-    const unconfirmed = FIXED_GUEST_DJS.has(d.name) || d.name === 'Guest DJ' || loveUnconfirmed.has(d.name);
+    const unconfirmed = d.name === 'Guest DJ' || loveUnconfirmed.has(d.name) || !submittedDJs.has(d.name);
     totals[d.name] = unconfirmed ? 0 : (arkNorm[normalize(d.name)] || 0) + (loveNorm[normalize(d.name)] || 0);
   });
 
@@ -1427,7 +1521,7 @@ function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
   });
 
   const rows = sorted.map(dj => {
-    const isUnconfirmed = FIXED_GUEST_DJS.has(dj.name) || dj.name === 'Guest DJ' || loveUnconfirmed.has(dj.name);
+    const isUnconfirmed = dj.name === 'Guest DJ' || loveUnconfirmed.has(dj.name) || !submittedDJs.has(dj.name);
     const ark  = isUnconfirmed ? 0 : (arkNorm[normalize(dj.name)] || 0);
     const love = isUnconfirmed ? 0 : (loveNorm[normalize(dj.name)] || 0);
     const total = ark + love;
@@ -1465,8 +1559,8 @@ function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
     </tr>`;
   }).join('');
 
-  const arkTotal  = Object.entries(arkHours) .filter(([dj]) => !FIXED_GUEST_DJS.has(dj) && dj !== 'Guest DJ').reduce((a,[,v])=>a+v,0);
-  const loveTotal = Object.entries(loveHours).filter(([dj]) => !FIXED_GUEST_DJS.has(dj) && dj !== 'Guest DJ').reduce((a,[,v])=>a+v,0);
+  const arkTotal  = Object.entries(arkHours) .filter(([dj]) => submittedDJs.has(dj) && dj !== 'Guest DJ').reduce((a,[,v])=>a+v,0);
+  const loveTotal = Object.entries(loveHours).filter(([dj]) => submittedDJs.has(dj) && dj !== 'Guest DJ').reduce((a,[,v])=>a+v,0);
 
   const belowMin = RESIDENTS_80HR.filter(r => (totals[r] || 0) < RESIDENT_MIN);
   const minWarning = belowMin.length
@@ -1736,7 +1830,7 @@ async function previewMonth() {
         const cost = dj.name === 'Guest DJ' ? 0 : signedOff * dj.rate;
         return { name: dj.name, arkbar: ark, hip, love, total, rate: dj.rate, cost, signedOff };
       })
-      .filter(dj => dj.total > 0 && dj.name !== 'Guest DJ' && !FIXED_GUEST_DJS.has(dj.name))
+      .filter(dj => dj.total > 0 && dj.name !== 'Guest DJ' && submittedDJs.has(dj.name))
       .sort((a, b) => b.total - a.total);
     const grandTotal = report.reduce((s, d) => s + d.total, 0);
     const grandCost  = report.reduce((s, d) => s + d.cost,  0);
@@ -1784,9 +1878,9 @@ function showFinalizeReport(data, isPreview = false) {
   const { month } = data;
   const BAHT = '\u0E3F';
 
-  // Exclude unconfirmed guest DJs (always shown with ⚠ on the roster) and zero-hour entries
+  // Exclude DJs who haven't submitted availability and zero-hour entries
   const report = (data.report || []).filter(dj =>
-    dj.total > 0 && dj.name !== 'Guest DJ' && !FIXED_GUEST_DJS.has(dj.name)
+    dj.total > 0 && dj.name !== 'Guest DJ' && submittedDJs.has(dj.name)
   );
   // Normalise cost to signedOff × rate so both preview and finalise paths agree
   const reportWithCost = report.map(dj => ({ ...dj, cost: (dj.signedOff || 0) * (dj.rate || 0) }));
