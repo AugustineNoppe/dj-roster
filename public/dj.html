@@ -159,6 +159,19 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   font-size:11px;font-weight:800;color:#81c784;letter-spacing:.06em;text-transform:uppercase;
 }
 
+/* === SUBMIT AVAILABILITY === */
+.submit-wrap{padding:12px 12px 16px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.submit-btn{
+  padding:12px 28px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;
+  border:1px solid rgba(93,184,192,0.5);background:rgba(93,184,192,0.15);color:var(--teal);
+  transition:background var(--transition),border-color var(--transition);letter-spacing:.04em;
+}
+.submit-btn:hover:not(:disabled){background:rgba(93,184,192,0.3);border-color:rgba(93,184,192,0.8)}
+.submit-btn.submitted{
+  background:rgba(76,175,80,0.1);border-color:rgba(76,175,80,0.35);color:#81c784;cursor:default;
+}
+.submit-hint{font-size:10px;color:var(--text-3);font-weight:600;text-align:center}
+
 /* === CALENDAR === */
 .cal-instruction-note{
   display:flex;align-items:center;justify-content:center;gap:8px;
@@ -538,6 +551,7 @@ let availability = {};   // dateKey → { slotKey: 'available'|'unavailable' }
 let schedule = [];       // [{venue, date, slot}]
 let signoffs = new Set(); // "date|slot|venue" keys for signed-off sets
 let isFinalized = false;
+let submissionStatus = 'none'; // 'none'|'pre-loaded'|'submitted'
 let expandedDate = null;
 let saveTimer = null;
 let saveState = 'idle';  // 'idle'|'pending'|'saving'|'saved'|'error'
@@ -746,6 +760,7 @@ async function loadMonth() {
 
     availability = availData.availability || {};
     isFinalized  = availData.isFinalized || false;
+    submissionStatus = availData.submissionStatus || 'none';
     // Only keep schedule entries where the DJ's submitted availability matches the slot.
     // Residents default to 'available'; casuals default to 'unavailable'.
     const rawSchedule = schedData.schedule || [];
@@ -848,6 +863,18 @@ function renderCalendar() {
   if (expandedDate) html += buildSlotPanel(expandedDate);
 
   html += '</div>';
+
+  // Submit Availability button
+  if (!isFinalized) {
+    const isSubmitted = submissionStatus === 'submitted';
+    html += `<div class="submit-wrap">
+      <button class="submit-btn${isSubmitted ? ' submitted' : ''}" ${isSubmitted ? 'disabled' : ''} onclick="submitAvailability()">
+        ${isSubmitted ? '&#10003; Submitted' : 'Submit Availability'}
+      </button>
+      ${isSubmitted ? '' : '<div class="submit-hint">Submit to confirm your availability with management.</div>'}
+    </div>`;
+  }
+
   $('mainContent').innerHTML = html;
   updateStatusBar();
 }
@@ -922,7 +949,7 @@ function toggleSlot(dk, slot) {
   availability[dk][slot] = cur === 'available' ? 'unavailable' : 'available';
 
   renderCalendar();
-  startSaveTimer();
+  markDirty();
 }
 
 // ===== SELECT ALL =====
@@ -939,7 +966,7 @@ function toggleAllSlots(dk) {
   const newStatus = allAvail ? 'unavailable' : 'available';
   for (const s of ALL_SLOTS) availability[dk][s] = newStatus;
   renderCalendar();
-  startSaveTimer();
+  markDirty();
 }
 
 // ===== SIGN-OFF =====
@@ -1027,6 +1054,64 @@ async function confirmSignoff() {
     }
   } catch(e) {
     showErr('Connection error — try again.');
+  }
+}
+
+// ===== DIRTY TRACKING =====
+function markDirty() {
+  setSaveState('pending');
+}
+
+// ===== SUBMIT AVAILABILITY =====
+async function submitAvailability() {
+  if (isFinalized) return;
+  clearTimeout(saveTimer);
+  setSaveState('saving');
+  const month = getMonthStr();
+  const snapshot = JSON.parse(JSON.stringify(availability));
+
+  // Build ALL slots (not just non-defaults) so the sheet reflects the complete state.
+  const slots = [];
+  for (const [date, slotMap] of Object.entries(availability)) {
+    for (const [slot, status] of Object.entries(slotMap)) {
+      slots.push({ date, slot, status });
+    }
+  }
+
+  try {
+    const saveData = await fetch('/api/dj/availability', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: djName, month, slots }),
+    }).then(r => r.json());
+
+    if (!saveData.success) {
+      availability = snapshot;
+      renderCalendar();
+      setSaveState('error');
+      showToast('Failed to save \u2014 please try again.', 'error');
+      return;
+    }
+
+    const submitData = await fetch('/api/dj/availability/submit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: djName, month }),
+    }).then(r => r.json());
+
+    if (submitData.success) {
+      submissionStatus = 'submitted';
+      setSaveState('saved');
+      setTimeout(() => { if (saveState === 'saved') setSaveState('idle'); }, 3000);
+      showToast(`Availability submitted for ${month}`, 'success');
+      renderCalendar();
+    } else {
+      setSaveState('error');
+      showToast(submitData.error || 'Submit failed \u2014 please try again.', 'error');
+    }
+  } catch(e) {
+    availability = snapshot;
+    renderCalendar();
+    setSaveState('error');
+    showToast('Failed \u2014 please try again.', 'error');
   }
 }
 

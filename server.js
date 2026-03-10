@@ -525,9 +525,10 @@ app.post('/api/roster/clear', async (req, res) => {
 });
 
 /* == DJ PORTAL — NEW SHEETS / CONSTANTS =================================== */
-const DJ_AVAIL_SHEET  = 'DJ Availability';
-const FINALIZED_SHEET = 'Finalized Months';
-const DJ_PINS_SHEET   = 'DJ PINs';
+const DJ_AVAIL_SHEET        = 'DJ Availability';
+const FINALIZED_SHEET       = 'Finalized Months';
+const DJ_PINS_SHEET         = 'DJ PINs';
+const DJ_SUBMISSIONS_SHEET  = 'DJ Submissions';
 
 cache.finalized = { data: null, time: 0, ttl: 5 * 60 * 1000 };
 
@@ -606,9 +607,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const month = decodeURIComponent(req.params.month);
     const isResident = RESIDENTS.includes(name);
     const isDavoted = name.trim().toLowerCase() === 'davoted';
-    const isSoundBogie = name.trim().toLowerCase() === 'sound bogie';
-    // Sound Bogie's always-unavailable early slots (every day) and full Sunday blackout
-    const SB_EARLY = new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']);
     // Davoted's fixed weekly slots — keyed by day-of-week (0=Sun … 6=Sat)
     const DAVOTED_PORTAL = {
       1: new Set(['14:00\u201315:00','15:00\u201316:00']),
@@ -617,10 +615,45 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       4: new Set(['14:00\u201315:00','15:00\u201316:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00']),
       5: new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']),
     };
+
+    const parts = month.split(' ');
+    const monthIdx = MONTH_NAMES.indexOf(parts[0]);
+    const year = parseInt(parts[1]);
+
     const finalized = await fetchFinalized();
     const isFinalized = finalized.months.includes(month);
 
     const sheets = getSheets();
+
+    // Check DJ Submissions for this DJ+month to determine submissionStatus.
+    const submissionsResp = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A2:C`,
+    }).catch(() => ({ data: { values: [] } }));
+    const submissionsRows = submissionsResp.data.values || [];
+    const submissionRow = submissionsRows.find(r =>
+      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() && r[1] === month
+    );
+
+    let submissionStatus = submissionRow ? (submissionRow[2] || 'none') : 'none';
+
+    // For residents with no existing submission record, pre-load default availability.
+    if (!submissionRow && isResident && monthIdx >= 0 && !isNaN(year)) {
+      await getOrCreateSubmissionsSheet(sheets);
+      const preloadRows = generatePreloadRows(name, month, monthIdx, year);
+      if (preloadRows && preloadRows.length > 0) {
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
+          valueInputOption: 'RAW', requestBody: { values: preloadRows },
+        });
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
+          valueInputOption: 'RAW', requestBody: { values: [[name, month, 'pre-loaded']] },
+        });
+        submissionStatus = 'pre-loaded';
+      }
+    }
+
+    // Read stored availability rows for this DJ+month.
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
     }).catch(() => ({ data: { values: [] } }));
@@ -634,37 +667,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       const ns = normalizeSlot(row[2]);
       if (!stored[dk]) stored[dk] = {};
       stored[dk][ns] = row[4] || (isResident ? 'available' : 'unavailable');
-    }
-
-    const parts = month.split(' ');
-    const monthIdx = MONTH_NAMES.indexOf(parts[0]);
-    const year = parseInt(parts[1]);
-
-    // Sound Bogie: if no availability has been recorded for this month yet,
-    // write default unavailable rows to the sheet so the calendar is pre-populated.
-    // Early slots (14-17) are unavailable every day; all slots are unavailable on Sundays.
-    if (isSoundBogie && Object.keys(stored).length === 0 && monthIdx >= 0 && !isNaN(year)) {
-      const days = new Date(year, monthIdx + 1, 0).getDate();
-      const rowsToWrite = [];
-      for (let d = 1; d <= days; d++) {
-        const dk = makeDateKey(year, monthIdx + 1, d);
-        const dow = new Date(year, monthIdx, d).getDay();
-        const isSunday = dow === 0;
-        if (!stored[dk]) stored[dk] = {};
-        for (const slot of ALL_SLOTS) {
-          const ns = normalizeSlot(slot);
-          if (isSunday || SB_EARLY.has(ns)) {
-            stored[dk][ns] = 'unavailable';
-            rowsToWrite.push([name, dk, ns, month, 'unavailable']);
-          }
-        }
-      }
-      if (rowsToWrite.length > 0) {
-        await sheets.spreadsheets.values.append({
-          spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
-          valueInputOption: 'RAW', requestBody: { values: rowsToWrite },
-        });
-      }
     }
 
     const availability = {};
@@ -688,7 +690,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       }
     }
 
-    res.json({ success: true, availability, isFinalized, isResident });
+    res.json({ success: true, availability, isFinalized, isResident, submissionStatus });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -704,6 +706,50 @@ async function getDjAvailSheetId(sheets) {
   if (!sheet) throw new Error('DJ Availability sheet not found');
   _djAvailSheetId = sheet.properties.sheetId;
   return _djAvailSheetId;
+}
+
+/* -- Cached sheet gid for DJ Submissions tab -------------------------------- */
+let _djSubmissionsSheetId = null;
+async function getOrCreateSubmissionsSheet(sheets) {
+  if (_djSubmissionsSheetId !== null) return _djSubmissionsSheetId;
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID, fields: 'sheets.properties' });
+  const existing = (meta.data.sheets || []).find(s => s.properties.title === DJ_SUBMISSIONS_SHEET);
+  if (existing) {
+    _djSubmissionsSheetId = existing.properties.sheetId;
+    return _djSubmissionsSheetId;
+  }
+  const addRes = await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: { requests: [{ addSheet: { properties: { title: DJ_SUBMISSIONS_SHEET } } }] },
+  });
+  const newSheetId = addRes.data.replies[0].addSheet.properties.sheetId;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A1:C1`,
+    valueInputOption: 'RAW', requestBody: { values: [['DJ Name', 'Month', 'Status']] },
+  });
+  _djSubmissionsSheetId = newSheetId;
+  return _djSubmissionsSheetId;
+}
+
+/* -- Generate pre-load rows for residents ----------------------------------- */
+function generatePreloadRows(name, month, monthIdx, year) {
+  if (!RESIDENTS.includes(name)) return null;
+  const SB_EARLY = new Set(['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00']);
+  const isSoundBogie = name.trim().toLowerCase() === 'sound bogie';
+  const days = new Date(year, monthIdx + 1, 0).getDate();
+  const rows = [];
+  for (let d = 1; d <= days; d++) {
+    const dk = makeDateKey(year, monthIdx + 1, d);
+    const dow = new Date(year, monthIdx, d).getDay();
+    const isSunday = dow === 0;
+    for (const slot of ALL_SLOTS) {
+      const ns = normalizeSlot(slot);
+      let status = 'available';
+      if (isSoundBogie && (isSunday || SB_EARLY.has(ns))) status = 'unavailable';
+      rows.push([name, dk, ns, month, status]);
+    }
+  }
+  return rows;
 }
 
 app.post('/api/dj/availability', async (req, res) => {
@@ -753,6 +799,64 @@ app.post('/api/dj/availability', async (req, res) => {
 
     cache.availability.delete(month);
     res.json({ success: true, saved: newRows.length });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- POST /api/dj/availability/submit ------------------------------------- */
+app.post('/api/dj/availability/submit', async (req, res) => {
+  try {
+    const { name, month } = req.body;
+    if (!name || !month) return res.json({ success: false, error: 'Missing fields' });
+    const finalized = await fetchFinalized();
+    if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalized' });
+
+    const sheets = getSheets();
+    await getOrCreateSubmissionsSheet(sheets);
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A2:C`,
+    }).catch(() => ({ data: { values: [] } }));
+    const rows = response.data.values || [];
+    const rowIdx = rows.findIndex(r =>
+      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() && r[1] === month
+    );
+
+    if (rowIdx === -1) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
+        valueInputOption: 'RAW', requestBody: { values: [[name, month, 'submitted']] },
+      });
+    } else {
+      const sheetRow = rowIdx + 2; // +1 for header, +1 for 1-based indexing
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!C${sheetRow}`,
+        valueInputOption: 'RAW', requestBody: { values: [['submitted']] },
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- GET /api/dj/submissions/:month --------------------------------------- */
+app.get('/api/dj/submissions/:month', async (req, res) => {
+  if (req.headers['x-admin-password'] !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  try {
+    const month = decodeURIComponent(req.params.month);
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A2:C`,
+    }).catch(() => ({ data: { values: [] } }));
+    const submitted = (response.data.values || [])
+      .filter(r => r[1] === month && r[0] && r[2])
+      .map(r => ({ name: r[0].trim(), status: r[2] }));
+    res.json({ success: true, submitted });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
