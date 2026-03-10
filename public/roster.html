@@ -1267,7 +1267,14 @@ async function suggestRoster() {
 
   function isLoveDJAvailable(djName, dateStr, slot) {
     const info = LOVE_DJS[djName];
-    if (!info) return false;
+    if (!info) {
+      // DJ not in the hardcoded weekly pattern — fall back to submitted availability data.
+      const ns = normalizeSlot(slot);
+      const avail = availability[dateStr]?.[ns];
+      if (!Array.isArray(avail) || !avail.includes(djName)) return false;
+      if (Object.entries(arkbarAssignments).some(([k,v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
+      return true;
+    }
     const dow = new Date(dateStr).getDay();
     if (!info.days.includes(dow)) return false;
     if (info.excluded) {
