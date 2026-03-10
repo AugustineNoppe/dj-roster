@@ -1106,6 +1106,7 @@ async function submitAvailability() {
 
     if (submitData.success) {
       submissionStatus = 'submitted';
+      isLocked = true;
       setSaveState('saved');
       setTimeout(() => { if (saveState === 'saved') setSaveState('idle'); }, 3000);
       showToast(`Availability submitted for ${month}`, 'success');
