@@ -931,7 +931,7 @@ app.post('/api/roster/finalize', async (req, res) => {
       spreadsheetId: SHEET_ID, range: `${FINALIZED_SHEET}!A:C`,
       valueInputOption: 'RAW',
       requestBody: { values: [[month, new Date().toISOString(), grandCost]] },
-    }).catch(err => console.error('Finalized Months write:', err.message));
+    });
 
     cache.finalized.data = null;
     res.json({ success: true, month, report, grandTotal, grandCost });
