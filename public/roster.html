@@ -619,7 +619,23 @@ const DJ_COLORS = {
   'Jessi':'#f57f17','Cocoa':'#4e342e','Mostyx':'#0277bd','Laina':'#ad1457',
   'Buba':'#00838f','Vozka':'#4527a0','Sky':'#2e7d32','Tobi':'#5d4037',
   'Spice':'#c62828','Guest DJ':'#78909c',
+  'Donsine':'#00897b','Bollie':'#f4511e',
 };
+
+function getDJColor(name) {
+  if (DJ_COLORS[name]) return DJ_COLORS[name];
+  // Hash-based fallback for any DJ not in DJ_COLORS
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const palette = [
+    '#1565c0','#6a1b9a','#00695c','#b71c1c','#e65100',
+    '#558b2f','#f57f17','#4e342e','#0277bd','#ad1457',
+    '#00838f','#4527a0','#2e7d32','#5d4037','#c62828'
+  ];
+  return palette[Math.abs(hash) % palette.length];
+}
 
 // HIP weekly rotation (4 slots per night, one DJ)
 const HIP_ROTATION = { 1:'Vozka', 4:'Tobi' };
@@ -899,7 +915,7 @@ function buildCell(dateStr, slot, type) {
     return `<td class="${tdClass} empty-slot"><select class="slot-select no-avail" disabled><option>\u2014</option></select></td>`;
   }
 
-  const djColor = assigned ? (DJ_COLORS[assigned] || '#555') : '';
+  const djColor = assigned ? (getDJColor(assigned) || '#555') : '';
   const unsubmittedCell = assigned && assigned !== 'Guest DJ' && submittedDJs.get(assigned) !== 'submitted';
   const color = unsubmittedCell ? '#F5A623' : djColor;
   const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}`;
@@ -974,7 +990,7 @@ async function assignDJ(sel) {
 
   // Update UI immediately
   if (dj) {
-    const color = DJ_COLORS[dj] || '#555';
+    const color = getDJColor(dj) || '#555';
     sel.className = 'slot-select assigned';
     sel.style.background = color;
     sel.style.borderColor = color;
@@ -1498,7 +1514,7 @@ function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
     const editBtn = `<button class="dj-edit-btn" title="Edit name/rate" onclick="event.stopPropagation();editDJ('${dj.name.replace(/'/g,"\\'")}',${dj.rate})">&#9998;</button>`;
     return `<tr>
       <td><div class="dj-name-cell" style="cursor:pointer" onclick="showDJDetail('${dj.name.replace(/'/g,"\\'")}')">
-        <div class="dj-dot" style="background:${DJ_COLORS[dj.name]||'#aaa'}"></div>
+        <div class="dj-dot" style="background:${getDJColor(dj.name)||'#aaa'}"></div>
         <div>
           <div class="dj-name" style="text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;display:flex;align-items:center;gap:4px">${dj.name}${isUnconfirmed ? ' \u26A0' : ''}${editBtn}</div>
           ${isResident ? '<div style="font-size:9px;color:var(--teal);font-weight:800;text-transform:uppercase;letter-spacing:.06em">Resident</div>' : ''}
@@ -1585,7 +1601,7 @@ async function showDJDetail(djName) {
   let arkTotal = 0, hipTotal = 0, loveTotal = 0;
   const djInfo = (djList || []).find(d => d.name === djName);
   const rate = djInfo ? djInfo.rate : 0;
-  const color = DJ_COLORS[djName] || '#aaa';
+  const color = getDJColor(djName) || '#aaa';
 
   const formatSlots = slots => slots.length > 0
     ? `<div class="dj-slot-cell">${slots.map(s => `<span class="dj-slot-tag">${s}</span>`).join('')}</div>`
@@ -1972,7 +1988,7 @@ function updateHoursPanel() {
     const t = TARGETS[r];
     const pct = Math.min(h / t * 100, 100);
     const cls = h > t ? 'over' : h >= t * 0.9 ? 'warn' : 'ok';
-    const color = DJ_COLORS[r] || '#aaa';
+    const color = getDJColor(r) || '#aaa';
     html += `<div class="hp-row">
       <div class="hp-dot" style="background:${color}"></div>
       <div class="hp-name">${r}</div>
