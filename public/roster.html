@@ -599,7 +599,7 @@ let hipAssignments = {};
 let loveAssignments = {};
 let residentBlackouts = {};
 let djList = [];
-let submittedDJs = new Set(); // DJs who have submitted availability for current month
+let submittedDJs = new Map(); // name → status ('pre-loaded' | 'submitted')
 let overrideMode = false;
 let isPublished = false;
 let toastTimer;
@@ -802,7 +802,7 @@ async function loadAll() {
     if (configData.success && Array.isArray(configData.residents) && configData.residents.length) {
       RESIDENTS = configData.residents;
     }
-    submittedDJs = new Set((submissionsData.submitted || []).map(s => s.name));
+    submittedDJs = new Map((submissionsData.submitted || []).map(s => [s.name, s.status]));
 
     availability = availData.availability || {};
     residentBlackouts = availData.blackouts || {};
@@ -899,9 +899,16 @@ function buildCell(dateStr, slot, type) {
 
   let options = [];
 
-  // Non-resident DJs: only include if they have submitted availability, or admin is in override mode.
-  options = avail.filter(dj => !RESIDENTS.includes(dj) && (overrideMode || submittedDJs.has(dj)));
+  if (overrideMode) {
+    // Override: include every DJ from the full list, ignoring submission and slot availability.
+    options = djList.map(d => d.name).filter(dj => !RESIDENTS.includes(dj) && dj !== 'Guest DJ');
+  } else {
+    // Normal: only DJs who have any submission record AND are available for this specific slot.
+    options = avail.filter(dj => !RESIDENTS.includes(dj) && submittedDJs.has(dj));
+  }
   RESIDENTS.forEach(res => {
+    // If we have submitted availability data for this resident, enforce slot-level availability.
+    if (!overrideMode && submittedDJs.has(res) && !avail.includes(res)) return;
     const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
     if (bo === 'full') return;
     if (type === 'arkbar' && bo === 'morning' && MORNING_SLOTS.includes(slot)) return;
@@ -926,8 +933,9 @@ function buildCell(dateStr, slot, type) {
   options.forEach(dj => {
     const arkKey = `${dateStr}|${slot}`;
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[arkKey] === dj;
-    const unsubmitted = !RESIDENTS.includes(dj) && dj !== 'Guest DJ' && !submittedDJs.has(dj);
-    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (unsubmitted ? `${dj} \u26A0` : dj);
+    // Show ⚠ for any DJ who has not formally submitted (pre-loaded and Guest DJ exempt from warning).
+    const notSubmitted = dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted';
+    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (notSubmitted ? `${dj} \u26A0` : dj);
     opts += `<option value="${dj}"${dj === assigned ? ' selected' : ''}>${label}</option>`;
   });
   if (assigned && !options.includes(assigned)) {
@@ -1099,6 +1107,15 @@ async function suggestRoster() {
   if (isPublished) { showToast('Unlock roster before auto-suggesting', 'error'); return; }
   if (currentVenue === 'hours') { showToast('Switch to a venue tab first', 'error'); return; }
 
+  // Always refresh submission state so casual DJs who submitted after page load are included.
+  try {
+    const enc = encodeURIComponent;
+    const freshSubs = await fetch(`/api/dj/submissions/${enc(getMonthString())}`, {
+      headers: { 'x-admin-password': adminPassword },
+    }).then(r => r.json());
+    submittedDJs = new Map((freshSubs.submitted || []).map(s => [s.name, s.status]));
+  } catch(e) { /* use existing submittedDJs */ }
+
   showToast('Auto-suggesting resident slots...', '');
 
   const isLove = currentVenue === 'love';
@@ -1185,7 +1202,7 @@ async function suggestRoster() {
   const prevYear  = currentMonth === 0 ? currentYear - 1 : currentYear;
   const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
   const prevMonthStr = `${MONTHS[prevMonth]} ${prevYear}`;
-  const venue = currentVenue === 'love' ? 'love' : (currentVenue === 'hip' ? 'hip' : 'arkbar');
+  const venue = currentVenue; // 'arkbar' | 'hip' | 'love' — already maps to API param
   let prevRosterMap = {}; // "dow|slot" → dj
   try {
     const prevData = await fetch(`/api/roster?venue=${venue}&month=${encodeURIComponent(prevMonthStr)}`).then(r => r.json());
@@ -1338,7 +1355,11 @@ async function suggestRoster() {
   const loveWorking = { ...working };
   const LOVE_AFTERNOON = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
   const LOVE_EVENING = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'];
-  const loveDJNames = Object.keys(LOVE_DJS).sort();
+  // Include submitted casual DJs alongside the hardcoded weekly-pattern pool.
+  const loveDJNames = [...new Set([
+    ...Object.keys(LOVE_DJS),
+    ...[...submittedDJs.keys()].filter(name => !RESIDENTS.includes(name) && name !== 'Guest DJ'),
+  ])].sort();
   let loveRotAfternoon = 0, loveRotEvening = 0;
 
   // Davoted's fixed Love Beach weekly slots (assigned before rotation)
