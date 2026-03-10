@@ -19,6 +19,9 @@ function getSheets() {
 
 const SHEET_ID = process.env.SPREADSHEET_ID;
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
+// DJs with server-injected fixed schedules who are not residents.
+// Their blackout entries must also be tracked so a blackout can suppress a fixed slot.
+const FIXED_SCHEDULE_DJS = ['Davoted'];
 const ALL_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
   '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
@@ -133,8 +136,10 @@ async function fetchBlackouts(month) {
 
   const blackouts = {};
   RESIDENTS.forEach(r => { blackouts[r] = {}; });
+  FIXED_SCHEDULE_DJS.forEach(dj => { blackouts[dj] = {}; });
   for (const [dj, dateRaw, monthLabel, , type] of (response.data.values || [])) {
-    if (!dj || !dateRaw || !blackouts[dj]) continue;
+    if (!dj || !dateRaw) continue;
+    if (!blackouts[dj]) blackouts[dj] = {}; // handle any DJ present in the sheet
     if (month && monthLabel !== month) continue;
     const dk = parseDateKey(dateRaw);
     if (dk) blackouts[dj][dk] = type || 'full';
@@ -239,8 +244,12 @@ async function fetchAvailability(month) {
     for (let d = 1; d <= daysInMonth; d++) {
       const dk = makeDateKey(year, monthIdx + 1, d);
       const dow = new Date(year, monthIdx, d).getDay();
+      // A blackout for Davoted suppresses his fixed slots for that day.
+      const davotedBo = blackouts['Davoted']?.[dk];
+      if (davotedBo === 'full') continue;
       const slots = [...(DAVOTED_ARKBAR_SLOTS[dow] || []), ...(DAVOTED_LOVE_SLOTS[dow] || [])];
       for (const slot of slots) {
+        if (davotedBo === 'morning' && MORNING_SLOTS.has(slot)) continue;
         const ns = normalizeSlot(slot);
         (map[dk] ??= {})[ns] ??= [];
         if (!map[dk][ns].includes('Davoted')) map[dk][ns].push('Davoted');
@@ -292,6 +301,11 @@ app.use(express.static(path.join(__dirname, 'public'), {
 /* == AUTH ================================================================== */
 app.post('/api/auth', (req, res) => {
   res.json({ success: req.body.password === process.env.ADMIN_PASSWORD });
+});
+
+/* == CONFIG ================================================================ */
+app.get('/api/config', (req, res) => {
+  res.json({ success: true, residents: RESIDENTS });
 });
 
 /* == API ROUTES =========================================================== */
@@ -902,7 +916,7 @@ app.post('/api/roster/finalize', async (req, res) => {
     ]);
 
     const djMap = {};
-    (djData.djs || []).forEach(d => { djMap[d.name.toLowerCase()] = d; });
+    (djData.djs || []).forEach(d => { djMap[d.name.trim().toLowerCase()] = d; });
 
     const hours = {};
     for (const { key, data } of [{ key: 'arkbar', data: arkData }, { key: 'hip', data: hipData }, { key: 'love', data: loveData }]) {
@@ -919,7 +933,7 @@ app.post('/api/roster/finalize', async (req, res) => {
     let grandTotal = 0, grandCost = 0;
     Object.keys(hours).sort().forEach(djName => {
       const h = hours[djName];
-      const info = djMap[djName.toLowerCase()];
+      const info = djMap[djName.trim().toLowerCase()];
       const rate = info ? info.rate : 0;
       const cost = h.total * rate;
       grandTotal += h.total; grandCost += cost;
@@ -927,11 +941,16 @@ app.post('/api/roster/finalize', async (req, res) => {
     });
 
     const sheets = getSheets();
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID, range: `${FINALIZED_SHEET}!A:C`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[month, new Date().toISOString(), grandCost]] },
-    }).catch(err => console.error('Finalized Months write:', err.message));
+    try {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID, range: `${FINALIZED_SHEET}!A:C`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[month, new Date().toISOString(), grandCost]] },
+      });
+    } catch (writeErr) {
+      console.error('Finalized Months write failed:', writeErr.message);
+      return res.json({ success: false, error: 'Failed to record finalization: ' + writeErr.message });
+    }
 
     cache.finalized.data = null;
     res.json({ success: true, month, report, grandTotal, grandCost });

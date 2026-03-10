@@ -601,13 +601,15 @@ const LOVE_SAT_SLOTS = [
   '22:00\u201323:00','23:00\u201300:00'
 ];
 
-const RESIDENTS = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
+// Populated from /api/config on load; fallback keeps the app functional if the fetch fails.
+let RESIDENTS = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
 const RESIDENTS_LATE_NIGHT = ['Alex RedWhite','Raffo DJ'];
 const MORNING_SLOTS = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00','18:00\u201319:00'];
 const RESIDENT_TARGET = 80;
 const RESIDENT_MIN = 88;   // monthly minimum — warning shown in Hours tab
 const SOUND_BOGIE_TARGET = 35;
 const RESIDENTS_80HR = ['Alex RedWhite','Raffo DJ'];
+const TARGETS = { 'Alex RedWhite':80, 'Raffo DJ':80, 'Sound Bogie':40 };
 const LATE_NIGHT_SLOTS = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
 
 const DJ_COLORS = {
@@ -765,16 +767,20 @@ async function loadAll() {
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   const month = getMonthString();
   try {
-    const [availRes, arkbarRes, hipRes, loveRes, djRes] = await Promise.all([
+    const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes] = await Promise.all([
       fetch(`/api/availability?month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=hip&month=${encodeURIComponent(month)}`),
       fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`),
       fetch('/api/djs'),
+      fetch('/api/config'),
     ]);
-    const [availData, arkbarData, hipData, loveData, djData] = await Promise.all([
-      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json()
+    const [availData, arkbarData, hipData, loveData, djData, configData] = await Promise.all([
+      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json(), configRes.json()
     ]);
+    if (configData.success && Array.isArray(configData.residents) && configData.residents.length) {
+      RESIDENTS = configData.residents;
+    }
 
     availability = availData.availability || {};
     residentBlackouts = availData.blackouts || {};
@@ -1043,7 +1049,6 @@ async function suggestRoster() {
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
   // Configuration
-  const TARGETS = { 'Alex RedWhite':80, 'Raffo DJ':80, 'Sound Bogie':40 };
   const MAX_CONSECUTIVE = 3;
   const MAX_DAY_HOURS = 6;
 
@@ -1262,7 +1267,14 @@ async function suggestRoster() {
 
   function isLoveDJAvailable(djName, dateStr, slot) {
     const info = LOVE_DJS[djName];
-    if (!info) return false;
+    if (!info) {
+      // DJ not in the hardcoded weekly pattern — fall back to submitted availability data.
+      const ns = normalizeSlot(slot);
+      const avail = availability[dateStr]?.[ns];
+      if (!Array.isArray(avail) || !avail.includes(djName)) return false;
+      if (Object.entries(arkbarAssignments).some(([k,v]) => k.startsWith(dateStr + '|') && v === djName)) return false;
+      return true;
+    }
     const dow = new Date(dateStr).getDay();
     if (!info.days.includes(dow)) return false;
     if (info.excluded) {
@@ -1898,7 +1910,6 @@ function toggleHoursPanel() {
 function updateHoursPanel() {
   const body = $('hoursPanelBody');
   if (!body) return;
-  const targets = { 'Alex RedWhite':80, 'Raffo DJ':80, 'Sound Bogie':40 };
   const resHours = {};
   RESIDENTS.forEach(r => { resHours[r] = 0; });
   [arkbarAssignments, hipAssignments, loveAssignments].forEach(map => {
@@ -1908,7 +1919,7 @@ function updateHoursPanel() {
   let html = '';
   RESIDENTS.forEach(r => {
     const h = resHours[r];
-    const t = targets[r];
+    const t = TARGETS[r];
     const pct = Math.min(h / t * 100, 100);
     const cls = h > t ? 'over' : h >= t * 0.9 ? 'warn' : 'ok';
     const color = DJ_COLORS[r] || '#aaa';
