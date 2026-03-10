@@ -892,7 +892,6 @@ function buildCell(dateStr, slot, type) {
     return `<td class="${tdClass} empty-slot"><select class="slot-select no-avail" disabled><option>\u2014</option></select></td>`;
   }
 
-  console.log('submittedDJs at render:', submittedDJs);
   const djColor = assigned ? (DJ_COLORS[assigned] || '#555') : '';
   const unsubmittedCell = assigned && assigned !== 'Guest DJ' && submittedDJs.get(assigned) !== 'submitted';
   const color = unsubmittedCell ? '#F5A623' : djColor;
