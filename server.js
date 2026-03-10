@@ -637,36 +637,47 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     let submissionStatus = submissionRow ? (submissionRow[2] || 'none') : 'none';
 
     // For residents with no existing submission record, pre-load default availability.
+    const stored = {};
+    let preloaded = false;
     if (!submissionRow && isResident && monthIdx >= 0 && !isNaN(year)) {
       await getOrCreateSubmissionsSheet(sheets);
       const preloadRows = generatePreloadRows(name, month, monthIdx, year);
       if (preloadRows && preloadRows.length > 0) {
-        await sheets.spreadsheets.values.append({
-          spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
-          valueInputOption: 'RAW', requestBody: { values: preloadRows },
-        });
-        await sheets.spreadsheets.values.append({
-          spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
-          valueInputOption: 'RAW', requestBody: { values: [[name, month, 'pre-loaded']] },
-        });
+        // Write avail rows and submission record in parallel — no need to read back what we just wrote.
+        await Promise.all([
+          sheets.spreadsheets.values.append({
+            spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
+            valueInputOption: 'RAW', requestBody: { values: preloadRows },
+          }),
+          sheets.spreadsheets.values.append({
+            spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
+            valueInputOption: 'RAW', requestBody: { values: [[name, month, 'pre-loaded']] },
+          }),
+        ]);
         submissionStatus = 'pre-loaded';
+        // Build stored directly from the generated rows — avoids an extra Sheets read.
+        for (const [, dk, ns, , status] of preloadRows) {
+          if (!stored[dk]) stored[dk] = {};
+          stored[dk][ns] = status;
+        }
+        preloaded = true;
       }
     }
 
-    // Read stored availability rows for this DJ+month.
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
-    }).catch(() => ({ data: { values: [] } }));
-
-    const stored = {};
-    for (const row of (response.data.values || [])) {
-      if (!row[0] || row[0].trim().toLowerCase() !== name.trim().toLowerCase()) continue;
-      if (row[3] !== month) continue;
-      const dk = parseDateKey(row[1]);
-      if (!dk || !row[2]) continue;
-      const ns = normalizeSlot(row[2]);
-      if (!stored[dk]) stored[dk] = {};
-      stored[dk][ns] = row[4] || (isResident ? 'available' : 'unavailable');
+    // Read stored availability from Sheets (skipped when we just pre-loaded it above).
+    if (!preloaded) {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
+      }).catch(() => ({ data: { values: [] } }));
+      for (const row of (response.data.values || [])) {
+        if (!row[0] || row[0].trim().toLowerCase() !== name.trim().toLowerCase()) continue;
+        if (row[3] !== month) continue;
+        const dk = parseDateKey(row[1]);
+        if (!dk || !row[2]) continue;
+        const ns = normalizeSlot(row[2]);
+        if (!stored[dk]) stored[dk] = {};
+        stored[dk][ns] = row[4] || (isResident ? 'available' : 'unavailable');
+      }
     }
 
     const availability = {};
