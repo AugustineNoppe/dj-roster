@@ -578,6 +578,7 @@ let loveAssignments = {};
 let residentBlackouts = {};
 let djList = [];
 let submittedDJs = new Map(); // name → status ('pre-loaded' | 'submitted')
+let fixedSchedules = null;   // populated once from /api/fixed-schedules
 let isPublished = false;
 let toastTimer;
 
@@ -761,6 +762,12 @@ function switchVenue(venue) {
 // === DATA LOADING ===
 async function loadAll() {
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
+  if (!fixedSchedules) {
+    try {
+      const d = await fetch('/api/fixed-schedules').then(r => r.json());
+      if (d.success) fixedSchedules = d.schedules;
+    } catch(e) { /* non-fatal — suggestRoster will fall back gracefully */ }
+  }
   const month = getMonthString();
   try {
     const enc = encodeURIComponent;
@@ -1234,15 +1241,10 @@ async function suggestRoster() {
     }
 
     // Pass 5: Davoted's fixed ARKbar weekly slots
-    const DAVOTED_ARKBAR_FIXED = {
-      1: ['14:00\u201315:00','15:00\u201316:00'],
-      3: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
-      4: ['14:00\u201315:00','15:00\u201316:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
-      5: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
-    };
+    const davotedArkbar = fixedSchedules?.['Davoted']?.arkbar || {};
     for (let d = 1; d <= daysInMonth; d++) {
       const dow = new Date(currentYear, currentMonth, d).getDay();
-      const fixedSlots = DAVOTED_ARKBAR_FIXED[dow];
+      const fixedSlots = davotedArkbar[dow];
       if (!fixedSlots) continue;
       const dateStr = makeDateStr(currentYear, currentMonth, d);
       if (otherVenueDJs[dateStr]?.has('Davoted')) continue;
@@ -1299,13 +1301,10 @@ async function suggestRoster() {
   let loveRotAfternoon = 0, loveRotEvening = 0;
 
   // Davoted's fixed Love Beach weekly slots (assigned before rotation)
-  const DAVOTED_LOVE_FIXED = {
-    2: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
-    3: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
-  };
+  const davotedLove = fixedSchedules?.['Davoted']?.loveBeach || {};
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(currentYear, currentMonth, d).getDay();
-    const fixedSlots = DAVOTED_LOVE_FIXED[dow];
+    const fixedSlots = davotedLove[dow];
     if (!fixedSlots) continue;
     const dateStr = makeDateStr(currentYear, currentMonth, d);
     if (Object.entries(arkbarAssignments).some(([k,v]) => k.startsWith(dateStr + '|') && v === 'Davoted')) continue;

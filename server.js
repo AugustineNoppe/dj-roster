@@ -114,6 +114,24 @@ function tabName(venue) {
        : 'ARKbar Roster';
 }
 
+/* == FIXED DJ SCHEDULES =================================================== */
+// Single source of truth for DJs with server-injected recurring weekly schedules.
+// Keys are day-of-week (0=Sun … 6=Sat). Add new fixed-schedule DJs here for Phase 2.
+const FIXED_SCHEDULES = {
+  'Davoted': {
+    arkbar: {
+      1: ['14:00\u201315:00','15:00\u201316:00'],
+      3: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
+      4: ['14:00\u201315:00','15:00\u201316:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
+      5: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
+    },
+    loveBeach: {
+      2: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
+      3: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
+    },
+  },
+};
+
 /* == CACHE LAYER ========================================================== */
 /*
  * TTLs tuned by data volatility:
@@ -281,30 +299,21 @@ async function fetchAvailability(month) {
     }
   }
 
-  // Auto-populate Davoted's fixed recurring monthly schedule
+  // Auto-populate fixed recurring monthly schedules from FIXED_SCHEDULES.
   if (year !== undefined && monthIdx >= 0) {
-    const DAVOTED_ARKBAR_SLOTS = {
-      1: ['14:00\u201315:00','15:00\u201316:00'],
-      3: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
-      4: ['14:00\u201315:00','15:00\u201316:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
-      5: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
-    };
-    const DAVOTED_LOVE_SLOTS = {
-      2: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
-      3: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
-    };
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dk = makeDateKey(year, monthIdx + 1, d);
-      const dow = new Date(year, monthIdx, d).getDay();
-      // A blackout for Davoted suppresses his fixed slots for that day.
-      const davotedBo = blackouts['Davoted']?.[dk];
-      if (davotedBo === 'full') continue;
-      const slots = [...(DAVOTED_ARKBAR_SLOTS[dow] || []), ...(DAVOTED_LOVE_SLOTS[dow] || [])];
-      for (const slot of slots) {
-        if (davotedBo === 'morning' && MORNING_SLOTS.has(slot)) continue;
-        const ns = normalizeSlot(slot);
-        (map[dk] ??= {})[ns] ??= [];
-        if (!map[dk][ns].includes('Davoted')) map[dk][ns].push('Davoted');
+    for (const [djName, sched] of Object.entries(FIXED_SCHEDULES)) {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dk = makeDateKey(year, monthIdx + 1, d);
+        const dow = new Date(year, monthIdx, d).getDay();
+        const djBo = blackouts[djName]?.[dk];
+        if (djBo === 'full') continue;
+        const slots = [...(sched.arkbar[dow] || []), ...(sched.loveBeach[dow] || [])];
+        for (const slot of slots) {
+          if (djBo === 'morning' && MORNING_SLOTS.has(slot)) continue;
+          const ns = normalizeSlot(slot);
+          (map[dk] ??= {})[ns] ??= [];
+          if (!map[dk][ns].includes(djName)) map[dk][ns].push(djName);
+        }
       }
     }
   }
@@ -358,6 +367,10 @@ app.post('/api/auth', rateLimiter, (req, res) => {
 /* == CONFIG ================================================================ */
 app.get('/api/config', (req, res) => {
   res.json({ success: true, residents: RESIDENTS });
+});
+
+app.get('/api/fixed-schedules', (req, res) => {
+  res.json({ success: true, schedules: FIXED_SCHEDULES });
 });
 
 /* == API ROUTES =========================================================== */
@@ -606,15 +619,15 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const name  = decodeURIComponent(req.params.name);
     const month = decodeURIComponent(req.params.month);
     const isResident = RESIDENTS.includes(name);
-    const isDavoted = name.trim().toLowerCase() === 'davoted';
-    // Davoted's fixed weekly slots — keyed by day-of-week (0=Sun … 6=Sat)
-    const DAVOTED_PORTAL = {
-      1: new Set(['14:00\u201315:00','15:00\u201316:00']),
-      2: new Set(['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00']),
-      3: new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00']),
-      4: new Set(['14:00\u201315:00','15:00\u201316:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00']),
-      5: new Set(['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00']),
-    };
+    const fixedSched = FIXED_SCHEDULES[name] || null;
+    // Build combined per-dow slot Set from FIXED_SCHEDULES for DJs with fixed schedules.
+    const FIXED_PORTAL = {};
+    if (fixedSched) {
+      for (const [dow, slots] of [...Object.entries(fixedSched.arkbar), ...Object.entries(fixedSched.loveBeach)]) {
+        if (!FIXED_PORTAL[dow]) FIXED_PORTAL[dow] = new Set();
+        slots.forEach(s => FIXED_PORTAL[dow].add(s));
+      }
+    }
 
     const parts = month.split(' ');
     const monthIdx = MONTH_NAMES.indexOf(parts[0]);
@@ -687,12 +700,12 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       for (let d = 1; d <= days; d++) {
         const dk = makeDateKey(year, monthIdx + 1, d);
         const dow = new Date(year, monthIdx, d).getDay();
-        const davotedToday = isDavoted ? (DAVOTED_PORTAL[dow] || new Set()) : null;
+        const fixedToday = fixedSched ? (FIXED_PORTAL[dow] || new Set()) : null;
         availability[dk] = {};
         for (const slot of ALL_SLOTS) {
           const ns = normalizeSlot(slot);
           const defaultStatus = isResident ? 'available'
-            : (davotedToday && davotedToday.has(ns)) ? 'available'
+            : (fixedToday && fixedToday.has(ns)) ? 'available'
             : 'unavailable';
           availability[dk][ns] = (stored[dk] && stored[dk][ns] !== undefined)
             ? stored[dk][ns]
