@@ -430,7 +430,7 @@ app.get('/api/roster', async (req, res) => {
 });
 
 /* == BLACKOUT SUBMISSION ================================================== */
-app.post('/api/blackout', requireAdmin, async (req, res) => {
+app.post('/api/blackout', requireDJAuth, async (req, res) => {
   try {
     const { dj, month, dates } = req.body;
     if (!dj || !month || !Array.isArray(dates)) return res.json({ success: false, error: 'Missing fields' });
