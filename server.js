@@ -131,10 +131,10 @@ const cache = {
   djs:          { data: null, time: 0, ttl: 10 * 60 * 1000 },
   availability: new Map(),
   roster:       new Map(),
-  blackouts:    { data: null, time: 0, ttl: 0, month: null },
+  blackouts:    { data: null, time: 0, ttl: 3 * 60 * 1000, month: null },
 };
 
-const AVAIL_TTL = 0;
+const AVAIL_TTL = 3 * 60 * 1000;
 
 function isFresh(entry) {
   return entry.data !== null && (Date.now() - entry.time) < entry.ttl;
