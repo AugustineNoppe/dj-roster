@@ -1276,6 +1276,80 @@ app.post('/api/roster/finalize', async (req, res) => {
   }
 });
 
+/* == ADMIN — RESET MONTH ================================================== */
+app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
+  try {
+    const { month } = req.body;
+    if (!month || !/^[A-Za-z]+ \d{4}$/.test(month.trim())) {
+      return res.status(400).json({ success: false, error: 'Invalid or missing month' });
+    }
+    const sheets = getSheets();
+    const rosterHeader = ['Date', 'Slot', 'DJ', 'Month'];
+
+    // a. Clear DJ Availability rows for this month (column D = month)
+    {
+      let rows = [];
+      try {
+        rows = (await sheets.spreadsheets.values.get({
+          spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
+        })).data.values || [];
+      } catch(e) {}
+      const header = rows[0] || [];
+      const keep = rows.slice(1).filter(r => (r[3] || '') !== month);
+      await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E` });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A1`,
+        valueInputOption: 'RAW', requestBody: { values: [header, ...keep] },
+      });
+    }
+
+    // b. Clear DJ Submissions rows for this month (column B = month)
+    {
+      let rows = [];
+      try {
+        rows = (await sheets.spreadsheets.values.get({
+          spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
+        })).data.values || [];
+      } catch(e) {}
+      const header = rows[0] || [];
+      const keep = rows.slice(1).filter(r => (r[1] || '') !== month);
+      await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C` });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A1`,
+        valueInputOption: 'RAW', requestBody: { values: [header, ...keep] },
+      });
+    }
+
+    // c. Flush roster cache
+    invalidateAllRosters(month);
+
+    // d. Flush availability cache for this month
+    cache.availability.delete(month);
+
+    // e. Clear all three roster sheets for this month
+    for (const tab of ['ARKbar Roster', 'HIP Roster', 'Love Beach Roster']) {
+      let rows = [];
+      try {
+        rows = (await sheets.spreadsheets.values.get({
+          spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
+        })).data.values || [];
+      } catch(e) {}
+      const dataRows = rows.filter(r => r[0] && r[0] !== 'Date');
+      const keep = dataRows.filter(r => (r[3] || '') !== month);
+      await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${tab}!A:D` });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID, range: `${tab}!A1`,
+        valueInputOption: 'RAW', requestBody: { values: [rosterHeader, ...keep] },
+      });
+    }
+
+    res.json({ success: true, month });
+  } catch (err) {
+    console.error('Reset-month error:', err);
+    res.json({ success: false, error: err.message });
+  }
+});
+
 /* == CACHE STATUS (debug) ================================================= */
 app.get('/api/cache-status', (req, res) => {
   const age = entry => entry.data ? Math.round((Date.now() - entry.time) / 1000) + 's' : null;
