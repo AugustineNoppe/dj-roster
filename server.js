@@ -132,6 +132,46 @@ const FIXED_SCHEDULES = {
   },
 };
 
+/* == FIXED AVAILABILITY (Phase 2 pre-load) ================================= */
+// Per-DJ availability patterns for non-resident DJs that get pre-loaded on first view.
+// These do NOT auto-submit — the DJ must still confirm, keeping the amber state on roster.
+const FIXED_AVAILABILITY = {
+  Vozka: {
+    availableDays: [1, 2, 5], // Mon, Tue, Fri
+    availableSlots: ['21:00\u201322:00', '22:00\u201323:00', '23:00\u201300:00', '00:00\u201301:00'],
+    allSlotsOnAvailableDays: false
+  },
+  Tobi: {
+    availableDays: [4], // Thu
+    availableSlots: ['21:00\u201322:00', '22:00\u201323:00', '23:00\u201300:00', '00:00\u201301:00'],
+    allSlotsOnAvailableDays: false
+  },
+  Buba: {
+    unavailableDays: [0, 1], // Sun, Mon — all slots
+    allSlotsOnUnavailableDays: true
+  },
+  Sky: {
+    unavailableDays: [3, 5], // Wed, Fri — all slots
+    allSlotsOnUnavailableDays: true
+  },
+  Donsine: {
+    availableDays: [4, 5, 6, 0], // Thu, Fri, Sat, Sun
+    allSlotsOnAvailableDays: true
+  },
+  Mostyx: {
+    defaultStatus: 'available',
+    unavailableSlotsByDay: {
+      4: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00'], // Thu
+      6: ['15:00\u201316:00', '16:00\u201317:00', '17:00\u201318:00']  // Sat
+    }
+  }
+};
+const ALL_ARKBAR_SLOTS = [
+  '14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00', '17:00\u201318:00',
+  '18:00\u201319:00', '19:00\u201320:00', '20:00\u201321:00', '21:00\u201322:00',
+  '22:00\u201323:00', '23:00\u201300:00', '00:00\u201301:00', '01:00\u201302:00'
+];
+
 /* == CACHE LAYER ========================================================== */
 /*
  * TTLs tuned by data volatility:
@@ -706,6 +746,33 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       }
     }
 
+    // For FIXED_AVAILABILITY DJs with no existing submission record, pre-load fixed availability.
+    if (!submissionRow && !preloaded && FIXED_AVAILABILITY[name] && monthIdx >= 0 && !isNaN(year)) {
+      await getOrCreateSubmissionsSheet(sheets);
+      const fixedRows = generateFixedAvailabilityRows(name, year, monthIdx + 1);
+      if (fixedRows.length > 0) {
+        // Expand to 5-column sheet format: [name, dateKey, normalizedSlot, month, status]
+        const sheetRows = fixedRows.map(([n, dk, slot, status]) => [n, dk, normalizeSlot(slot), month, status]);
+        await Promise.all([
+          sheets.spreadsheets.values.append({
+            spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
+            valueInputOption: 'RAW', requestBody: { values: sheetRows },
+          }),
+          sheets.spreadsheets.values.append({
+            spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
+            valueInputOption: 'RAW', requestBody: { values: [[name, month, 'pre-loaded']] },
+          }),
+        ]);
+        submissionStatus = 'pre-loaded';
+        // Build stored directly from generated rows — avoids an extra Sheets read.
+        for (const [, dk, ns, , status] of sheetRows) {
+          if (!stored[dk]) stored[dk] = {};
+          stored[dk][ns] = status;
+        }
+        preloaded = true;
+      }
+    }
+
     // Read stored availability from Sheets (skipped when we just pre-loaded it above).
     if (!preloaded) {
       const response = await sheets.spreadsheets.values.get({
@@ -800,6 +867,44 @@ function generatePreloadRows(name, month, monthIdx, year) {
       let status = 'available';
       if (isSoundBogie && (isSunday || SB_EARLY.has(ns))) status = 'unavailable';
       rows.push([name, dk, ns, month, status]);
+    }
+  }
+  return rows;
+}
+
+/* -- Generate pre-load rows for FIXED_AVAILABILITY DJs --------------------- */
+function generateFixedAvailabilityRows(djName, year, month) {
+  const config = FIXED_AVAILABILITY[djName];
+  if (!config) return [];
+  const rows = [];
+  const daysInMonth = new Date(year, month, 0).getDate();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month - 1, day);
+    const dow = date.getDay(); // 0=Sun
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    for (const slot of ALL_ARKBAR_SLOTS) {
+      let status;
+      if (config.unavailableDays !== undefined) {
+        // Buba / Sky pattern — specific days all unavailable, rest all available
+        status = config.unavailableDays.includes(dow) ? 'unavailable' : 'available';
+      } else if (config.availableDays !== undefined && config.allSlotsOnAvailableDays) {
+        // Donsine pattern — specific days all available, rest all unavailable
+        status = config.availableDays.includes(dow) ? 'available' : 'unavailable';
+      } else if (config.availableDays !== undefined && !config.allSlotsOnAvailableDays) {
+        // Vozka / Tobi pattern — specific days + specific slots available, rest unavailable
+        if (config.availableDays.includes(dow) && config.availableSlots.includes(slot)) {
+          status = 'available';
+        } else {
+          status = 'unavailable';
+        }
+      } else if (config.unavailableSlotsByDay !== undefined) {
+        // Mostyx pattern — available by default, specific day+slot combos unavailable
+        const blockedSlots = config.unavailableSlotsByDay[dow] || [];
+        status = blockedSlots.includes(slot) ? 'unavailable' : 'available';
+      } else {
+        status = 'available';
+      }
+      rows.push([djName, dateStr, slot, status]);
     }
   }
   return rows;
