@@ -991,10 +991,21 @@ async function assignDJ(sel) {
   // Update UI immediately
   if (dj) {
     const color = getDJColor(dj) || '#555';
-    sel.className = 'slot-select assigned';
-    sel.style.background = color;
-    sel.style.borderColor = color;
-    sel.style.color = 'white';
+    const djStatus = submittedDJs.get(dj);
+    const isConfirmed = djStatus === 'submitted';
+    if (isConfirmed) {
+      sel.className = 'slot-select assigned';
+      sel.style.background = color;
+      sel.style.borderColor = color;
+      sel.style.color = 'white';
+      sel.title = '';
+    } else {
+      sel.className = 'slot-select assigned unconfirmed';
+      sel.style.background = '#f59e0b';
+      sel.style.borderColor = '#d97706';
+      sel.style.color = 'white';
+      sel.title = 'Availability not yet confirmed';
+    }
     rosterAssignments[key] = dj;
     if (venueParam === 'hip') hipAssignments[key] = dj;
     else if (venueParam === 'arkbar') arkbarAssignments[key] = dj;
