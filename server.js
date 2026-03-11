@@ -724,7 +724,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
         // Write avail rows and submission record in parallel — no need to read back what we just wrote.
         await Promise.all([
           supabase.from('dj_availability').upsert(
-            preloadRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot, month: mo, status })),
+            preloadRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot: slot.replace(/–/g, '-'), month: mo, status })),
             { onConflict: 'name,date,slot' }
           ),
           sheets.spreadsheets.values.append({
@@ -751,7 +751,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
         const sheetRows = fixedRows.map(([n, dk, slot, status]) => [n, dk, normalizeSlot(slot), month, status]);
         await Promise.all([
           supabase.from('dj_availability').upsert(
-            sheetRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot, month: mo, status })),
+            sheetRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot: slot.replace(/–/g, '-'), month: mo, status })),
             { onConflict: 'name,date,slot' }
           ),
           sheets.spreadsheets.values.append({
@@ -910,7 +910,7 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
       .ilike('name', name.trim())
       .eq('month', month);
 
-    const newRows = slots.map(({ date, slot, status }) => ({ name, date, slot, month, status }));
+    const newRows = slots.map(({ date, slot, status }) => ({ name, date, slot: slot.replace(/–/g, '-'), month, status }));
     if (newRows.length > 0) {
       const { error } = await supabase
         .from('dj_availability')
