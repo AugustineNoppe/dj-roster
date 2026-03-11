@@ -567,11 +567,9 @@ cache.finalized = { data: null, time: 0, ttl: 5 * 60 * 1000 };
 async function fetchFinalized() {
   const c = cache.finalized;
   if (c.data !== null && (Date.now() - c.time) < c.ttl) return c.data;
-  const sheets = getSheets();
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID, range: `${FINALIZED_SHEET}!A2:A`,
-  }).catch(() => ({ data: { values: [] } }));
-  const months = (response.data.values || []).map(r => r[0]).filter(Boolean);
+  const { data, error } = await supabase.from('finalized_months').select('month');
+  if (error) throw new Error(error.message);
+  const months = (data || []).map(r => r.month).filter(Boolean);
   c.data = { months };
   c.time = Date.now();
   return c.data;
@@ -944,12 +942,10 @@ app.post('/api/dj/signoff', async (req, res) => {
     const { name, date, slot, venue, month, password } = req.body;
     if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
     if (!name || !date || !slot || !venue || !month) return res.json({ success: false, error: 'Missing fields' });
-    const sheets = getSheets();
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[date, normalizeSlot(slot), name, venue, month, new Date().toISOString(), 'sign']] },
-    });
+    const { error } = await supabase.from('dj_signoffs').insert(
+      { date, slot: normalizeSlot(slot), name, venue, month, timestamp: new Date().toISOString(), action: 'sign' }
+    );
+    if (error) throw new Error(error.message);
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -963,14 +959,12 @@ app.post('/api/dj/signoff-batch', async (req, res) => {
     if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
     if (!name || !date || !month || !Array.isArray(slots) || slots.length === 0)
       return res.json({ success: false, error: 'Missing fields' });
-    const sheets = getSheets();
     const ts = new Date().toISOString();
-    const rows = slots.map(({ slot, venue }) => [date, normalizeSlot(slot), name, venue, month, ts, 'sign']);
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
-      valueInputOption: 'RAW',
-      requestBody: { values: rows },
-    });
+    const rows = slots.map(({ slot, venue }) => ({
+      date, slot: normalizeSlot(slot), name, venue, month, timestamp: ts, action: 'sign',
+    }));
+    const { error } = await supabase.from('dj_signoffs').insert(rows);
+    if (error) throw new Error(error.message);
     res.json({ success: true, count: rows.length });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -983,29 +977,22 @@ app.post('/api/dj/unsignoff-day', async (req, res) => {
     const { name, date, month, password } = req.body;
     if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
     if (!name || !date || !month) return res.json({ success: false, error: 'Missing fields' });
-    const sheets = getSheets();
-    // Read all signoffs for this DJ/month to find what to unsign on this date
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
-    }).catch(() => ({ data: { values: [] } }));
-    const rows = (response.data.values || []).filter(r =>
-      r[2] && r[2].trim().toLowerCase() === name.trim().toLowerCase() && r[4] === month && r[0] === date
-    );
+    // Read all signoff log entries for this DJ/date/month
+    const { data: rows, error: readError } = await supabase.from('dj_signoffs')
+      .select('*').eq('month', month).ilike('name', name).eq('date', date);
+    if (readError) throw new Error(readError.message);
     // Determine which slot|venue combos are currently net-signed
     const net = {};
-    rows.forEach(r => { const k = `${r[1]}|${r[3]}`; net[k] = (r[6] || 'sign'); });
-    const toUnsign = Object.entries(net).filter(([,action]) => action === 'sign').map(([k]) => k);
+    (rows || []).forEach(r => { net[`${r.slot}|${r.venue}`] = (r.action || 'sign'); });
+    const toUnsign = Object.entries(net).filter(([, action]) => action === 'sign').map(([k]) => k);
     if (toUnsign.length === 0) return res.json({ success: true, unsignedCount: 0 });
     const ts = new Date().toISOString();
     const unsignRows = toUnsign.map(k => {
       const [slot, venue] = k.split('|');
-      return [date, slot, name, venue, month, ts, 'unsign'];
+      return { date, slot, name, venue, month, timestamp: ts, action: 'unsign' };
     });
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
-      valueInputOption: 'RAW',
-      requestBody: { values: unsignRows },
-    });
+    const { error: writeError } = await supabase.from('dj_signoffs').insert(unsignRows);
+    if (writeError) throw new Error(writeError.message);
     res.json({ success: true, unsignedCount: unsignRows.length });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -1017,16 +1004,14 @@ app.get('/api/dj/signoffs/:name/:month', async (req, res) => {
   try {
     const name  = decodeURIComponent(req.params.name);
     const month = decodeURIComponent(req.params.month);
-    const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
-    }).catch(() => ({ data: { values: [] } }));
+    const { data, error } = await supabase.from('dj_signoffs')
+      .select('*').ilike('name', name).eq('month', month);
+    if (error) throw new Error(error.message);
     // Process log: last action per date|slot|venue wins
     const latest = {};
-    for (const r of (response.data.values || [])) {
-      if (!r[2] || r[2].trim().toLowerCase() !== name.trim().toLowerCase() || r[4] !== month) continue;
-      const key = `${r[0]}|${normalizeSlot(r[1])}|${r[3]}`;
-      latest[key] = { date: r[0], slot: normalizeSlot(r[1]), venue: r[3], action: r[6] || 'sign' };
+    for (const r of (data || [])) {
+      const key = `${r.date}|${normalizeSlot(r.slot)}|${r.venue}`;
+      latest[key] = { date: r.date, slot: normalizeSlot(r.slot), venue: r.venue, action: r.action || 'sign' };
     }
     const signoffs = Object.values(latest).filter(e => e.action === 'sign').map(({ date, slot, venue }) => ({ date, slot, venue }));
     res.json({ success: true, signoffs });
@@ -1042,16 +1027,14 @@ app.get('/api/signoffs/:month', async (req, res) => {
   }
   try {
     const month = decodeURIComponent(req.params.month);
-    const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_SIGNOFFS_SHEET}!A:G`,
-    }).catch(() => ({ data: { values: [] } }));
+    const { data, error } = await supabase.from('dj_signoffs').select('*').eq('month', month);
+    if (error) throw new Error(error.message);
     // Last action wins per DJ+date+slot+venue key
     const latest = {};
-    for (const r of (response.data.values || [])) {
-      if (!r[4] || r[4] !== month || !r[2]) continue;
-      const key = `${r[2]}|${r[0]}|${normalizeSlot(r[1])}|${r[3]}`;
-      latest[key] = { dj: r[2].trim(), action: r[6] || 'sign' };
+    for (const r of (data || [])) {
+      if (!r.name) continue;
+      const key = `${r.name}|${r.date}|${normalizeSlot(r.slot)}|${r.venue}`;
+      latest[key] = { dj: r.name.trim(), action: r.action || 'sign' };
     }
     // Count signed-off slots per DJ name
     const signedOff = {};
@@ -1137,16 +1120,13 @@ app.post('/api/roster/finalize', async (req, res) => {
       report.push({ name: djName, arkbar: h.arkbar, hip: h.hip, love: h.love, total: h.total, rate, cost });
     });
 
-    const sheets = getSheets();
-    try {
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID, range: `${FINALIZED_SHEET}!A:C`,
-        valueInputOption: 'RAW',
-        requestBody: { values: [[month, new Date().toISOString(), grandCost]] },
-      });
-    } catch (writeErr) {
-      console.error('Finalized Months write failed:', writeErr.message);
-      return res.json({ success: false, error: 'Failed to record finalization: ' + writeErr.message });
+    const { error: finalizeError } = await supabase.from('finalized_months').upsert(
+      { month, finalized_at: new Date().toISOString(), grandCost },
+      { onConflict: 'month' }
+    );
+    if (finalizeError) {
+      console.error('Finalized Months write failed:', finalizeError.message);
+      return res.json({ success: false, error: 'Failed to record finalization: ' + finalizeError.message });
     }
 
     cache.finalized.data = null;
