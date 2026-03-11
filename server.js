@@ -938,6 +938,7 @@ app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
       .upsert({ name, month, status: 'submitted' }, { onConflict: 'name,month' });
     if (error) throw new Error(error.message);
 
+    cache.availability.delete(month);
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
