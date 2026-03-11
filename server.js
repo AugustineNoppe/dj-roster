@@ -1,6 +1,11 @@
 const express = require('express');
 const path = require('path');
 const { google } = require('googleapis');
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 const app = express();
 
 /* == SECURITY HEADERS (helmet-equivalent) ================================= */
@@ -222,11 +227,11 @@ function invalidateAllRosters(month) {
 
 async function fetchDJs() {
   if (isFresh(cache.djs)) return cache.djs.data;
-  const sheets = getSheets();
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID, range: 'DJ Rates!A2:B',
-  });
-  const djs = (response.data.values || []).map(([name, rate]) => ({
+  const { data: ratesData, error: ratesError } = await supabase
+    .from('dj_rates')
+    .select('name, rate');
+  if (ratesError) throw new Error(ratesError.message);
+  const djs = (ratesData || []).map(({ name, rate }) => ({
     name, rate: parseInt(rate) || 0
   }));
   const result = { success: true, djs };
@@ -417,16 +422,15 @@ async function requireDJAuth(req, res, next) {
   const pin = req.headers['x-dj-pin'];
   if (!name || !pin) return res.status(401).json({ success: false, error: 'Unauthorised' });
   try {
-    const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_PINS_SHEET}!A2:B`,
-    }).catch(() => ({ data: { values: [] } }));
-    const rows = response.data.values || [];
-    const valid = rows.some(r =>
-      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() &&
-      r[1] && String(r[1]).trim() === String(pin).trim()
-    );
-    if (!valid) return res.status(401).json({ success: false, error: 'Unauthorised' });
+    const { data: pinData } = await supabase
+      .from('dj_pins')
+      .select('pin')
+      .ilike('name', name.trim())
+      .single();
+    const correctPin = pinData ? pinData.pin : null;
+    if (!correctPin || String(correctPin).trim() !== String(pin).trim()) {
+      return res.status(401).json({ success: false, error: 'Unauthorised' });
+    }
     next();
   } catch (err) {
     res.status(500).json({ success: false, error: 'Auth error' });
