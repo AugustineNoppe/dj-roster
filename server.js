@@ -639,17 +639,15 @@ app.post('/api/dj/login', rateLimiter, async (req, res) => {
   try {
     const { name, pin } = req.body;
     if (!name || !pin) return res.json({ success: false, error: 'Name and PIN required' });
-    const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_PINS_SHEET}!A2:B`,
-    }).catch(() => ({ data: { values: [] } }));
-    const rows = response.data.values || [];
-    const match = rows.find(r =>
-      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() &&
-      r[1] && String(r[1]).trim() === String(pin).trim()
-    );
-    if (!match) return res.json({ success: false, error: 'Invalid name or PIN' });
-    const djName = match[0].trim();
+    const { data: pinData } = await supabase
+      .from('dj_pins')
+      .select('name, pin')
+      .ilike('name', name.trim())
+      .single();
+    if (!pinData || String(pinData.pin).trim() !== String(pin).trim()) {
+      return res.json({ success: false, error: 'Invalid name or PIN' });
+    }
+    const djName = pinData.name.trim();
     const djData = await fetchDJs();
     const djInfo = (djData.djs || []).find(d => d.name.toLowerCase() === djName.toLowerCase());
     res.json({ success: true, name: djName, isResident: RESIDENTS.includes(djName), rate: djInfo ? djInfo.rate : 0 });
