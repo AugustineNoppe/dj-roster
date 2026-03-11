@@ -1181,26 +1181,13 @@ app.post('/api/djs/update', async (req, res) => {
       return res.json({ success: false, error: 'Unauthorized' });
     }
     if (!oldName || !newName || rate === undefined) return res.json({ success: false, error: 'Missing fields' });
-    const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: 'DJ Rates!A2:B',
-    });
-    const rows = response.data.values || [];
-    const idx = rows.findIndex(r => r[0] && r[0].trim().toLowerCase() === oldName.trim().toLowerCase());
-    if (idx === -1) {
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID, range: 'DJ Rates!A2:B',
-        valueInputOption: 'RAW',
-        requestBody: { values: [[newName, rate]] },
-      });
-    } else {
-      const rowNum = idx + 2;
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID, range: `DJ Rates!A${rowNum}:B${rowNum}`,
-        valueInputOption: 'RAW',
-        requestBody: { values: [[newName, rate]] },
-      });
+    if (oldName.trim().toLowerCase() !== newName.trim().toLowerCase()) {
+      await supabase.from('dj_rates').delete().ilike('name', oldName.trim());
     }
+    const { error: upsertError } = await supabase
+      .from('dj_rates')
+      .upsert({ name: newName, rate }, { onConflict: 'name' });
+    if (upsertError) throw new Error(upsertError.message);
     cache.djs.data = null;
     res.json({ success: true });
   } catch (err) {
