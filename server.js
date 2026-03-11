@@ -90,8 +90,6 @@ const MORNING_SLOTS = new Set([
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 const SHORT_MONTHS = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
-const DJ_SIGNOFFS_SHEET = 'DJ Signoffs';
-
 const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
 const pad2 = n => String(n).padStart(2, '0');
 const makeDateKey = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
@@ -558,7 +556,6 @@ app.post('/api/roster/clear', requireAdmin, async (req, res) => {
 
 /* == DJ PORTAL — NEW SHEETS / CONSTANTS =================================== */
 const DJ_AVAIL_SHEET        = 'DJ Availability';
-const FINALIZED_SHEET       = 'Finalized Months';
 const DJ_PINS_SHEET         = 'DJ PINs';
 const DJ_SUBMISSIONS_SHEET  = 'DJ Submissions';
 
@@ -1139,7 +1136,7 @@ app.post('/api/roster/finalize', async (req, res) => {
     });
 
     const { error: finalizeError } = await supabase.from('finalized_months').upsert(
-      { month, finalized_at: new Date().toISOString(), grandCost },
+      { month, finalized_at: new Date().toISOString() },
       { onConflict: 'month' }
     );
     if (finalizeError) {
