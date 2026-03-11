@@ -662,22 +662,18 @@ app.post('/api/dj/change-pin', rateLimiter, async (req, res) => {
     const { name, currentPin, newPin } = req.body;
     if (!name || !currentPin || !newPin) return res.json({ success: false, error: 'Missing fields' });
     if (!/^\d{4}$/.test(String(newPin))) return res.json({ success: false, error: 'New PIN must be exactly 4 digits' });
-    const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_PINS_SHEET}!A2:B`,
-    }).catch(() => ({ data: { values: [] } }));
-    const rows = response.data.values || [];
-    const rowIndex = rows.findIndex(r =>
-      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() &&
-      r[1] && String(r[1]).trim() === String(currentPin).trim()
-    );
-    if (rowIndex === -1) return res.json({ success: false, error: 'Current PIN is incorrect' });
-    // Rows start at row 2 in the sheet (row 1 is the header); findIndex is 0-based
-    const sheetRow = rowIndex + 2;
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID, range: `${DJ_PINS_SHEET}!B${sheetRow}`,
-      valueInputOption: 'RAW', requestBody: { values: [[String(newPin)]] },
-    });
+    const { data: pinData } = await supabase
+      .from('dj_pins')
+      .select('name, pin')
+      .ilike('name', name.trim())
+      .single();
+    if (!pinData || String(pinData.pin).trim() !== String(currentPin).trim()) {
+      return res.json({ success: false, error: 'Current PIN is incorrect' });
+    }
+    const { error: upsertError } = await supabase
+      .from('dj_pins')
+      .upsert({ name: pinData.name, pin: String(newPin) }, { onConflict: 'name' });
+    if (upsertError) throw new Error(upsertError.message);
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
