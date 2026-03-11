@@ -1571,7 +1571,7 @@ function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
       <td><div class="dj-name-cell" style="cursor:pointer" onclick="showDJDetail('${dj.name.replace(/'/g,"\\'")}')">
         <div class="dj-dot" style="background:${getDJColor(dj.name)||'#aaa'}"></div>
         <div>
-          <div class="dj-name" style="text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;display:flex;align-items:center;gap:4px">${dj.name}${isUnconfirmed ? ' \u26A0' : ''}${editBtn}</div>
+          <div class="dj-name" style="text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;display:flex;align-items:center;gap:4px">${dj.name}${editBtn}</div>
           ${isResident ? '<div style="font-size:9px;color:var(--teal);font-weight:800;text-transform:uppercase;letter-spacing:.06em">Resident</div>' : ''}
         </div>
       </div></td>
