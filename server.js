@@ -278,13 +278,11 @@ async function fetchAvailability(month) {
   const year = parseInt(parts[1]);
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
-  const [availRes, portalRes, blackouts] = await Promise.all([
+  const [availRes, portalRows, blackouts] = await Promise.all([
     sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID, range: 'DJ Availability_Datasheet!A2:F',
     }).catch(() => ({ data: { values: [] } })),
-    sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
-    }).catch(() => ({ data: { values: [] } })),
+    supabase.from('dj_availability').select('*').eq('month', month).then(({ data }) => data || []),
     fetchBlackouts(month),
   ]);
 
@@ -303,7 +301,7 @@ async function fetchAvailability(month) {
   // Residents submit 'unavailable' for slots they cannot do; these must override the default
   // "residents are always available" assumption in the loop below.
   const residentSlotBlocked = {}; // { djName: { dateKey: Set<normalizedSlot> } }
-  for (const [dj, dateRaw, slot, rowMonth, status] of (portalRes.data.values || [])) {
+  for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of portalRows) {
     if (!dj || !dateRaw || !slot || rowMonth !== month || status !== 'unavailable') continue;
     if (!RESIDENTS.includes(dj)) continue;
     const dk = parseDateKey(dateRaw);
@@ -311,11 +309,11 @@ async function fetchAvailability(month) {
     ((residentSlotBlocked[dj] ??= {})[dk] ??= new Set()).add(normalizeSlot(slot));
   }
 
-  // Include portal submissions (DJ Availability sheet) — column layout: name, date, slot, month, status
+  // Include portal submissions (dj_availability table) — columns: name, date, slot, month, status
   // status is 'available' for freelance DJs (who only save their available slots) and
   // 'unavailable' for residents (who save their blackout slots). Skip explicit unavailability;
   // treat a missing status column as available so old/manually-entered rows still appear.
-  for (const [dj, dateRaw, slot, rowMonth, status] of (portalRes.data.values || [])) {
+  for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of portalRows) {
     if (!dj || !dateRaw || !slot || rowMonth !== month || status === 'unavailable') continue;
     const dk = parseDateKey(dateRaw);
     if (!dk) continue;
@@ -725,10 +723,10 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       if (preloadRows && preloadRows.length > 0) {
         // Write avail rows and submission record in parallel — no need to read back what we just wrote.
         await Promise.all([
-          sheets.spreadsheets.values.append({
-            spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
-            valueInputOption: 'RAW', requestBody: { values: preloadRows },
-          }),
+          supabase.from('dj_availability').upsert(
+            preloadRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot, month: mo, status })),
+            { onConflict: 'name,date,slot' }
+          ),
           sheets.spreadsheets.values.append({
             spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
             valueInputOption: 'RAW', requestBody: { values: [[name, month, 'pre-loaded']] },
@@ -752,10 +750,10 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
         // Expand to 5-column sheet format: [name, dateKey, normalizedSlot, month, status]
         const sheetRows = fixedRows.map(([n, dk, slot, status]) => [n, dk, normalizeSlot(slot), month, status]);
         await Promise.all([
-          sheets.spreadsheets.values.append({
-            spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
-            valueInputOption: 'RAW', requestBody: { values: sheetRows },
-          }),
+          supabase.from('dj_availability').upsert(
+            sheetRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot, month: mo, status })),
+            { onConflict: 'name,date,slot' }
+          ),
           sheets.spreadsheets.values.append({
             spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
             valueInputOption: 'RAW', requestBody: { values: [[name, month, 'pre-loaded']] },
@@ -771,19 +769,19 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       }
     }
 
-    // Read stored availability from Sheets (skipped when we just pre-loaded it above).
+    // Read stored availability from Supabase (skipped when we just pre-loaded it above).
     if (!preloaded) {
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
-      }).catch(() => ({ data: { values: [] } }));
-      for (const row of (response.data.values || [])) {
-        if (!row[0] || row[0].trim().toLowerCase() !== name.trim().toLowerCase()) continue;
-        if (row[3] !== month) continue;
-        const dk = parseDateKey(row[1]);
-        if (!dk || !row[2]) continue;
-        const ns = normalizeSlot(row[2]);
+      const { data: availRows } = await supabase
+        .from('dj_availability')
+        .select('*')
+        .ilike('name', name.trim())
+        .eq('month', month);
+      for (const row of (availRows || [])) {
+        const dk = parseDateKey(row.date);
+        if (!dk || !row.slot) continue;
+        const ns = normalizeSlot(row.slot);
         if (!stored[dk]) stored[dk] = {};
-        stored[dk][ns] = row[4] || (isResident ? 'available' : 'unavailable');
+        stored[dk][ns] = row.status || (isResident ? 'available' : 'unavailable');
       }
     }
 
@@ -815,16 +813,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 });
 
 /* -- POST /api/dj/availability -------------------------------------------- */
-// Cached sheet gid for the DJ Availability tab (needed for row-level deletes).
-let _djAvailSheetId = null;
-async function getDjAvailSheetId(sheets) {
-  if (_djAvailSheetId !== null) return _djAvailSheetId;
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID, fields: 'sheets.properties' });
-  const sheet = (meta.data.sheets || []).find(s => s.properties.title === DJ_AVAIL_SHEET);
-  if (!sheet) throw new Error('DJ Availability sheet not found');
-  _djAvailSheetId = sheet.properties.sheetId;
-  return _djAvailSheetId;
-}
 
 /* -- Cached sheet gid for DJ Submissions tab -------------------------------- */
 let _djSubmissionsSheetId = null;
@@ -915,42 +903,19 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
     const finalized = await fetchFinalized();
     if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalized and cannot be edited' });
 
-    const sheets = getSheets();
-    const sheetId = await getDjAvailSheetId(sheets);
+    // Delete all existing rows for this DJ+month, then upsert the new ones.
+    await supabase
+      .from('dj_availability')
+      .delete()
+      .ilike('name', name.trim())
+      .eq('month', month);
 
-    // Read existing rows to identify which sheet rows belong to this DJ+month.
-    const existing = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A2:E`,
-    }).catch(() => ({ data: { values: [] } }));
-    const rows = existing.data.values || [];
-
-    // Collect 0-based sheet row indices (row 0 = header, row 1 = first data row).
-    const toDelete = [];
-    rows.forEach((r, i) => {
-      if (r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() && r[3] === month) {
-        toDelete.push(i + 1); // +1 because A2:E skips the header (index 0)
-      }
-    });
-
-    // Delete matching rows in reverse order so earlier indices stay valid.
-    if (toDelete.length > 0) {
-      const deleteRequests = toDelete.reverse().map(rowIdx => ({
-        deleteDimension: {
-          range: { sheetId, dimension: 'ROWS', startIndex: rowIdx, endIndex: rowIdx + 1 },
-        },
-      }));
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId: SHEET_ID, requestBody: { requests: deleteRequests },
-      });
-    }
-
-    // Append the new rows for this DJ+month.
-    const newRows = slots.map(({ date, slot, status }) => [name, date, slot, month, status]);
+    const newRows = slots.map(({ date, slot, status }) => ({ name, date, slot, month, status }));
     if (newRows.length > 0) {
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
-        valueInputOption: 'RAW', requestBody: { values: newRows },
-      });
+      const { error } = await supabase
+        .from('dj_availability')
+        .upsert(newRows, { onConflict: 'name,date,slot' });
+      if (error) throw new Error(error.message);
     }
 
     cache.availability.delete(month);
@@ -1271,22 +1236,8 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     const sheets = getSheets();
     const rosterHeader = ['Date', 'Slot', 'DJ', 'Month'];
 
-    // a. Clear DJ Availability rows for this month (column D = month)
-    {
-      let rows = [];
-      try {
-        rows = (await sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E`,
-        })).data.values || [];
-      } catch(e) {}
-      const header = rows[0] || [];
-      const keep = rows.slice(1).filter(r => (r[3] || '') !== month);
-      await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A:E` });
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID, range: `${DJ_AVAIL_SHEET}!A1`,
-        valueInputOption: 'RAW', requestBody: { values: [header, ...keep] },
-      });
-    }
+    // a. Clear DJ Availability rows for this month
+    await supabase.from('dj_availability').delete().eq('month', month);
 
     // b. Clear DJ Submissions rows for this month (column B = month)
     {
