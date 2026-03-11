@@ -371,18 +371,14 @@ async function fetchRoster(venue, month) {
   const cached = cache.roster.get(key);
   if (cached) return cached;
 
-  const sheets = getSheets();
-  let values = [];
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${tabName(venue)}!A:D`,
-    });
-    values = response.data.values || [];
-  } catch (e) {}
+  let query = supabase.from('roster_assignments').select('*').eq('venue', venue);
+  if (month) query = query.eq('month', month);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
 
-  const filtered = values
-    .filter(r => r[0] !== 'Date' && (!month || r[3] === month) && r[0] && r[2])
-    .map(r => { if (r[1]) r[1] = normalizeSlot(r[1]); return r; });
+  const filtered = (data || [])
+    .filter(r => r.date && r.dj)
+    .map(r => [r.date, normalizeSlot(r.slot), r.dj, r.month]);
 
   const result = { success: true, roster: filtered };
   cache.roster.set(key, result);
@@ -501,30 +497,18 @@ app.post('/api/blackout', requireDJAuth, async (req, res) => {
 /* == ASSIGN SINGLE CELL =================================================== */
 app.post('/api/roster/assign', requireAdmin, async (req, res) => {
   try {
-    const sheets = getSheets();
     const { venue, date, slot, dj, month } = req.body;
-    const tab = tabName(venue);
-    let existingRows = [];
-    try {
-      existingRows = (await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: `${tab}!A2:D`,
-      })).data.values || [];
-    } catch(e) {}
     const normSlot = normalizeSlot(slot);
-    const rowIndex = existingRows.findIndex(r => r[0] === date && normalizeSlot(r[1]) === normSlot && r[3] === month);
-    if (rowIndex >= 0) {
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID,
-        range: `${tab}!A${rowIndex + 2}:D${rowIndex + 2}`,
-        valueInputOption: 'RAW',
-        requestBody: { values: [dj ? [date, slot, dj, month] : ['', '', '', '']] },
-      });
-    } else if (dj) {
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
-        valueInputOption: 'RAW',
-        requestBody: { values: [[date, slot, dj, month]] },
-      });
+    if (dj) {
+      const { error } = await supabase.from('roster_assignments').upsert(
+        { venue, date, slot: normSlot, month, dj },
+        { onConflict: 'venue,date,slot' }
+      );
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabase.from('roster_assignments')
+        .delete().eq('venue', venue).eq('date', date).eq('slot', normSlot);
+      if (error) throw new Error(error.message);
     }
     invalidateRoster(venue, month);
     res.json({ success: true });
@@ -538,38 +522,15 @@ app.post('/api/roster/batch', requireAdmin, async (req, res) => {
   const { venue, month, assignments } = req.body;
   try {
     const result = await withVenueLock(venue, async () => {
-      const sheets = getSheets();
-      const tab = tabName(venue);
-      let existingRows = [];
-      try {
-        existingRows = (await sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
-        })).data.values || [];
-      } catch(e) {}
-      const rowMap = {};
-      existingRows.forEach((r, i) => {
-        if (r[0] && r[1] && r[3] === month) rowMap[`${r[0]}|${normalizeSlot(r[1])}`] = i;
-      });
-      const updateData = [], appendRows = [];
-      for (const { date, slot, dj } of assignments) {
-        const key = `${date}|${normalizeSlot(slot)}`;
-        if (rowMap[key] !== undefined) {
-          updateData.push({ range: `${tab}!A${rowMap[key] + 1}:D${rowMap[key] + 1}`, values: [[date, slot, dj, month]] });
-        } else {
-          appendRows.push([date, slot, dj, month]);
-        }
-      }
-      const promises = [];
-      if (updateData.length) promises.push(sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: SHEET_ID, requestBody: { valueInputOption: 'RAW', data: updateData },
+      const rows = assignments.map(({ date, slot, dj }) => ({
+        venue, date, slot: normalizeSlot(slot), month, dj,
       }));
-      if (appendRows.length) promises.push(sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
-        valueInputOption: 'RAW', requestBody: { values: appendRows },
-      }));
-      await Promise.all(promises);
+      const { error } = await supabase.from('roster_assignments').upsert(
+        rows, { onConflict: 'venue,date,slot' }
+      );
+      if (error) throw new Error(error.message);
       invalidateRoster(venue, month);
-      return { updated: updateData.length, appended: appendRows.length };
+      return { upserted: rows.length };
     });
     res.json({ success: true, ...result });
   } catch (err) {
@@ -584,24 +545,11 @@ app.post('/api/roster/clear', requireAdmin, async (req, res) => {
     if (!month || !/^[A-Za-z]+ \d{4}$/.test(month.trim())) {
       return res.status(400).json({ success: false, error: 'Invalid or missing month' });
     }
-    const sheets = getSheets();
-    const tab = tabName(venue);
-    let existingRows = [];
-    try {
-      existingRows = (await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
-      })).data.values || [];
-    } catch(e) {}
-    const header = ['Date', 'Slot', 'DJ', 'Month'];
-    const dataRows = existingRows.filter(r => r[0] && r[0] !== 'Date');
-    const keepRows = dataRows.filter(r => (r[3] || '') !== month);
-    await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${tab}!A:D` });
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID, range: `${tab}!A1`,
-      valueInputOption: 'RAW', requestBody: { values: [header, ...keepRows] },
-    });
+    const { data: deleted, error } = await supabase.from('roster_assignments')
+      .delete().eq('venue', venue).eq('month', month).select();
+    if (error) throw new Error(error.message);
     invalidateAllRosters(month);
-    res.json({ success: true, cleared: dataRows.length - keepRows.length });
+    res.json({ success: true, cleared: (deleted || []).length });
   } catch (err) {
     console.error('Clear error:', err);
     res.json({ success: false, error: err.message });
@@ -1216,7 +1164,6 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid or missing month' });
     }
     const sheets = getSheets();
-    const rosterHeader = ['Date', 'Slot', 'DJ', 'Month'];
 
     // a. Clear DJ Availability rows for this month
     await supabase.from('dj_availability').delete().eq('month', month);
@@ -1244,22 +1191,9 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     // d. Flush availability cache for this month
     cache.availability.delete(month);
 
-    // e. Clear all three roster sheets for this month
-    for (const tab of ['ARKbar Roster', 'HIP Roster', 'Love Beach Roster']) {
-      let rows = [];
-      try {
-        rows = (await sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ID, range: `${tab}!A:D`,
-        })).data.values || [];
-      } catch(e) {}
-      const dataRows = rows.filter(r => r[0] && r[0] !== 'Date');
-      const keep = dataRows.filter(r => (r[3] || '') !== month);
-      await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${tab}!A:D` });
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID, range: `${tab}!A1`,
-        valueInputOption: 'RAW', requestBody: { values: [rosterHeader, ...keep] },
-      });
-    }
+    // e. Clear all roster_assignments for this month
+    const { error: rosterDelError } = await supabase.from('roster_assignments').delete().eq('month', month);
+    if (rosterDelError) throw new Error(rosterDelError.message);
 
     res.json({ success: true, month });
   } catch (err) {
