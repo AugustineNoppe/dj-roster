@@ -1107,19 +1107,26 @@ async function suggestRoster() {
   if (currentVenue === 'hours') { showToast('Switch to a venue tab first', 'error'); return; }
 
   // Always refresh submission state and unavailability so casual DJs who submitted after page load are included.
+  const enc = encodeURIComponent;
+  const monthStr = getMonthString();
   try {
-    const enc = encodeURIComponent;
-    const [freshSubs, unavailData] = await Promise.all([
-      fetch(`/api/dj/submissions/${enc(getMonthString())}`, {
-        headers: { 'x-admin-password': adminPassword },
-      }).then(r => r.json()),
-      fetch(`/api/roster/unavailability/${enc(getMonthString())}`, {
-        headers: { 'x-admin-password': adminPassword },
-      }).then(r => r.json()),
-    ]);
-    submittedDJs = new Map((freshSubs.submitted || []).map(s => [s.name, s.status]));
-    unavailabilityMap = unavailData.unavailability || {};
-  } catch(e) { /* use existing submittedDJs / unavailabilityMap */ }
+    const freshSubs = await fetch(`/api/dj/submissions/${enc(monthStr)}`, {
+      headers: { 'x-admin-password': adminPassword },
+    }).then(r => r.json());
+    if (freshSubs.success !== false) {
+      submittedDJs = new Map((freshSubs.submitted || []).map(s => [s.name, s.status]));
+    }
+  } catch(e) { console.warn('suggestRoster: failed to refresh submissions', e); }
+  try {
+    const unavailData = await fetch(`/api/roster/unavailability/${enc(monthStr)}`, {
+      headers: { 'x-admin-password': adminPassword },
+    }).then(r => r.json());
+    if (unavailData.success && unavailData.unavailability) {
+      unavailabilityMap = unavailData.unavailability;
+    } else {
+      console.warn('suggestRoster: unavailability endpoint returned', unavailData);
+    }
+  } catch(e) { console.warn('suggestRoster: failed to fetch unavailability', e); }
 
   showToast('Auto-suggesting resident slots...', '');
 
