@@ -517,15 +517,6 @@ body {
       <div id="cal"></div>
     </div>
 
-    <!-- Resident: blackout day picker -->
-    <div id="resident-ui" style="display:none;">
-      <div style="background:rgba(241,90,41,0.12);border:1px solid rgba(241,90,41,0.3);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
-        <div style="font-size:12px;font-weight:800;color:#ff8a65;margin-bottom:4px;">Resident DJ — Days Off</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.5);font-weight:600;">You are available every day by default. Tap any days you are NOT available.</div>
-      </div>
-      <div id="blackout-cal"></div>
-    </div>
-
     <div class="btn-row">
       <button class="btn btn-ghost" onclick="goStep1()">← Back</button>
       <button class="btn btn-primary" onclick="goStep3()">Review →</button>
@@ -562,13 +553,12 @@ const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec
 
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 let isResident = false;
-let blackoutDates = new Map(); // dateLabel -> 'morning' | 'full'
 let residentPin = '';
 let st={}, djName='', moKey='', moLabel='';
 const selectVals = { 'cs-dj': '', 'cs-mo': '' };
 const selectKeys = { 'cs-mo': {} };
 
-// Load DJ list from Google Sheets
+// Load DJ list from Supabase
 fetch('/api/djs')
   .then(r => r.json())
   .then(data => {
@@ -635,103 +625,16 @@ function goStep2() {
   moLabel = selectVals['cs-mo'];
   if(!djName||!moKey){alert('Please select your DJ name and month.');return;}
   isResident = RESIDENTS.includes(djName);
-  blackoutDates = new Map();
 
-  if (isResident) {
-    // Show resident blackout UI
-    document.getElementById('regular-dj-ui').style.display = 'none';
-    document.getElementById('resident-ui').style.display = '';
-    document.getElementById('step2-title').textContent = 'Days you cannot work';
-    document.getElementById('step2-sub').textContent = 'Tap any days you are NOT available. Leave blank if you are available all month.';
-    buildBlackoutCal();
-  } else {
-    // Show regular availability UI
-    document.getElementById('regular-dj-ui').style.display = '';
-    document.getElementById('resident-ui').style.display = 'none';
-    document.getElementById('step2-title').textContent = 'Your availability';
-    document.getElementById('step2-sub').textContent = 'Tap a date to open it, or use the quick options below.';
-    buildCal();
-  }
+  // Show regular availability UI
+  document.getElementById('regular-dj-ui').style.display = '';
+  document.getElementById('step2-title').textContent = 'Your availability';
+  document.getElementById('step2-sub').textContent = 'Tap a date to open it, or use the quick options below.';
+  buildCal();
   setStep(2);
 }
 function goStep3() { buildSummary(); setStep(3); }
 function goStep1() { setStep(1); }
-
-/* ── BLACKOUT CALENDAR (residents) ── */
-const MORNING_SLOTS = ['14:00–15:00','15:00–16:00','16:00–17:00','17:00–18:00','18:00–19:00'];
-const NIGHT_SLOTS_RES = ['19:00–20:00','20:00–21:00','21:00–22:00','22:00–23:00','23:00–00:00','00:00–01:00','01:00–02:00'];
-
-function buildBlackoutCal() {
-  const el = document.getElementById('blackout-cal');
-  el.innerHTML = '';
-  const [y, m] = moKey.split('-').map(Number);
-  const mo = m - 1;
-  const days = new Date(y, mo + 1, 0).getDate();
-  for (let d = 1; d <= days; d++) {
-    const dow = new Date(y, mo, d).getDay();
-    const key = `${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dateLabel = `${d} ${MN[mo]} ${y}`;
-    el.appendChild(makeBlackoutCard(key, dateLabel, d, mo, dow));
-  }
-}
-
-/* ── MOBILE-FIXED BLACKOUT CARD ── */
-function makeBlackoutCard(key, dateLabel, d, mo, dow) {
-  const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const state = blackoutDates.get(dateLabel) || null;
-  const dowColor = (dow===0||dow===6) ? 'var(--ark-orange)' : 'var(--teal)';
-
-  const card = document.createElement('div');
-  card.id = 'bc-' + key;
-  card.style.cssText = `
-    display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
-    padding:10px 14px; margin-bottom:8px; border-radius:12px;
-    border:1px solid ${state ? 'rgba(241,90,41,0.35)' : 'rgba(255,255,255,0.07)'};
-    background:${state === 'full' ? 'rgba(241,90,41,0.12)' : state === 'morning' ? 'rgba(255,165,0,0.08)' : 'rgba(255,255,255,0.03)'};
-    transition:all 0.15s;
-  `;
-
-  card.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:160px;">
-      <div style="font-size:10px;font-weight:800;color:${dowColor};text-transform:uppercase;letter-spacing:0.08em;min-width:28px;">${DAYS_SHORT[dow]}</div>
-      <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.75);">${d} ${MN[mo]}</div>
-      ${state === 'full' ? '<div style="font-size:10px;font-weight:800;color:#ff8a65;margin-left:4px;">✕ DAY OFF</div>' : ''}
-      ${state === 'morning' ? '<div style="font-size:10px;font-weight:800;color:#ffb74d;margin-left:4px;">☀ AM OFF</div>' : ''}
-    </div>
-    <div style="display:flex;gap:6px;flex-shrink:0;margin-left:auto;">
-      <button onclick="setBlackout('${key}','${dateLabel}',${mo},'morning')" style="
-        padding:5px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;
-        border:1px solid ${state==='morning' ? 'rgba(255,165,0,0.7)' : 'rgba(255,255,255,0.15)'};
-        background:${state==='morning' ? 'rgba(255,165,0,0.25)' : 'rgba(255,255,255,0.06)'};
-        color:${state==='morning' ? '#ffb74d' : 'rgba(255,255,255,0.4)'};
-        transition:all 0.15s;
-      ">☀ AM off</button>
-      <button onclick="setBlackout('${key}','${dateLabel}',${mo},'full')" style="
-        padding:5px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;
-        border:1px solid ${state==='full' ? 'rgba(241,90,41,0.7)' : 'rgba(255,255,255,0.15)'};
-        background:${state==='full' ? 'rgba(241,90,41,0.25)' : 'rgba(255,255,255,0.06)'};
-        color:${state==='full' ? '#ff8a65' : 'rgba(255,255,255,0.4)'};
-        transition:all 0.15s;
-      ">✕ Full day</button>
-    </div>`;
-  return card;
-}
-
-function setBlackout(key, dateLabel, mo, type) {
-  const current = blackoutDates.get(dateLabel) || null;
-  if (current === type) {
-    blackoutDates.delete(dateLabel);
-  } else {
-    blackoutDates.set(dateLabel, type);
-  }
-  const [y, , d] = key.split('-');
-  const dow = new Date(parseInt(y), mo, parseInt(d)).getDay();
-  const card = document.getElementById('bc-' + key);
-  if (card) {
-    const newCard = makeBlackoutCard(key, dateLabel, parseInt(d), mo, dow);
-    card.replaceWith(newCard);
-  }
-}
 
 /* ── CALENDAR ── */
 function buildCal() {
@@ -990,31 +893,6 @@ function refreshBadge(key) {
 function buildSummary() {
   const el=document.getElementById('summary'); el.innerHTML='';
 
-  if (isResident) {
-    const entries = [...blackoutDates.entries()].sort((a,b) => a[0].localeCompare(b[0]));
-    const offCount = entries.length;
-    el.innerHTML = `<div class="summary-header"><div><div class="s-dj">${djName}</div><div class="s-month">${moLabel}</div></div><div class="s-hours"><span class="num">${offCount}</span><span class="lbl">days off</span></div></div>`;
-    if (offCount === 0) {
-      el.innerHTML += '<p style="text-align:center;padding:20px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.4)">No days off — available all month ✓</p>';
-      return;
-    }
-    entries.forEach(([dateLabel, type]) => {
-      const parts = dateLabel.split(' ');
-      const d = parseInt(parts[0]);
-      const mo = MN.indexOf(parts[1]);
-      const dow = new Date(parseInt(parts[2]), mo, d).getDay();
-      const isFull = type === 'full';
-      const chipLabel = isFull ? '✕ FULL DAY OFF' : '☀ MORNING OFF · nights OK';
-      const chipStyle = isFull
-        ? 'background:rgba(241,90,41,0.3);border:1px solid rgba(241,90,41,0.5);color:#ff8a65;'
-        : 'background:rgba(255,165,0,0.2);border:1px solid rgba(255,165,0,0.4);color:#ffb74d;';
-      const row = document.createElement('div'); row.className='summary-row';
-      row.innerHTML = `<div class="s-date"><div class="s-dow">${DS[dow]}</div><div class="s-num">${d} ${MN[mo]}</div></div><div class="s-chips"><div class="s-chip" style="${chipStyle}">${chipLabel}</div></div>`;
-      el.appendChild(row);
-    });
-    return;
-  }
-
   // Regular DJ summary
   const entries=Object.keys(st).map(k=>({k,slots:allSlotsForDay(k)})).filter(e=>e.slots.length>0).sort((a,b)=>a.k.localeCompare(b.k));
   const total=entries.reduce((s,e)=>s+e.slots.length,0);
@@ -1056,34 +934,7 @@ async function doSubmit() {
   const btn=document.getElementById('sub-btn');
   btn.disabled=true; btn.textContent='Submitting...';
 
-  if (isResident) {
-    if (!residentPin) {
-      btn.disabled=false; btn.textContent='✓ Submit Availability';
-      alert('Please enter your PIN before submitting.');
-      return;
-    }
-    const dates = [...blackoutDates.entries()].map(([date, type]) => ({ date, type }));
-    try {
-      const res = await fetch('/api/blackout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-dj-pin': residentPin },
-        body: JSON.stringify({ dj: djName, month: moLabel, dates })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showSuccess(dates.length, true);
-      } else {
-        btn.disabled=false; btn.textContent='✓ Submit Availability';
-        alert('Submission failed: ' + (data.error || 'Unknown error'));
-      }
-    } catch(e) {
-      btn.disabled=false; btn.textContent='✓ Submit Availability';
-      alert('Connection error. Please try again.');
-    }
-    return;
-  }
-
-  // Regular DJ: send to Make webhook
+  // Send to Make webhook
   const entries=Object.keys(st).map(k=>({k,slots:allSlotsForDay(k)})).filter(e=>e.slots.length>0).sort((a,b)=>a.k.localeCompare(b.k));
   if(!entries.length){
     btn.disabled=false; btn.textContent='✓ Submit Availability';
@@ -1099,27 +950,19 @@ async function doSubmit() {
   });
   const payload={dj:djName,month:moLabel,submitted_at:now,total_hours:rows.length,rows};
   try{ await fetch(WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),mode:'no-cors'}); }catch(e){}
-  showSuccess(rows.length, false);
+  showSuccess(rows.length);
 }
 
-function showSuccess(count, isBlackout) {
+function showSuccess(count) {
   document.getElementById('step3').classList.remove('active');
   const s=document.getElementById('success'); s.classList.add('show');
-  if (isBlackout) {
-    const msg = count === 0
-      ? `<strong>${djName}</strong> — ${moLabel}<br>Submitted: available all month ✓`
-      : `<strong>${djName}</strong> — ${moLabel}<br>${count} day${count!==1?'s':''} off submitted ✓<br><br>You are available all other days this month.`;
-    document.getElementById('suc-msg').innerHTML = msg;
-  } else {
-    document.getElementById('suc-msg').innerHTML=`<strong>${djName}</strong> — ${moLabel}<br>${count} hour slot${count!==1?'s':''} submitted successfully ✓<br><br>The team will be in touch with your schedule.`;
-  }
+  document.getElementById('suc-msg').innerHTML=`<strong>${djName}</strong> — ${moLabel}<br>${count} hour slot${count!==1?'s':''} submitted successfully ✓<br><br>The team will be in touch with your schedule.`;
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function resetAll() {
   allMonthActive = false;
   isResident = false;
-  blackoutDates = new Map();
   st={}; djName=''; moKey=''; moLabel='';
   ['cs-dj','cs-mo'].forEach(id=>{
     selectVals[id]='';
@@ -1129,7 +972,6 @@ function resetAll() {
     document.querySelectorAll(`#${id}-drop .custom-option`).forEach(o=>o.classList.remove('selected'));
   });
   document.getElementById('cal').innerHTML='';
-  document.getElementById('blackout-cal').innerHTML='';
   document.getElementById('summary').innerHTML='';
   document.getElementById('success').classList.remove('show');
   const btn=document.getElementById('sub-btn'); btn.disabled=false; btn.textContent='✓ Submit Availability';

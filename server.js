@@ -86,7 +86,7 @@ function parseDateKey(dateStr) {
   // D Mon YYYY  e.g. "19 Mar 2026"
   const mDMY = s.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
   if (mDMY) return `${mDMY[3]}-${pad2(SHORT_MONTHS[mDMY[2]] || 0)}-${pad2(mDMY[1])}`;
-  // M/D/YYYY or MM/DD/YYYY  (Google Sheets en-US auto-format)
+  // M/D/YYYY or MM/DD/YYYY  (YYYY-MM-DD is Supabase ISO format)
   const mMDY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (mMDY) return `${mMDY[3]}-${pad2(mMDY[1])}-${pad2(mMDY[2])}`;
   // YYYY/MM/DD
@@ -95,15 +95,9 @@ function parseDateKey(dateStr) {
   return null;
 }
 
-function tabName(venue) {
-  return venue === 'love' ? 'Love Beach Roster'
-       : venue === 'hip'  ? 'HIP Roster'
-       : 'ARKbar Roster';
-}
-
 /* == FIXED DJ SCHEDULES =================================================== */
 // Single source of truth for DJs with server-injected recurring weekly schedules.
-// Keys are day-of-week (0=Sun … 6=Sat). Add new fixed-schedule DJs here for Phase 2.
+// Keys are day-of-week (0=Sun … 6=Sat).
 const FIXED_SCHEDULES = {
   'Davoted': {
     arkbar: {
@@ -119,7 +113,7 @@ const FIXED_SCHEDULES = {
   },
 };
 
-/* == FIXED AVAILABILITY (Phase 2 pre-load) ================================= */
+/* == FIXED AVAILABILITY ==================================================== */
 // Per-DJ availability patterns for non-resident DJs that get pre-loaded on first view.
 // These do NOT auto-submit — the DJ must still confirm, keeping the amber state on roster.
 const FIXED_AVAILABILITY = {
@@ -613,7 +607,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
           ),
         ]);
         submissionStatus = 'pre-loaded';
-        // Build stored directly from the generated rows — avoids an extra Sheets read.
         for (const [, dk, ns, , status] of preloadRows) {
           if (!stored[dk]) stored[dk] = {};
           stored[dk][ns] = status;
@@ -639,7 +632,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
           ),
         ]);
         submissionStatus = 'pre-loaded';
-        // Build stored directly from generated rows — avoids an extra Sheets read.
         for (const [, dk, ns, , status] of sheetRows) {
           if (!stored[dk]) stored[dk] = {};
           stored[dk][ns] = status;
@@ -1098,18 +1090,6 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     console.error('Reset-month error:', err);
     res.json({ success: false, error: err.message });
   }
-});
-
-/* == CACHE STATUS (debug) ================================================= */
-app.get('/api/cache-status', (req, res) => {
-  const age = entry => entry.data ? Math.round((Date.now() - entry.time) / 1000) + 's' : null;
-  res.json({
-    djs: { cached: !!cache.djs.data, age: age(cache.djs) },
-    availability: [...cache.availability.keys()].map(k => ({
-      month: k, age: Math.round((Date.now() - cache.availability.get(k).time) / 1000) + 's'
-    })),
-    roster: [...cache.roster.keys()],
-  });
 });
 
 /* == START ================================================================= */

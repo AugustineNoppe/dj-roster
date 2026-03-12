@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Bash(node -c server.js && echo \"server.js OK\" && node -c public/dj.html 2>/dev/null || echo \"dj.html is HTML, not pure JS — skipping syntax check\")",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(node -c server.js && echo \"OK\")",
+      "Bash(node -c server.js && echo \"Syntax OK\")",
+      "Bash(node -e \"\nconst fs = require\\('fs'\\);\nconst code = fs.readFileSync\\('server.js', 'utf8'\\);\n// Check for common issues\nconst lines = code.split\\('\\\\n'\\);\nlet braceCount = 0;\nlet parenCount = 0;\nfor \\(let i = 0; i < lines.length; i++\\) {\n  for \\(const ch of lines[i]\\) {\n    if \\(ch === '{'\\) braceCount++;\n    if \\(ch === '}'\\) braceCount--;\n    if \\(ch === '\\('\\) parenCount++;\n    if \\(ch === '\\)'\\) parenCount--;\n  }\n}\nconsole.log\\('Final brace balance:', braceCount\\);\nconsole.log\\('Final paren balance:', parenCount\\);\nconsole.log\\('Total lines:', lines.length\\);\n\")",
+      "WebFetch(domain:djroster.ark-bar.com)",
+      "Bash(node -e \"\nconst fs = require\\('fs'\\);\nconst code = fs.readFileSync\\('server.js', 'utf8'\\);\n// Look for any non-ASCII characters outside of string literals\nconst lines = code.split\\('\\\\n'\\);\nfor \\(let i = 0; i < lines.length; i++\\) {\n  const line = lines[i];\n  for \\(let j = 0; j < line.length; j++\\) {\n    const c = line.charCodeAt\\(j\\);\n    if \\(c > 127 && c !== 8211\\) { // 8211 is en-dash used in slot strings\n      console.log\\('Line ' + \\(i+1\\) + ' col ' + \\(j+1\\) + ': char code ' + c + ' char: ' + line[j]\\);\n    }\n  }\n}\nconsole.log\\('Done checking'\\);\n\")",
+      "Bash(node -e \"\nprocess.env.SUPABASE_URL = 'https://fake.supabase.co';\nprocess.env.SUPABASE_SERVICE_KEY = 'fake-key';\nprocess.env.SPREADSHEET_ID = 'fake-id';\nprocess.env.GOOGLE_SERVICE_ACCOUNT = '{}';\nprocess.env.ADMIN_PASSWORD = 'test';\nprocess.env.PORT = '19999';\ntry {\n  require\\('./server.js'\\);\n  console.log\\('Server loaded OK'\\);\n  setTimeout\\(\\(\\) => process.exit\\(0\\), 1000\\);\n} catch\\(e\\) {\n  console.error\\('CRASH:', e.message\\);\n  console.error\\(e.stack\\);\n}\n\" 2>&1)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"\nprocess.env.SUPABASE_URL = 'https://fake.supabase.co';\nprocess.env.SUPABASE_SERVICE_KEY = 'fake-key';\nprocess.env.SPREADSHEET_ID = 'fake-id';\nprocess.env.GOOGLE_SERVICE_ACCOUNT = '{}';\nprocess.env.ADMIN_PASSWORD = 'test';\nprocess.env.PORT = '19999';\ntry {\n  require\\('./server.js'\\);\n  console.log\\('Server loaded OK'\\);\n  setTimeout\\(\\(\\) => process.exit\\(0\\), 2000\\);\n} catch\\(e\\) {\n  console.error\\('CRASH:', e.message\\);\n  console.error\\(e.stack\\);\n}\n\" 2>&1)",
+      "Bash(node -e \"const { createClient } = require\\('@supabase/supabase-js'\\); const c = createClient\\(undefined, undefined\\); console.log\\('OK'\\);\" 2>&1)",
+      "Bash(node -e \"\nconst fs = require\\('fs'\\);\nconst code = fs.readFileSync\\('server.js', 'utf8'\\);\nconst lines = code.split\\('\\\\n'\\);\nlet depth = 0;\nfor \\(let i = 0; i < lines.length; i++\\) {\n  const line = lines[i];\n  // Track depth roughly\n  for \\(const ch of line\\) {\n    if \\(ch === '{'\\) depth++;\n    if \\(ch === '}'\\) depth--;\n  }\n  // Show lines at depth 0 that are actual statements \\(not comments, not blank\\)\n  if \\(depth <= 0 && line.trim\\(\\) && !line.trim\\(\\).startsWith\\('//'\\) && !line.trim\\(\\).startsWith\\('/*'\\) && !line.trim\\(\\).startsWith\\('*'\\)\\) {\n    // Filter to show potentially crashing lines\n    if \\(line.includes\\('JSON.parse'\\) || line.includes\\('require'\\) || line.includes\\('throw'\\) || line.includes\\('new '\\)\\) {\n      console.log\\(\\(i+1\\) + ': ' + line.trim\\(\\)\\);\n    }\n  }\n}\n\")",
+      "Bash(node -e \"\nprocess.env.SUPABASE_URL = 'https://fake.supabase.co';\nprocess.env.SUPABASE_SERVICE_KEY = 'fake-key';\nprocess.env.SPREADSHEET_ID = 'fake-id';\nprocess.env.GOOGLE_SERVICE_ACCOUNT = '{}';\nprocess.env.ADMIN_PASSWORD = 'test';\nprocess.env.PORT = '19999';\nrequire\\('./server.js'\\);\nsetTimeout\\(\\(\\) => { console.log\\('Startup OK — no crash'\\); process.exit\\(0\\); }, 2000\\);\n\" 2>&1)",
+      "Bash(node -e \"\nprocess.env.SUPABASE_URL = 'https://fake.supabase.co';\nprocess.env.SUPABASE_SERVICE_KEY = 'fake-key';\nprocess.env.ADMIN_PASSWORD = 'test';\nprocess.env.PORT = '19999';\nrequire\\('./server.js'\\);\nsetTimeout\\(\\(\\) => { console.log\\('Startup OK — no crash'\\); process.exit\\(0\\); }, 2000\\);\n\" 2>&1)",
+      "Bash(node -e \"\nprocess.env.SUPABASE_URL = 'https://fake.supabase.co';\nprocess.env.SUPABASE_SERVICE_KEY = 'fake-key';\nprocess.env.ADMIN_PASSWORD = 'test';\nprocess.env.PORT = '19999';\nrequire\\('./server.js'\\);\nsetTimeout\\(\\(\\) => { console.log\\('Startup OK'\\); process.exit\\(0\\); }, 2000\\);\n\" 2>&1)",
+      "Bash(grep -h \"fetch.*'/api\" /c/Users/gusno/dj-roster/public/*.html | grep -oE \"/api/[a-zA-Z0-9/_-]*\" | sort -u)",
+      "Read(//api/**)",
+      "Read(//tmp/**)"
+    ]
+  }
+}
