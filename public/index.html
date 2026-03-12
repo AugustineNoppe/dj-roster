@@ -653,6 +653,7 @@ function buildCal() {
   const h=document.createElement('div'); h.className='cal-month-title'; h.textContent=moLabel; el.appendChild(h);
 
   // Add Select All Month banner button (non-residents only)
+  console.log('isResident:', isResident, 'djName:', djName);
   if (!isResident) {
     const banner = document.createElement('button');
     banner.className = 'btn-select-all-month';
