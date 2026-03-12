@@ -413,6 +413,29 @@ app.get('/api/roster', async (req, res) => {
   }
 });
 
+/* == UNAVAILABILITY MAP (for roster auto-suggest) ========================= */
+app.get('/api/roster/unavailability/:month', requireAdmin, async (req, res) => {
+  try {
+    const month = decodeURIComponent(req.params.month);
+    const { data: rows, error } = await supabase
+      .from('dj_availability')
+      .select('name, date, slot')
+      .eq('month', month)
+      .eq('status', 'unavailable');
+    if (error) throw new Error(error.message);
+    const map = {};
+    for (const { name, date, slot } of (rows || [])) {
+      const dk = parseDateKey(date);
+      if (!dk || !slot) continue;
+      const ns = normalizeSlot(slot);
+      (map[name] ??= []).push(`${dk}|${ns}`);
+    }
+    res.json({ success: true, unavailability: map });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 /* == ASSIGN SINGLE CELL =================================================== */
 app.post('/api/roster/assign', requireAdmin, async (req, res) => {
   try {

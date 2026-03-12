@@ -579,6 +579,7 @@ let loveAssignments = {};
 let residentBlackouts = {};
 let djList = [];
 let submittedDJs = new Map(); // name → status ('pre-loaded' | 'submitted')
+let unavailabilityMap = {};   // DJ name → array of "date|slot" strings
 let fixedSchedules = null;   // populated once from /api/fixed-schedules
 let isPublished = false;
 let toastTimer;
@@ -1105,14 +1106,20 @@ async function suggestRoster() {
   if (isPublished) { showToast('Unlock roster before auto-suggesting', 'error'); return; }
   if (currentVenue === 'hours') { showToast('Switch to a venue tab first', 'error'); return; }
 
-  // Always refresh submission state so casual DJs who submitted after page load are included.
+  // Always refresh submission state and unavailability so casual DJs who submitted after page load are included.
   try {
     const enc = encodeURIComponent;
-    const freshSubs = await fetch(`/api/dj/submissions/${enc(getMonthString())}`, {
-      headers: { 'x-admin-password': adminPassword },
-    }).then(r => r.json());
+    const [freshSubs, unavailData] = await Promise.all([
+      fetch(`/api/dj/submissions/${enc(getMonthString())}`, {
+        headers: { 'x-admin-password': adminPassword },
+      }).then(r => r.json()),
+      fetch(`/api/roster/unavailability/${enc(getMonthString())}`, {
+        headers: { 'x-admin-password': adminPassword },
+      }).then(r => r.json()),
+    ]);
     submittedDJs = new Map((freshSubs.submitted || []).map(s => [s.name, s.status]));
-  } catch(e) { /* use existing submittedDJs */ }
+    unavailabilityMap = unavailData.unavailability || {};
+  } catch(e) { /* use existing submittedDJs / unavailabilityMap */ }
 
   showToast('Auto-suggesting resident slots...', '');
 
@@ -1166,6 +1173,8 @@ async function suggestRoster() {
   }
 
   function canAssign(dj, dateStr, slot) {
+    if (dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted') return false;
+    if (unavailabilityMap[dj] && unavailabilityMap[dj].includes(`${dateStr}|${slot}`)) return false;
     if ((djHours[dj] || 0) >= (TARGETS[dj] || 999)) return false;
     if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
     if (working[`${dateStr}|${slot}`]) return false;
@@ -1289,6 +1298,7 @@ async function suggestRoster() {
       const hipDJ = HIP_ROTATION[dow];
       if (!hipDJ) continue;
       if (!HIP_SLOTS.every(slot => !hipAssignments[`${dateStr}|${slot}`])) continue;
+      if (!HIP_SLOTS.every(slot => canAssign(hipDJ, dateStr, slot))) continue;
       HIP_SLOTS.forEach(slot => {
         hipAssignments[`${dateStr}|${slot}`] = hipDJ;
         hipToSave.push({ dateStr, slot, type:'hip', dj:hipDJ });
@@ -1304,7 +1314,7 @@ async function suggestRoster() {
       const dateStr = makeDateStr(currentYear, currentMonth, d);
       if (otherVenueDJs[dateStr]?.has('Davoted')) continue;
       fixedSlots.forEach(slot => {
-        if (working[`${dateStr}|${slot}`]) return;
+        if (!canAssign('Davoted', dateStr, slot)) return;
         working[`${dateStr}|${slot}`] = 'Davoted';
         toSave.push({ dateStr, slot, type:'arkbar', dj:'Davoted' });
       });
@@ -1372,6 +1382,7 @@ async function suggestRoster() {
     const dateStr = makeDateStr(currentYear, currentMonth, d);
     if (Object.entries(arkbarAssignments).some(([k,v]) => k.startsWith(dateStr + '|') && v === 'Davoted')) continue;
     fixedSlots.forEach(slot => {
+      if (!canAssign('Davoted', dateStr, slot)) return;
       if (loveWorking[`${dateStr}|${slot}`]) return;
       loveWorking[`${dateStr}|${slot}`] = 'Davoted';
       loveToSave.push({ dateStr, slot, type:'love', dj:'Davoted' });
@@ -1415,6 +1426,7 @@ async function suggestRoster() {
         const idx = rot === 'afternoon' ? loveRotAfternoon : loveRotEvening;
         const djName = loveDJNames[(idx + attempt) % loveDJNames.length];
         if (!block.every(s => isLoveDJAvailable(djName, dateStr, s))) continue;
+        if (!block.every(s => canAssign(djName, dateStr, s))) continue;
         block.forEach(slot => {
           loveWorking[`${dateStr}|${slot}`] = djName;
           loveToSave.push({ dateStr, slot, type:'love', dj:djName });
