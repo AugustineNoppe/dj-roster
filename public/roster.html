@@ -899,7 +899,7 @@ function buildCell(dateStr, slot, type) {
   const avail = (availability[dateStr] && availability[dateStr][slotKey]) || [];
 
   // All non-resident DJs always appear — no submission gating for manual assignment.
-  const options = djList.map(d => d.name).filter(dj => !RESIDENTS.includes(dj) && dj !== 'Guest DJ');
+  const options = djList.map(d => d.name).filter(dj => !RESIDENTS.includes(dj) && dj !== 'Guest DJ').sort((a, b) => a.localeCompare(b));
   RESIDENTS.forEach(res => {
     const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
     if (bo === 'full') return;
