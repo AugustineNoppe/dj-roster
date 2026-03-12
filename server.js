@@ -1,3 +1,7 @@
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err.stack || err.message);
+});
+
 const express = require('express');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
