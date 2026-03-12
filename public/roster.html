@@ -924,17 +924,71 @@ function buildCell(dateStr, slot, type) {
   const styleAttr = assigned ? `style="background:${color};border-color:${unsubmittedCell ? '#d97706' : color}${unsubmittedCell ? ';color:white' : ''}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
 
-  const availSet = avail.length > 0 ? new Set(avail) : null;
-  let opts = '<option value="">\u2014 assign \u2014</option>';
+  const slotKey = `${dateStr}|${normalizeSlot(slot)}`;
+
+  // Categorize DJs into three groups
+  const available = [];
+  const unavailable = [];
+  const notSubmitted = [];
+
   options.forEach(dj => {
     const isSelected = dj === assigned;
     const isSubmitted = submittedDJs.get(dj) === 'submitted';
-    if (!isSelected && isSubmitted && availSet && !availSet.has(dj)) return;
+    const isUnavailable = unavailabilityMap[dj] && unavailabilityMap[dj].includes(slotKey);
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
-    const unsubmitted = !isSelected && dj !== 'Guest DJ' && !isSubmitted;
-    const label = arkBooked ? `${dj} \u26A0 ARKbar` : (unsubmitted || (isSelected && unsubmittedCell) ? `${dj} \u26A0` : dj);
-    opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
+
+    const entry = { dj, isSelected, arkBooked };
+
+    if (dj === 'Guest DJ') {
+      available.push(entry);
+    } else if (isSubmitted) {
+      if (isUnavailable) {
+        unavailable.push(entry);
+      } else {
+        available.push(entry);
+      }
+    } else {
+      notSubmitted.push(entry);
+    }
   });
+
+  // Sort each group, but keep Guest DJ at the end of available
+  const sortDJs = (a, b) => a.dj.localeCompare(b.dj);
+  const availableNonGuest = available.filter(e => e.dj !== 'Guest DJ').sort(sortDJs);
+  const guestDJ = available.find(e => e.dj === 'Guest DJ');
+  const sortedAvailable = guestDJ ? [...availableNonGuest, guestDJ] : availableNonGuest;
+  unavailable.sort(sortDJs);
+  notSubmitted.sort(sortDJs);
+
+  // Build options with groups
+  let opts = '<option value="">\u2014 assign \u2014</option>';
+
+  if (sortedAvailable.length > 0) {
+    opts += '<optgroup label="AVAILABLE">';
+    sortedAvailable.forEach(({ dj, isSelected, arkBooked }) => {
+      const label = arkBooked ? `${dj} \u26A0 ARKbar` : dj;
+      opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
+    });
+    opts += '</optgroup>';
+  }
+
+  if (unavailable.length > 0) {
+    opts += '<optgroup label="UNAVAILABLE">';
+    unavailable.forEach(({ dj, isSelected, arkBooked }) => {
+      const label = arkBooked ? `${dj} \u26A0 ARKbar` : `${dj} \u26A0`;
+      opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
+    });
+    opts += '</optgroup>';
+  }
+
+  if (notSubmitted.length > 0) {
+    opts += '<optgroup label="NOT SUBMITTED">';
+    notSubmitted.forEach(({ dj, isSelected, arkBooked }) => {
+      const label = arkBooked ? `${dj} \u26A0 ARKbar` : `${dj} ?`;
+      opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
+    });
+    opts += '</optgroup>';
+  }
 
   return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)">${opts}</select></td>`;
 }
