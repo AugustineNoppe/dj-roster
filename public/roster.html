@@ -638,7 +638,7 @@ function getDJColor(name) {
 }
 
 // HIP weekly rotation (4 slots per night, one DJ)
-const HIP_ROTATION = { 1:'Vozka', 4:'Tobi' };
+const HIP_ROTATION = { 1:'Vozka', 4:'Tobi', 5:'Vozka' };
 
 // Love Beach DJ availability (weekly patterns)
 const LOVE_DJS = {
@@ -1384,6 +1384,46 @@ async function suggestRoster() {
         working[`${dateStr}|${slot}`] = 'Davoted';
         toSave.push({ dateStr, slot, type:'arkbar', dj:'Davoted' });
       });
+    }
+
+    // Pass 6: Fill remaining ARKbar slots with casual DJs in 3-slot blocks
+    const casualDJs = [...submittedDJs.entries()]
+      .filter(([name, status]) => status === 'submitted' && !RESIDENTS.includes(name) && !(fixedSchedules && fixedSchedules[name]))
+      .map(([name]) => name);
+    const casualHours = {};  // track hours assigned this pass for rotation
+    casualDJs.forEach(dj => casualHours[dj] = 0);
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = makeDateStr(currentYear, currentMonth, d);
+      // Find empty slots for this day
+      const emptySlots = ALL_ARKBAR_SLOTS.filter(slot => !working[`${dateStr}|${slot}`]);
+      // Find consecutive blocks of 3
+      for (let i = 0; i <= emptySlots.length - 3; i++) {
+        const block = [emptySlots[i], emptySlots[i+1], emptySlots[i+2]];
+        // Check if these are actually consecutive in ALL_ARKBAR_SLOTS
+        const idx0 = ALL_ARKBAR_SLOTS.indexOf(block[0]);
+        const idx1 = ALL_ARKBAR_SLOTS.indexOf(block[1]);
+        const idx2 = ALL_ARKBAR_SLOTS.indexOf(block[2]);
+        if (idx1 !== idx0 + 1 || idx2 !== idx1 + 1) continue;
+        // Check if all 3 slots are still empty (may have been filled in earlier iteration)
+        if (block.some(slot => working[`${dateStr}|${slot}`])) continue;
+        // Sort casual DJs by hours assigned (for even distribution)
+        const sortedCasuals = [...casualDJs].sort((a, b) => casualHours[a] - casualHours[b]);
+        // Find first casual DJ who can work all 3 slots
+        for (const dj of sortedCasuals) {
+          if (otherVenueDJs[dateStr]?.has(dj)) continue;
+          if (getDaySlotCount(dj, dateStr) + 3 > MAX_DAY_HOURS) continue;
+          if (!block.every(slot => canAssign(dj, dateStr, slot))) continue;
+          // Assign the block
+          block.forEach(slot => {
+            working[`${dateStr}|${slot}`] = dj;
+            addSlot(dj, dateStr, slot);
+            toSave.push({ dateStr, slot, type:'arkbar', dj });
+          });
+          casualHours[dj] += 3;
+          break;
+        }
+      }
     }
 
     const totalSlots = toSave.length + hipToSave.length;
