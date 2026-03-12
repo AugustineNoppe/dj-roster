@@ -878,7 +878,7 @@ app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
 
     const { error } = await supabase
       .from('dj_submissions')
-      .upsert({ name, month, status: 'submitted' }, { onConflict: 'name,month' });
+      .upsert({ name, month, status: 'submitted', submitted_at: new Date().toISOString() }, { onConflict: 'name,month' });
     if (error) throw new Error(error.message);
 
     cache.availability.delete(month);
