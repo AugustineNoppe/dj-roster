@@ -648,8 +648,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const finalized = await fetchFinalized();
     const isFinalized = finalized.months.includes(month);
 
-    const sheets = getSheets();
-
     // Check DJ Submissions for this DJ+month to determine submissionStatus.
     const { data: submissionRow } = await supabase
       .from('dj_submissions')
@@ -1126,8 +1124,6 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     if (!month || !/^[A-Za-z]+ \d{4}$/.test(month.trim())) {
       return res.status(400).json({ success: false, error: 'Invalid or missing month' });
     }
-    const sheets = getSheets();
-
     // a. Clear DJ Availability rows for this month
     await supabase.from('dj_availability').delete().eq('month', month);
 
