@@ -873,7 +873,7 @@ function renderCalendar() {
   // Submit Availability button
   if (!isFinalized) {
     if (isLocked) {
-      html += `<div class="submit-wrap"><div class="submit-locked-msg">&#128274; Availability submitted. Contact management to make changes.</div></div>`;
+      html += `<div class="submit-wrap"><button class="submit-btn submitted" disabled>Availability Submitted</button></div>`;
     } else {
       html += `<div class="submit-wrap">
         <button class="submit-btn" onclick="submitAvailability()">Submit Availability</button>
@@ -1112,6 +1112,8 @@ async function submitAvailability() {
       setSaveState('saved');
       setTimeout(() => { if (saveState === 'saved') setSaveState('idle'); }, 3000);
       showToast(`Availability submitted for ${month}`, 'success');
+      const btn = document.querySelector('.submit-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Availability Submitted'; btn.classList.add('submitted'); }
       renderCalendar();
     } else {
       setSaveState('error');
