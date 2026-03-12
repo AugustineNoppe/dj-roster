@@ -842,7 +842,6 @@ function generateFixedAvailabilityRows(djName, year, month) {
 app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
   try {
     const { name, month, slots } = req.body;
-    console.log('[POST /api/dj/availability] handler entered', { name, month, slotCount: Array.isArray(slots) ? slots.length : slots });
     if (!name || !month || !Array.isArray(slots)) return res.json({ success: false, error: 'Missing fields' });
     const finalized = await fetchFinalized();
     if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalized and cannot be edited' });
@@ -856,7 +855,6 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
 
     const newRows = slots.map(({ date, slot, status }) => ({ name, date, slot, month, status }));
     if (newRows.length > 0) {
-      console.log('[POST /api/dj/availability] upserting to dj_availability', newRows);
       const { error } = await supabase
         .from('dj_availability')
         .upsert(newRows, { onConflict: 'name,date,slot' });
@@ -874,36 +872,14 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
 app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
   try {
     const { name, month } = req.body;
-    console.log('[POST /api/dj/availability/submit] handler entered', { name, month });
     if (!name || !month) return res.json({ success: false, error: 'Missing fields' });
     const finalized = await fetchFinalized();
     if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalized' });
 
-    const sheets = getSheets();
-    await getOrCreateSubmissionsSheet(sheets);
-
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A2:C`,
-    }).catch(() => ({ data: { values: [] } }));
-    const rows = response.data.values || [];
-    const rowIdx = rows.findIndex(r =>
-      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() && r[1] === month
-    );
-
-    if (rowIdx === -1) {
-      console.log('[POST /api/dj/availability/submit] appending to Sheets dj_submissions', { name, month, status: 'submitted' });
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
-        valueInputOption: 'RAW', requestBody: { values: [[name, month, 'submitted']] },
-      });
-    } else {
-      const sheetRow = rowIdx + 2; // +1 for header, +1 for 1-based indexing
-      console.log('[POST /api/dj/availability/submit] updating Sheets dj_submissions', { name, month, sheetRow, status: 'submitted' });
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!C${sheetRow}`,
-        valueInputOption: 'RAW', requestBody: { values: [['submitted']] },
-      });
-    }
+    const { error } = await supabase
+      .from('dj_submissions')
+      .upsert({ name, month, status: 'submitted', submitted_at: new Date().toISOString() }, { onConflict: 'name,month' });
+    if (error) throw new Error(error.message);
 
     res.json({ success: true });
   } catch (err) {
