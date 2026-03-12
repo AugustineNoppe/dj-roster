@@ -924,8 +924,6 @@ function buildCell(dateStr, slot, type) {
   const styleAttr = assigned ? `style="background:${color};border-color:${unsubmittedCell ? '#d97706' : color}${unsubmittedCell ? ';color:white' : ''}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
 
-  const slotKey = `${dateStr}|${normalizeSlot(slot)}`;
-
   // Categorize DJs into three groups
   const available = [];
   const unavailable = [];
@@ -934,7 +932,7 @@ function buildCell(dateStr, slot, type) {
   options.forEach(dj => {
     const isSelected = dj === assigned;
     const isSubmitted = submittedDJs.get(dj) === 'submitted';
-    const isUnavailable = unavailabilityMap[dj] && unavailabilityMap[dj].includes(slotKey);
+    const isUnavailable = unavailabilityMap[dj] && unavailabilityMap[dj].includes(key);
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
 
     const entry = { dj, isSelected, arkBooked };
