@@ -1227,9 +1227,20 @@ async function suggestRoster() {
     djHours[dj] = (djHours[dj] || 0) + 1;
   }
 
+  // Post-midnight slots (00:xx, 01:xx) belong to the previous calendar day for unavailability lookup
+  function getUnavailLookupDate(dateStr, slot) {
+    if (slot.startsWith('00:') || slot.startsWith('01:')) {
+      const d = new Date(dateStr);
+      d.setDate(d.getDate() - 1);
+      return makeDateStr(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    return dateStr;
+  }
+
   function canAssign(dj, dateStr, slot) {
     if (dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted') return false;
-    if (unavailabilityMap[dj] && unavailabilityMap[dj].includes(`${dateStr}|${slot}`)) return false;
+    const unavailDate = getUnavailLookupDate(dateStr, slot);
+    if (unavailabilityMap[dj] && unavailabilityMap[dj].includes(`${unavailDate}|${slot}`)) return false;
     if ((djHours[dj] || 0) >= (TARGETS[dj] || 999)) return false;
     if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
     if (working[`${dateStr}|${slot}`]) return false;
