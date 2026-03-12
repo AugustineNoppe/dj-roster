@@ -244,26 +244,30 @@ async function fetchAvailability(month) {
 
   const map = {};
 
-  // Build slot-specific unavailability map for residents from dj_availability.
-  const residentSlotBlocked = {}; // { djName: { dateKey: Set<normalizedSlot> } }
+  // Build per-DJ status lookup from dj_availability: { djName: { dateKey: { slot: status } } }
+  const djStatus = {};
   for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of rows) {
-    if (!dj || !dateRaw || !slot || rowMonth !== month || status !== 'unavailable') continue;
-    if (!RESIDENTS.includes(dj)) continue;
-    const dk = parseDateKey(dateRaw);
-    if (!dk) continue;
-    ((residentSlotBlocked[dj] ??= {})[dk] ??= new Set()).add(normalizeSlot(slot));
-  }
-
-  // Add available DJs from dj_availability. Skip explicit unavailability.
-  for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of rows) {
-    if (!dj || !dateRaw || !slot || rowMonth !== month || status === 'unavailable') continue;
+    if (!dj || !dateRaw || !slot || rowMonth !== month) continue;
     const dk = parseDateKey(dateRaw);
     if (!dk) continue;
     const ns = normalizeSlot(slot);
-    (map[dk] ??= {})[ns] ??= [];
-    if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
+    ((djStatus[dj] ??= {})[dk] ??= {})[ns] = status || 'available';
   }
 
+  // Add non-resident DJs who are explicitly available.
+  for (const [dj, dates] of Object.entries(djStatus)) {
+    if (RESIDENTS.includes(dj)) continue;
+    for (const [dk, slots] of Object.entries(dates)) {
+      for (const [ns, status] of Object.entries(slots)) {
+        if (status === 'unavailable') continue;
+        (map[dk] ??= {})[ns] ??= [];
+        if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
+      }
+    }
+  }
+
+  // Add residents: available by default, blocked only if dj_availability
+  // has an explicit 'unavailable' status for that slot.
   if (year !== undefined && monthIdx >= 0) {
     for (let d = 1; d <= daysInMonth; d++) {
       const dk = makeDateKey(year, monthIdx + 1, d);
@@ -273,7 +277,8 @@ async function fetchAvailability(month) {
         if (!map[dk][ns]) map[dk][ns] = [];
         const arr = map[dk][ns];
         for (const resident of RESIDENTS) {
-          if (residentSlotBlocked[resident]?.[dk]?.has(ns)) continue;
+          const slotStatus = djStatus[resident]?.[dk]?.[ns];
+          if (slotStatus === 'unavailable') continue;
           if (!arr.includes(resident)) arr.push(resident);
         }
         if (!arr.includes('Guest DJ')) arr.push('Guest DJ');
