@@ -231,8 +231,16 @@ async function fetchAvailability(month) {
   const year = parseInt(parts[1]);
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
-  const { data: portalRows } = await supabase.from('dj_availability').select('*').eq('month', month);
-  const rows = portalRows || [];
+  // Only include availability from DJs who have submitted for this month
+  // (residents are always shown via the loop below regardless).
+  const [{ data: portalRows }, { data: submittedRows }] = await Promise.all([
+    supabase.from('dj_availability').select('*').eq('month', month),
+    supabase.from('dj_submissions').select('name').eq('month', month).eq('status', 'submitted'),
+  ]);
+  const submittedNames = new Set((submittedRows || []).map(r => r.name.trim().toLowerCase()));
+  const rows = (portalRows || []).filter(r =>
+    RESIDENTS.includes(r.name) || submittedNames.has(r.name.trim().toLowerCase())
+  );
 
   const map = {};
 
