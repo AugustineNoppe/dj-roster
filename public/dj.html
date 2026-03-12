@@ -186,6 +186,15 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 .cal-instruction-note.casual{
   background:rgba(93,184,192,0.12);border-color:rgba(93,184,192,0.35);color:var(--teal);
 }
+.all-month-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin:8px 12px;padding:12px 16px;border-radius:10px;
+  font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;
+  background:rgba(93,184,192,0.12);border:1px solid rgba(93,184,192,0.4);color:var(--teal);
+  transition:background var(--transition),border-color var(--transition);
+}
+.all-month-btn:hover{background:rgba(93,184,192,0.25);border-color:var(--teal)}
+.all-month-btn.active{background:rgba(93,184,192,0.3);border-color:var(--teal)}
 .cal-wrap{padding:12px}
 .cal-grid{
   display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
@@ -826,6 +835,14 @@ function renderCalendar() {
 
   html += `<div class="cal-instruction-note ${isResident ? 'resident' : 'casual'}">${isResident ? '&#128683; Select your unavailable dates.' : '&#9989; Select your available dates.'}</div>`;
 
+  // "Available All Month" button for casual DJs only
+  if (!isResident && !isFinalized && !isLocked) {
+    html += `<button class="all-month-btn" onclick="toggleAllMonth()">
+      <span style="font-size:18px">&#128197;</span>
+      <span>Available All Month</span>
+    </button>`;
+  }
+
   html += '<div class="cal-wrap"><div class="cal-grid">';
 
   // Day headers (Mon–Sun)
@@ -974,6 +991,20 @@ function toggleAllSlots(dk) {
   });
   const newStatus = allAvail ? 'unavailable' : 'available';
   for (const s of ALL_SLOTS) availability[dk][s] = newStatus;
+  renderCalendar();
+  markDirty();
+}
+
+// ===== AVAILABLE ALL MONTH (casual DJs) =====
+function toggleAllMonth() {
+  if (isFinalized || isLocked || isResident) return;
+  const year = currentYear, month = currentMonth;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dk = makeDK(year, month + 1, d);
+    if (!availability[dk]) availability[dk] = {};
+    for (const s of ALL_SLOTS) availability[dk][s] = 'available';
+  }
   renderCalendar();
   markDirty();
 }
