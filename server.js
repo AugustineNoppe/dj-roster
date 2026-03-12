@@ -113,40 +113,100 @@ const FIXED_SCHEDULES = {
   },
 };
 
-/* == FIXED AVAILABILITY ==================================================== */
-// Per-DJ availability patterns for non-resident DJs that get pre-loaded on first view.
-// These do NOT auto-submit — the DJ must still confirm, keeping the amber state on roster.
-const FIXED_AVAILABILITY = {
+/* ============================================================================
+   DJ AVAILABILITY PRELOAD — Single source of truth for all preloaded availability
+   ============================================================================
+   This config defines availability patterns that get pre-loaded when a DJ first
+   views a month. DJs must still submit to confirm (keeps amber state on roster).
+
+   Day-of-week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+
+   Pattern types:
+   - availableDays + availableSlots: specific days & slots available, rest unavailable
+   - availableDays + allSlotsOnAvailableDays: specific days all slots available
+   - unavailableDays: specific days all unavailable, rest available
+   - unavailableSlotsByDay: available by default, specific day+slot combos blocked
+   - effectiveFrom: YYYY-MM format, pattern only applies from this month onward
+   ============================================================================ */
+
+const DJ_AVAILABILITY_PRELOAD = {
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RESIDENTS — default available, with specific unavailable patterns
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Sound Bogie: Sundays all unavailable, early slots (14:00-17:00) unavailable every day
+  'Sound Bogie': {
+    isResident: true,
+    defaultStatus: 'available',
+    unavailableDays: [0], // Sun
+    unavailableSlots: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00']
+  },
+
+  // Alex RedWhite: Wednesdays 14:00-17:00 unavailable (from current month onward)
+  'Alex RedWhite': {
+    isResident: true,
+    defaultStatus: 'available',
+    effectiveFrom: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })(),
+    unavailableSlotsByDay: {
+      3: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00'] // Wed 14:00-17:00
+    }
+  },
+
+  // Raffo DJ: no special patterns (fully available by default)
+  'Raffo DJ': {
+    isResident: true,
+    defaultStatus: 'available'
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CASUAL DJs — specific availability patterns
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Vozka: Mon, Tue, Fri — evening slots only (21:00-01:00)
   Vozka: {
-    availableDays: [1, 2, 5], // Mon, Tue, Fri
+    availableDays: [1, 2, 5],
     availableSlots: ['21:00\u201322:00', '22:00\u201323:00', '23:00\u201300:00', '00:00\u201301:00'],
     allSlotsOnAvailableDays: false
   },
+
+  // Tobi: Thu — evening slots only (21:00-01:00)
   Tobi: {
-    availableDays: [4], // Thu
+    availableDays: [4],
     availableSlots: ['21:00\u201322:00', '22:00\u201323:00', '23:00\u201300:00', '00:00\u201301:00'],
     allSlotsOnAvailableDays: false
   },
+
+  // Buba: Sun & Mon all unavailable, rest available
   Buba: {
-    unavailableDays: [0, 1], // Sun, Mon — all slots
+    unavailableDays: [0, 1],
     allSlotsOnUnavailableDays: true
   },
+
+  // Sky: Wed & Fri all slots available, rest unavailable
   Sky: {
-    availableDays: [3, 5], // Wed, Fri — all slots available
+    availableDays: [3, 5],
     allSlotsOnAvailableDays: true
   },
+
+  // Donsine: Thu, Fri, Sat, Sun all slots available
   Donsine: {
-    availableDays: [4, 5, 6, 0], // Thu, Fri, Sat, Sun
+    availableDays: [4, 5, 6, 0],
     allSlotsOnAvailableDays: true
   },
+
+  // Mostyx: available by default, specific day+slot combos blocked
   Mostyx: {
     defaultStatus: 'available',
     unavailableSlotsByDay: {
-      4: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00'], // Thu
-      6: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00', '17:00\u201318:00']  // Sat
+      4: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00'], // Thu 14:00-17:00
+      6: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00', '17:00\u201318:00'] // Sat 14:00-18:00
     }
   }
 };
+
+// Legacy alias for backward compatibility with generateFixedAvailabilityRows
+const FIXED_AVAILABILITY = DJ_AVAILABILITY_PRELOAD;
 const ALL_ARKBAR_SLOTS = [
   '14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00', '17:00\u201318:00',
   '18:00\u201319:00', '19:00\u201320:00', '20:00\u201321:00', '21:00\u201322:00',
@@ -689,21 +749,38 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 /* -- Generate pre-load rows for residents ----------------------------------- */
 function generatePreloadRows(name, month, monthIdx, year) {
   if (!RESIDENTS.includes(name)) return null;
-  const EARLY_SLOTS = new Set(['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00']);
-  const isSoundBogie = name.trim().toLowerCase() === 'sound bogie';
-  const isAlexRedWhite = name.trim().toLowerCase() === 'alex redwhite';
+
+  const config = DJ_AVAILABILITY_PRELOAD[name];
   const days = new Date(year, monthIdx + 1, 0).getDate();
   const rows = [];
+
+  // Check effectiveFrom — skip pattern if month is before effective date
+  const requestedMonth = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
+  const patternActive = !config?.effectiveFrom || requestedMonth >= config.effectiveFrom;
+
+  // Pre-compute blocked slots sets
+  const unavailableDaysSet = new Set(config?.unavailableDays || []);
+  const unavailableSlotsSet = new Set(config?.unavailableSlots || []);
+  const unavailableSlotsByDay = config?.unavailableSlotsByDay || {};
+
   for (let d = 1; d <= days; d++) {
     const dk = makeDateKey(year, monthIdx + 1, d);
     const dow = new Date(year, monthIdx, d).getDay();
-    const isSunday = dow === 0;
-    const isWednesday = dow === 3;
+
     for (const slot of ALL_SLOTS) {
       const ns = normalizeSlot(slot);
-      let status = 'available';
-      if (isSoundBogie && (isSunday || EARLY_SLOTS.has(ns))) status = 'unavailable';
-      if (isAlexRedWhite && isWednesday && EARLY_SLOTS.has(ns)) status = 'unavailable';
+      let status = config?.defaultStatus || 'available';
+
+      if (patternActive && config) {
+        // Day-level unavailability (e.g., Sound Bogie Sundays)
+        if (unavailableDaysSet.has(dow)) status = 'unavailable';
+        // Slot-level unavailability every day (e.g., Sound Bogie early slots)
+        if (unavailableSlotsSet.has(ns)) status = 'unavailable';
+        // Day+slot combo unavailability (e.g., Alex RedWhite Wed 14-17)
+        const dayBlockedSlots = unavailableSlotsByDay[dow];
+        if (dayBlockedSlots && dayBlockedSlots.includes(ns)) status = 'unavailable';
+      }
+
       rows.push([name, dk, ns, month, status]);
     }
   }
