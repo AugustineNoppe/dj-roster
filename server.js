@@ -412,7 +412,10 @@ function requireAdmin(req, res, next) {
 async function requireDJAuth(req, res, next) {
   const name = req.body.name || req.body.dj;
   const pin = req.headers['x-dj-pin'];
-  if (!name || !pin) return res.status(401).json({ success: false, error: 'Unauthorised' });
+  if (!name || !pin) {
+    console.error('[requireDJAuth] missing name or pin — name:', name, 'pin present:', !!pin, 'path:', req.path);
+    return res.status(401).json({ success: false, error: 'Unauthorised' });
+  }
   try {
     const { data: pinData } = await supabase
       .from('dj_pins')
@@ -421,10 +424,12 @@ async function requireDJAuth(req, res, next) {
       .single();
     const correctPin = pinData ? pinData.pin : null;
     if (!correctPin || String(correctPin).trim() !== String(pin).trim()) {
+      console.error('[requireDJAuth] pin mismatch for', name, '— expected:', correctPin, 'got:', pin);
       return res.status(401).json({ success: false, error: 'Unauthorised' });
     }
     next();
   } catch (err) {
+    console.error('[requireDJAuth] error:', err.message);
     res.status(500).json({ success: false, error: 'Auth error' });
   }
 }
@@ -821,23 +826,31 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
     if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalized and cannot be edited' });
 
     // Delete all existing rows for this DJ+month, then upsert the new ones.
-    await supabase
+    const { error: delError } = await supabase
       .from('dj_availability')
       .delete()
       .ilike('name', name.trim())
       .eq('month', month);
+    if (delError) {
+      console.error('[dj/availability] delete error:', delError);
+      throw new Error(delError.message);
+    }
 
     const newRows = slots.map(({ date, slot, status }) => ({ name, date, slot: slot.replace(/–/g, '-'), month, status }));
     if (newRows.length > 0) {
       const { error } = await supabase
         .from('dj_availability')
         .upsert(newRows, { onConflict: 'name,date,slot' });
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error('[dj/availability] upsert error:', error, 'sample row:', newRows[0], 'total rows:', newRows.length);
+        throw new Error(error.message);
+      }
     }
 
     cache.availability.delete(month);
     res.json({ success: true, saved: newRows.length });
   } catch (err) {
+    console.error('[dj/availability] caught:', err.message);
     res.json({ success: false, error: err.message });
   }
 });
@@ -852,7 +865,7 @@ app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
 
     const { error } = await supabase
       .from('dj_submissions')
-      .upsert({ name, month, status: 'submitted', submitted_at: new Date().toISOString() }, { onConflict: 'name,month' });
+      .upsert({ name, month, status: 'submitted' }, { onConflict: 'name,month' });
     if (error) throw new Error(error.message);
 
     cache.availability.delete(month);
