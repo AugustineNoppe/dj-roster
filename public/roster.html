@@ -1203,12 +1203,29 @@ async function suggestRoster() {
   const COOLDOWN_ROTATION = ['Raffo DJ', null, 'Sound Bogie', null];
 
   const working = { ...rosterAssignments };
+
+  // Helper: get the "evening date" for a slot — post-midnight slots belong to previous day
+  function getEveningDate(dateStr, slot) {
+    if (slot && (slot.startsWith('00:') || slot.startsWith('01:'))) {
+      const d = new Date(dateStr);
+      d.setDate(d.getDate() - 1);
+      return makeDateStr(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    return dateStr;
+  }
+
+  // Build otherVenueDJs: DJs working at other venues on each "evening date"
   const otherVenueMap = isLove ? arkbarAssignments : loveAssignments;
   const otherVenueDJs = {};
-  Object.entries(otherVenueMap).forEach(([k,dj]) => {
-    const d = k.split('|')[0];
-    (otherVenueDJs[d] ??= new Set()).add(dj);
-  });
+  function addToOtherVenueDJs(assignments) {
+    Object.entries(assignments).forEach(([k, dj]) => {
+      const [dateStr, slot] = k.split('|');
+      const eveningDate = getEveningDate(dateStr, slot);
+      (otherVenueDJs[eveningDate] ??= new Set()).add(dj);
+    });
+  }
+  addToOtherVenueDJs(otherVenueMap);
+  addToOtherVenueDJs(hipAssignments);
 
   const djHours = {};
   RESIDENTS.forEach(r => { djHours[r] = 0; });
