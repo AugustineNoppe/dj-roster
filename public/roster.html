@@ -962,7 +962,7 @@ function buildCell(dateStr, slot, type) {
   if (sortedAvailable.length > 0) {
     opts += '<optgroup label="AVAILABLE">';
     sortedAvailable.forEach(({ dj, isSelected, arkBooked }) => {
-      const label = arkBooked ? `${dj} \u26A0 ARKbar` : dj;
+      const label = isSelected ? dj : (arkBooked ? `${dj} \u26A0 ARKbar` : dj);
       opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
     });
     opts += '</optgroup>';
@@ -971,7 +971,7 @@ function buildCell(dateStr, slot, type) {
   if (unavailable.length > 0) {
     opts += '<optgroup label="UNAVAILABLE">';
     unavailable.forEach(({ dj, isSelected, arkBooked }) => {
-      const label = arkBooked ? `${dj} \u26A0 ARKbar` : `${dj} \u26A0`;
+      const label = isSelected ? dj : (arkBooked ? `${dj} \u26A0 ARKbar` : `${dj} \u26A0`);
       opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
     });
     opts += '</optgroup>';
@@ -980,7 +980,7 @@ function buildCell(dateStr, slot, type) {
   if (notSubmitted.length > 0) {
     opts += '<optgroup label="NOT SUBMITTED">';
     notSubmitted.forEach(({ dj, isSelected, arkBooked }) => {
-      const label = arkBooked ? `${dj} \u26A0 ARKbar` : `${dj} ?`;
+      const label = isSelected ? dj : (arkBooked ? `${dj} \u26A0 ARKbar` : `${dj} ?`);
       opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
     });
     opts += '</optgroup>';
