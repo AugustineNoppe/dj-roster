@@ -689,18 +689,21 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 /* -- Generate pre-load rows for residents ----------------------------------- */
 function generatePreloadRows(name, month, monthIdx, year) {
   if (!RESIDENTS.includes(name)) return null;
-  const SB_EARLY = new Set(['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00']);
+  const EARLY_SLOTS = new Set(['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00']);
   const isSoundBogie = name.trim().toLowerCase() === 'sound bogie';
+  const isAlexRedWhite = name.trim().toLowerCase() === 'alex redwhite';
   const days = new Date(year, monthIdx + 1, 0).getDate();
   const rows = [];
   for (let d = 1; d <= days; d++) {
     const dk = makeDateKey(year, monthIdx + 1, d);
     const dow = new Date(year, monthIdx, d).getDay();
     const isSunday = dow === 0;
+    const isWednesday = dow === 3;
     for (const slot of ALL_SLOTS) {
       const ns = normalizeSlot(slot);
       let status = 'available';
-      if (isSoundBogie && (isSunday || SB_EARLY.has(ns))) status = 'unavailable';
+      if (isSoundBogie && (isSunday || EARLY_SLOTS.has(ns))) status = 'unavailable';
+      if (isAlexRedWhite && isWednesday && EARLY_SLOTS.has(ns)) status = 'unavailable';
       rows.push([name, dk, ns, month, status]);
     }
   }
