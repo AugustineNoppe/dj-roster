@@ -1695,7 +1695,7 @@ async function showDJDetail(djName) {
   });
 
   const grandTotal = arkTotal + hipTotal + loveTotal;
-  const totalCost = djName === 'Guest DJ' ? 0 : grandTotal * rate;
+  const totalCost = djName === 'Guest DJ' ? 0 : grandSignedCount * rate;
 
   const modal = document.createElement('div');
   modal.id = 'djDetailModal';
