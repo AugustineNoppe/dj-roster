@@ -403,15 +403,6 @@ body {
 }
 .btn-all-month.active::after { content: '✓ All month selected — tap to clear'; font-size: 10px; font-weight: 700; opacity: 0.8; }
 
-.btn-select-all-month {
-  display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 18px;
-  background: rgba(93,184,192,0.15); border: 1px solid rgba(93,184,192,0.35);
-  border-radius: var(--radius-sm); color: white; cursor: pointer; text-align: left;
-  transition: all 0.2s; font-family: 'Montserrat', sans-serif;
-  backdrop-filter: blur(10px); margin-bottom: 16px;
-}
-.btn-select-all-month:hover { background: rgba(93,184,192,0.25); border-color: var(--teal); transform: translateY(-1px); }
-
 /* ── FULL DAY BUTTON ── */
 .full-day-btn {
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -651,25 +642,6 @@ function buildCal() {
   const [y,m] = moKey.split('-').map(Number);
   const mo = m-1;
   const h=document.createElement('div'); h.className='cal-month-title'; h.textContent=moLabel; el.appendChild(h);
-
-  // Add Select All Month banner button (non-residents only)
-  console.log('isResident:', isResident, 'djName:', djName);
-  if (!isResident) {
-    const banner = document.createElement('button');
-    banner.className = 'btn-select-all-month';
-    banner.id = 'select-all-month-banner';
-    banner.onclick = selectAllMonth;
-    banner.innerHTML = `
-      <span style="font-size:18px;">⚡</span>
-      <div>
-        <div style="font-size:13px;font-weight:800;">Select All Month</div>
-        <div style="font-size:10px;font-weight:500;opacity:0.75;">Mark available for every slot on every day</div>
-      </div>
-    `;
-    el.appendChild(banner);
-    console.log('banner created');
-  }
-
   const days=new Date(y,mo+1,0).getDate();
   for(let d=1;d<=days;d++){
     const date=new Date(y,mo,d), dow=date.getDay();
@@ -751,16 +723,6 @@ function toggleFullDay(key) {
 }
 
 let allMonthActive = false;
-function selectAllMonth() {
-  const keys = Object.keys(st);
-  keys.forEach(k => setFullDay(k));
-  keys.forEach(k => {
-    const b = document.getElementById(`fdb-${k}`);
-    if(b){ b.classList.add('active'); b.textContent='✓ Full Day'; }
-  });
-  showToast('All days marked as available', 'success');
-}
-
 function toggleAllMonth() {
   allMonthActive = !allMonthActive;
   const btn = document.getElementById('all-month-btn');
