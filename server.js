@@ -1008,23 +1008,33 @@ app.post('/api/roster/finalize', async (req, res) => {
     const finalized = await fetchFinalized();
     if (finalized.months.includes(month)) return res.json({ success: false, error: `${month} is already finalized` });
 
-    const [arkData, hipData, loveData, djData] = await Promise.all([
-      fetchRoster('arkbar', month), fetchRoster('hip', month),
-      fetchRoster('love', month),   fetchDJs(),
+    const [signoffData, djData] = await Promise.all([
+      supabase.from('dj_signoffs').select('*').eq('month', month),
+      fetchDJs(),
     ]);
+    if (signoffData.error) throw new Error(signoffData.error.message);
 
     const djMap = {};
     (djData.djs || []).forEach(d => { djMap[d.name.trim().toLowerCase()] = d; });
 
+    // Last action wins per DJ+date+slot+venue key
+    const latest = {};
+    for (const r of (signoffData.data || [])) {
+      if (!r.name) continue;
+      const key = `${r.name}|${r.date}|${normalizeSlot(r.slot)}|${r.venue}`;
+      latest[key] = { dj: r.name.trim(), venue: (r.venue || '').toLowerCase(), action: r.action || 'sign' };
+    }
+
     const hours = {};
-    for (const { key, data } of [{ key: 'arkbar', data: arkData }, { key: 'hip', data: hipData }, { key: 'love', data: loveData }]) {
-      for (const row of (data.roster || [])) {
-        const dj = row[2];
-        if (!dj || dj === 'Guest DJ') continue;
-        if (!hours[dj]) hours[dj] = { arkbar: 0, hip: 0, love: 0, total: 0 };
-        hours[dj][key]++;
-        hours[dj].total++;
-      }
+    for (const { dj, venue, action } of Object.values(latest)) {
+      if (action !== 'sign') continue;
+      if (dj === 'Guest DJ') continue;
+      if (!hours[dj]) hours[dj] = { arkbar: 0, hip: 0, love: 0, total: 0 };
+      const vl = venue.toLowerCase();
+      const vk = vl === 'love beach' || vl === 'love' ? 'love'
+               : vl === 'hip' ? 'hip' : 'arkbar';
+      hours[dj][vk]++;
+      hours[dj].total++;
     }
 
     const report = [];

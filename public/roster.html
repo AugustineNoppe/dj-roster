@@ -1509,81 +1509,68 @@ async function loadHours() {
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading hours...</div>';
   const month = getMonthString();
   try {
-    const [arkRes, loveRes, djRes] = await Promise.all([
-      fetch(`/api/roster?venue=arkbar&month=${encodeURIComponent(month)}`),
-      fetch(`/api/roster?venue=love&month=${encodeURIComponent(month)}`),
-      fetch('/api/djs')
+    const enc = encodeURIComponent;
+    const [arkRes, loveRes, djRes, signoffRes] = await Promise.all([
+      fetch(`/api/roster?venue=arkbar&month=${enc(month)}`),
+      fetch(`/api/roster?venue=love&month=${enc(month)}`),
+      fetch('/api/djs'),
+      fetch(`/api/signoffs/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
     ]);
-    const [arkData, loveData, djData] = await Promise.all([arkRes.json(), loveRes.json(), djRes.json()]);
-    const arkHours = {}, loveHours = {};
-    (arkData.roster || []).forEach(r => { if (r[2]) arkHours[r[2]] = (arkHours[r[2]] || 0) + 1; });
+    const [arkData, loveData, djData, signoffData] = await Promise.all([arkRes.json(), loveRes.json(), djRes.json(), signoffRes.json()]);
+    const scheduledHours = {};
+    (arkData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') scheduledHours[r[2]] = (scheduledHours[r[2]] || 0) + 1; });
+    (loveData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') scheduledHours[r[2]] = (scheduledHours[r[2]] || 0) + 1; });
+    const signedOffHours = signoffData.signedOff || {};
 
-    // Only count Love Beach hours for slots where the DJ has matching submitted availability.
-    // Track DJs who appear on the Love Beach roster but have no confirmed slots at all.
-    const loveAssigned = new Set(), loveConfirmed = new Set();
-    (loveData.roster || []).forEach(r => {
-      if (!r[2]) return;
-      const djName = r[2];
-      if (djName === 'Guest DJ') return;
-      loveAssigned.add(djName);
-      if (!RESIDENTS.includes(djName)) {
-        const slotAvail = (availability[r[0]] && availability[r[0]][normalizeSlot(r[1])]) || [];
-        if (!slotAvail.includes(djName)) return; // no availability → ⚠ slot, exclude
-      }
-      loveConfirmed.add(djName);
-      loveHours[djName] = (loveHours[djName] || 0) + 1;
-    });
-    // DJs assigned to Love Beach but with zero confirmed slots → flag as unconfirmed
-    const loveUnconfirmed = new Set([...loveAssigned].filter(dj => !loveConfirmed.has(dj)));
-
-    renderHours(djData.djs || [], arkHours, loveHours, loveUnconfirmed);
+    renderHours(djData.djs || [], scheduledHours, signedOffHours);
   } catch(e) {
     $('mainContent').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
   }
 }
 
-function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
+function renderHours(djs, scheduledHours, signedOffHours) {
   checkFinalized();
   const normalize = name => name ? name.trim().toLowerCase() : '';
-  const arkNorm = {}, loveNorm = {};
-  Object.entries(arkHours).forEach(([k,v]) => { arkNorm[normalize(k)] = v; });
-  Object.entries(loveHours).forEach(([k,v]) => { loveNorm[normalize(k)] = v; });
 
-  const totals = {};
+  const schedNorm = {}, signNorm = {};
+  Object.entries(scheduledHours).forEach(([k,v]) => { schedNorm[normalize(k)] = v; });
+  Object.entries(signedOffHours).forEach(([k,v]) => { signNorm[normalize(k)] = v; });
+
+  const scheduled = {}, signedOff = {};
   djs.forEach(d => {
-    const unconfirmed = d.name === 'Guest DJ' || loveUnconfirmed.has(d.name) || submittedDJs.get(d.name) !== 'submitted';
-    totals[d.name] = unconfirmed ? 0 : (arkNorm[normalize(d.name)] || 0) + (loveNorm[normalize(d.name)] || 0);
+    if (d.name === 'Guest DJ') { scheduled[d.name] = 0; signedOff[d.name] = 0; return; }
+    scheduled[d.name] = schedNorm[normalize(d.name)] || 0;
+    signedOff[d.name] = signNorm[normalize(d.name)] || 0;
   });
 
-  const totalHours = Object.values(totals).reduce((a,b) => a + b, 0);
-  const totalCost = djs.reduce((sum,d) => sum + (totals[d.name] || 0) * d.rate, 0);
-  const maxHours = Math.max(...Object.values(totals), RESIDENT_TARGET);
+  const totalScheduled = Object.values(scheduled).reduce((a,b) => a + b, 0);
+  const totalSignedOff = Object.values(signedOff).reduce((a,b) => a + b, 0);
+  const totalCost = djs.reduce((sum,d) => sum + (signedOff[d.name] || 0) * d.rate, 0);
+  const maxHours = Math.max(...Object.values(scheduled), RESIDENT_TARGET);
 
   const sorted = [...djs].sort((a,b) => {
     const aR = RESIDENTS.includes(a.name) ? 1 : 0;
     const bR = RESIDENTS.includes(b.name) ? 1 : 0;
     if (aR !== bR) return bR - aR;
-    return (totals[b.name] || 0) - (totals[a.name] || 0);
+    return (scheduled[b.name] || 0) - (scheduled[a.name] || 0);
   });
 
   const rows = sorted.map(dj => {
-    const isUnconfirmed = dj.name === 'Guest DJ' || loveUnconfirmed.has(dj.name) || submittedDJs.get(dj.name) !== 'submitted';
-    const ark  = isUnconfirmed ? 0 : (arkNorm[normalize(dj.name)] || 0);
-    const love = isUnconfirmed ? 0 : (loveNorm[normalize(dj.name)] || 0);
-    const total = ark + love;
+    const sched = scheduled[dj.name] || 0;
+    const signed = signedOff[dj.name] || 0;
     const isResident = RESIDENTS.includes(dj.name);
     const has80Target = RESIDENTS_80HR.includes(dj.name);
-    const pct = maxHours > 0 ? Math.min(total / maxHours * 100, 100) : 0;
-    const cost = dj.name === 'Guest DJ' ? 0 : total * dj.rate;
-    const barClass = `hours-bar-fill${isResident ? ' resident' : total === 0 ? ' zero' : ''}`;
+    const pct = maxHours > 0 ? Math.min(sched / maxHours * 100, 100) : 0;
+    const cost = dj.name === 'Guest DJ' ? 0 : signed * dj.rate;
+    const barClass = `hours-bar-fill${isResident ? ' resident' : sched === 0 ? ' zero' : ''}`;
     const isSoundBogie = dj.name === 'Sound Bogie';
     const djTarget = isSoundBogie ? 35 : has80Target ? RESIDENT_MIN : RESIDENT_TARGET;
     const djTargetLabel = isSoundBogie ? '30\u201340' : has80Target ? RESIDENT_MIN : RESIDENT_TARGET;
     let badge = '';
     if (has80Target || isSoundBogie) {
-      badge = total >= djTarget
-        ? `<span class="badge badge-ok">${total}/${djTargetLabel}h \u2713</span>`
-        : `<span class="badge badge-low">${total}/${djTargetLabel}h</span><span class="badge-needed">${djTarget - total}h needed</span>`;
+      badge = sched >= djTarget
+        ? `<span class="badge badge-ok">${sched}/${djTargetLabel}h \u2713</span>`
+        : `<span class="badge badge-low">${sched}/${djTargetLabel}h</span><span class="badge-needed">${djTarget - sched}h needed</span>`;
     }
     const editBtn = `<button class="dj-edit-btn" title="Edit name/rate" onclick="event.stopPropagation();editDJ('${dj.name.replace(/'/g,"\\'")}',${dj.rate})">&#9998;</button>`;
     return `<tr>
@@ -1594,32 +1581,28 @@ function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
           ${isResident ? '<div style="font-size:9px;color:var(--teal);font-weight:800;text-transform:uppercase;letter-spacing:.06em">Resident</div>' : ''}
         </div>
       </div></td>
-      <td class="right">${ark > 0 ? ark + 'h' : '\u2014'}</td>
-      <td class="right">${love > 0 ? love + 'h' : '\u2014'}</td>
+      <td class="right">${sched > 0 ? sched + 'h' : '\u2014'}</td>
+      <td class="right">${signed > 0 ? signed + 'h' : '\u2014'}</td>
       <td><div class="hours-bar-wrap">
         <div class="hours-bar-bg"><div class="${barClass}" style="width:${pct}%"></div></div>
-        <div class="hours-val">${total}h</div>${badge}
+        <div class="hours-val">${sched}h</div>${badge}
       </div></td>
       <td class="right" style="color:var(--text-secondary)">\u0E3F${dj.rate.toLocaleString()}/h</td>
-      <td class="right" style="font-weight:800;color:var(--navy)">${total > 0 ? '\u0E3F' + cost.toLocaleString() : '\u2014'}</td>
+      <td class="right" style="font-weight:800;color:var(--navy)">${cost > 0 ? '\u0E3F' + cost.toLocaleString() : '\u2014'}</td>
     </tr>`;
   }).join('');
 
-  const arkTotal  = Object.entries(arkHours) .filter(([dj]) => submittedDJs.get(dj) === 'submitted' && dj !== 'Guest DJ').reduce((a,[,v])=>a+v,0);
-  const loveTotal = Object.entries(loveHours).filter(([dj]) => submittedDJs.get(dj) === 'submitted' && dj !== 'Guest DJ').reduce((a,[,v])=>a+v,0);
-
-  const belowMin = RESIDENTS_80HR.filter(r => (totals[r] || 0) < RESIDENT_MIN);
+  const belowMin = RESIDENTS_80HR.filter(r => (scheduled[r] || 0) < RESIDENT_MIN);
   const minWarning = belowMin.length
-    ? `<div class="hours-min-warning">&#9888; Minimum ${RESIDENT_MIN}h not met: ${belowMin.map(r => `${r} (${totals[r]||0}h)`).join(', ')}</div>`
+    ? `<div class="hours-min-warning">&#9888; Minimum ${RESIDENT_MIN}h not met: ${belowMin.map(r => `${r} (${scheduled[r]||0}h)`).join(', ')}</div>`
     : '';
 
   $('mainContent').innerHTML = `<div class="hours-wrap">
     ${minWarning}
     <div class="summary-row">
-      <div class="summary-card"><div class="card-label">Total Hours</div><div class="card-value">${totalHours}h</div><div class="card-sub">${getMonthString()}</div></div>
-      <div class="summary-card"><div class="card-label">Total Cost</div><div class="card-value" style="font-size:20px">\u0E3F${totalCost.toLocaleString()}</div><div class="card-sub">All venues</div></div>
-      <div class="summary-card"><div class="card-label">ARKbar / HIP</div><div class="card-value">${arkTotal}h</div><div class="card-sub">Hours booked</div></div>
-      <div class="summary-card"><div class="card-label">Love Beach</div><div class="card-value">${loveTotal}h</div><div class="card-sub">Hours booked</div></div>
+      <div class="summary-card"><div class="card-label">Scheduled</div><div class="card-value">${totalScheduled}h</div><div class="card-sub">${getMonthString()}</div></div>
+      <div class="summary-card"><div class="card-label">Signed Off</div><div class="card-value">${totalSignedOff}h</div><div class="card-sub">${getMonthString()}</div></div>
+      <div class="summary-card"><div class="card-label">Total Cost</div><div class="card-value" style="font-size:20px">\u0E3F${totalCost.toLocaleString()}</div><div class="card-sub">Signed-off hours only</div></div>
     </div>
     <div class="hours-table-wrap">
       <div class="hours-table-header">
@@ -1629,11 +1612,11 @@ function renderHours(djs, arkHours, loveHours, loveUnconfirmed = new Set()) {
         </div>
       </div>
       <table class="hours-table">
-        <thead><tr><th>DJ</th><th class="right">ARKbar/HIP</th><th class="right">Love Beach</th><th>Total Hours</th><th class="right">Rate</th><th class="right">Total Cost</th></tr></thead>
+        <thead><tr><th>DJ</th><th class="right">Scheduled</th><th class="right">Signed Off</th><th>Hours Bar</th><th class="right">Rate</th><th class="right">Cost (signed)</th></tr></thead>
         <tbody>${rows}
           <tr class="totals-row">
-            <td>Total</td><td class="right">${arkTotal}h</td><td class="right">${loveTotal}h</td>
-            <td><div class="hours-val" style="font-size:14px;color:var(--navy)">${totalHours}h</div></td>
+            <td>Total</td><td class="right">${totalScheduled}h</td><td class="right">${totalSignedOff}h</td>
+            <td></td>
             <td></td><td class="right" style="font-size:14px;color:var(--navy)">\u0E3F${totalCost.toLocaleString()}</td>
           </tr>
         </tbody>
