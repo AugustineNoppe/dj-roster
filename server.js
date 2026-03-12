@@ -62,16 +62,11 @@ app.use(express.json());
 
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 // DJs with server-injected fixed schedules who are not residents.
-// Their blackout entries must also be tracked so a blackout can suppress a fixed slot.
-const FIXED_SCHEDULE_DJS = ['Davoted'];
 const ALL_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
   '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
   '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
 ];
-const MORNING_SLOTS = new Set([
-  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00','18:00\u201319:00'
-]);
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 const SHORT_MONTHS = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
@@ -166,7 +161,6 @@ const ALL_ARKBAR_SLOTS = [
  *   DJ list:      10min  (almost never changes)
  *   Availability: 3min   (changes when DJs submit form)
  *   Roster:       write-through (no TTL, invalidated on assign/batch/clear)
- *   Blackouts:    3min   (changes infrequently)
  *
  * On a typical roster editing session the user loads once (cold),
  * then every subsequent month-switch or tab-switch serves from cache.
@@ -177,7 +171,6 @@ const cache = {
   djs:          { data: null, time: 0, ttl: 10 * 60 * 1000 },
   availability: new Map(),
   roster:       new Map(),
-  blackouts:    { data: null, time: 0, ttl: 3 * 60 * 1000, month: null },
 };
 
 const AVAIL_TTL = 3 * 60 * 1000;
@@ -223,33 +216,6 @@ async function fetchDJs() {
   return result;
 }
 
-async function fetchBlackouts(month) {
-  if (isFresh(cache.blackouts) && cache.blackouts.month === month) {
-    return cache.blackouts.data;
-  }
-
-  let query = supabase.from('resident_blackouts').select('*');
-  if (month) query = query.eq('month', month);
-  const { data: rows, error } = await query;
-  if (error) throw new Error(error.message);
-
-  const blackouts = {};
-  RESIDENTS.forEach(r => { blackouts[r] = {}; });
-  FIXED_SCHEDULE_DJS.forEach(dj => { blackouts[dj] = {}; });
-  for (const { dj, date: dateRaw, month: monthLabel, type } of (rows || [])) {
-    if (!dj || !dateRaw) continue;
-    if (!blackouts[dj]) blackouts[dj] = {};
-    if (month && monthLabel !== month) continue;
-    const dk = parseDateKey(dateRaw);
-    if (dk) blackouts[dj][dk] = type || 'full';
-  }
-
-  cache.blackouts.data = blackouts;
-  cache.blackouts.month = month;
-  cache.blackouts.time = Date.now();
-  return blackouts;
-}
-
 async function fetchAvailability(month) {
   const cached = cache.availability.get(month);
   if (cached && (Date.now() - cached.time) < AVAIL_TTL) {
@@ -261,18 +227,14 @@ async function fetchAvailability(month) {
   const year = parseInt(parts[1]);
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
-  const [portalRows, blackouts] = await Promise.all([
-    supabase.from('dj_availability').select('*').eq('month', month).then(({ data }) => data || []),
-    fetchBlackouts(month),
-  ]);
+  const { data: portalRows } = await supabase.from('dj_availability').select('*').eq('month', month);
+  const rows = portalRows || [];
 
   const map = {};
 
-  // Build slot-specific unavailability map for residents from DJ Availability portal submissions.
-  // Residents submit 'unavailable' for slots they cannot do; these must override the default
-  // "residents are always available" assumption in the loop below.
+  // Build slot-specific unavailability map for residents from dj_availability.
   const residentSlotBlocked = {}; // { djName: { dateKey: Set<normalizedSlot> } }
-  for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of portalRows) {
+  for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of rows) {
     if (!dj || !dateRaw || !slot || rowMonth !== month || status !== 'unavailable') continue;
     if (!RESIDENTS.includes(dj)) continue;
     const dk = parseDateKey(dateRaw);
@@ -280,11 +242,8 @@ async function fetchAvailability(month) {
     ((residentSlotBlocked[dj] ??= {})[dk] ??= new Set()).add(normalizeSlot(slot));
   }
 
-  // Include portal submissions (dj_availability table) — columns: name, date, slot, month, status
-  // status is 'available' for freelance DJs (who only save their available slots) and
-  // 'unavailable' for residents (who save their blackout slots). Skip explicit unavailability;
-  // treat a missing status column as available so old/manually-entered rows still appear.
-  for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of portalRows) {
+  // Add available DJs from dj_availability. Skip explicit unavailability.
+  for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of rows) {
     if (!dj || !dateRaw || !slot || rowMonth !== month || status === 'unavailable') continue;
     const dk = parseDateKey(dateRaw);
     if (!dk) continue;
@@ -302,9 +261,6 @@ async function fetchAvailability(month) {
         if (!map[dk][ns]) map[dk][ns] = [];
         const arr = map[dk][ns];
         for (const resident of RESIDENTS) {
-          const bo = blackouts[resident][dk];
-          if (bo === 'full') continue;
-          if (bo === 'morning' && MORNING_SLOTS.has(slot)) continue;
           if (residentSlotBlocked[resident]?.[dk]?.has(ns)) continue;
           if (!arr.includes(resident)) arr.push(resident);
         }
@@ -319,11 +275,8 @@ async function fetchAvailability(month) {
       for (let d = 1; d <= daysInMonth; d++) {
         const dk = makeDateKey(year, monthIdx + 1, d);
         const dow = new Date(year, monthIdx, d).getDay();
-        const djBo = blackouts[djName]?.[dk];
-        if (djBo === 'full') continue;
         const slots = [...(sched.arkbar[dow] || []), ...(sched.loveBeach[dow] || [])];
         for (const slot of slots) {
-          if (djBo === 'morning' && MORNING_SLOTS.has(slot)) continue;
           const ns = normalizeSlot(slot);
           (map[dk] ??= {})[ns] ??= [];
           if (!map[dk][ns].includes(djName)) map[dk][ns].push(djName);
@@ -332,7 +285,7 @@ async function fetchAvailability(month) {
     }
   }
 
-  const result = { success: true, availability: map, blackouts };
+  const result = { success: true, availability: map };
   cache.availability.set(month, { data: result, time: Date.now() });
   return result;
 }
@@ -439,33 +392,6 @@ app.get('/api/roster', async (req, res) => {
     const { venue, month } = req.query;
     res.json(await fetchRoster(venue, month));
   } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
-
-/* == BLACKOUT SUBMISSION ================================================== */
-app.post('/api/blackout', requireDJAuth, async (req, res) => {
-  try {
-    const { dj, month, dates } = req.body;
-    if (!dj || !month || !Array.isArray(dates)) return res.json({ success: false, error: 'Missing fields' });
-
-    // Delete existing blackouts for this DJ+month, then insert new ones.
-    await supabase.from('resident_blackouts').delete().eq('dj', dj).eq('month', month);
-
-    const newRows = dates.map(({ date, type }) => ({
-      dj, date, month, timestamp: new Date().toISOString(), type: type || 'full',
-    }));
-    if (newRows.length > 0) {
-      const { error } = await supabase.from('resident_blackouts').insert(newRows);
-      if (error) throw new Error(error.message);
-    }
-
-    // Invalidate
-    cache.blackouts.data = null;
-    cache.availability.delete(month);
-    res.json({ success: true, saved: newRows.length });
-  } catch (err) {
-    console.error(err);
     res.json({ success: false, error: err.message });
   }
 });
@@ -1129,7 +1055,6 @@ app.get('/api/cache-status', (req, res) => {
   const age = entry => entry.data ? Math.round((Date.now() - entry.time) / 1000) + 's' : null;
   res.json({
     djs: { cached: !!cache.djs.data, age: age(cache.djs) },
-    blackouts: { cached: !!cache.blackouts.data, age: age(cache.blackouts) },
     availability: [...cache.availability.keys()].map(k => ({
       month: k, age: Math.round((Date.now() - cache.availability.get(k).time) / 1000) + 's'
     })),
