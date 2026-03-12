@@ -1167,7 +1167,7 @@ async function saveAvailability() {
   }
   try {
     const data = await fetch('/api/dj/availability', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-dj-pin': djPin },
       body: JSON.stringify({ name: djName, month, slots }),
     }).then(r => r.json());
 

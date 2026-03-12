@@ -557,7 +557,6 @@ app.post('/api/roster/clear', requireAdmin, async (req, res) => {
 /* == DJ PORTAL — NEW SHEETS / CONSTANTS =================================== */
 const DJ_AVAIL_SHEET        = 'DJ Availability';
 const DJ_PINS_SHEET         = 'DJ PINs';
-const DJ_SUBMISSIONS_SHEET  = 'DJ Submissions';
 
 cache.finalized = { data: null, time: 0, ttl: 5 * 60 * 1000 };
 
@@ -647,21 +646,19 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const sheets = getSheets();
 
     // Check DJ Submissions for this DJ+month to determine submissionStatus.
-    const submissionsResp = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A2:C`,
-    }).catch(() => ({ data: { values: [] } }));
-    const submissionsRows = submissionsResp.data.values || [];
-    const submissionRow = submissionsRows.find(r =>
-      r[0] && r[0].trim().toLowerCase() === name.trim().toLowerCase() && r[1] === month
-    );
+    const { data: submissionRow } = await supabase
+      .from('dj_submissions')
+      .select('status')
+      .ilike('name', name.trim())
+      .eq('month', month)
+      .maybeSingle();
 
-    let submissionStatus = submissionRow ? (submissionRow[2] || 'none') : 'none';
+    let submissionStatus = submissionRow ? (submissionRow.status || 'none') : 'none';
 
     // For residents with no existing submission record, pre-load default availability.
     const stored = {};
     let preloaded = false;
     if (!submissionRow && isResident && monthIdx >= 0 && !isNaN(year)) {
-      await getOrCreateSubmissionsSheet(sheets);
       const preloadRows = generatePreloadRows(name, month, monthIdx, year);
       if (preloadRows && preloadRows.length > 0) {
         // Write avail rows and submission record in parallel — no need to read back what we just wrote.
@@ -670,10 +667,10 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
             preloadRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot: slot.replace(/–/g, '-'), month: mo, status })),
             { onConflict: 'name,date,slot' }
           ),
-          sheets.spreadsheets.values.append({
-            spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
-            valueInputOption: 'RAW', requestBody: { values: [[name, month, 'pre-loaded']] },
-          }),
+          supabase.from('dj_submissions').upsert(
+            { name, month, status: 'pre-loaded' },
+            { onConflict: 'name,month' }
+          ),
         ]);
         submissionStatus = 'pre-loaded';
         // Build stored directly from the generated rows — avoids an extra Sheets read.
@@ -687,7 +684,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 
     // For FIXED_AVAILABILITY DJs with no existing submission record, pre-load fixed availability.
     if (!submissionRow && !preloaded && FIXED_AVAILABILITY[name] && monthIdx >= 0 && !isNaN(year)) {
-      await getOrCreateSubmissionsSheet(sheets);
       const fixedRows = generateFixedAvailabilityRows(name, year, monthIdx + 1);
       if (fixedRows.length > 0) {
         // Expand to 5-column sheet format: [name, dateKey, normalizedSlot, month, status]
@@ -697,10 +693,10 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
             sheetRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot: slot.replace(/–/g, '-'), month: mo, status })),
             { onConflict: 'name,date,slot' }
           ),
-          sheets.spreadsheets.values.append({
-            spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
-            valueInputOption: 'RAW', requestBody: { values: [[name, month, 'pre-loaded']] },
-          }),
+          supabase.from('dj_submissions').upsert(
+            { name, month, status: 'pre-loaded' },
+            { onConflict: 'name,month' }
+          ),
         ]);
         submissionStatus = 'pre-loaded';
         // Build stored directly from generated rows — avoids an extra Sheets read.
@@ -757,28 +753,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 
 /* -- POST /api/dj/availability -------------------------------------------- */
 
-/* -- Cached sheet gid for DJ Submissions tab -------------------------------- */
-let _djSubmissionsSheetId = null;
-async function getOrCreateSubmissionsSheet(sheets) {
-  if (_djSubmissionsSheetId !== null) return _djSubmissionsSheetId;
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID, fields: 'sheets.properties' });
-  const existing = (meta.data.sheets || []).find(s => s.properties.title === DJ_SUBMISSIONS_SHEET);
-  if (existing) {
-    _djSubmissionsSheetId = existing.properties.sheetId;
-    return _djSubmissionsSheetId;
-  }
-  const addRes = await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: SHEET_ID,
-    requestBody: { requests: [{ addSheet: { properties: { title: DJ_SUBMISSIONS_SHEET } } }] },
-  });
-  const newSheetId = addRes.data.replies[0].addSheet.properties.sheetId;
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A1:C1`,
-    valueInputOption: 'RAW', requestBody: { values: [['DJ Name', 'Month', 'Status']] },
-  });
-  _djSubmissionsSheetId = newSheetId;
-  return _djSubmissionsSheetId;
-}
 
 /* -- Generate pre-load rows for residents ----------------------------------- */
 function generatePreloadRows(name, month, monthIdx, year) {
@@ -895,13 +869,12 @@ app.get('/api/dj/submissions/:month', async (req, res) => {
   }
   try {
     const month = decodeURIComponent(req.params.month);
-    const sheets = getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A2:C`,
-    }).catch(() => ({ data: { values: [] } }));
-    const submitted = (response.data.values || [])
-      .filter(r => r[1] === month && r[0] && r[2])
-      .map(r => ({ name: r[0].trim(), status: r[2] }));
+    const { data: rows, error } = await supabase
+      .from('dj_submissions')
+      .select('name, status')
+      .eq('month', month);
+    if (error) throw new Error(error.message);
+    const submitted = (rows || []).map(r => ({ name: r.name.trim(), status: r.status }));
     res.json({ success: true, submitted });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -1145,21 +1118,13 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     // a. Clear DJ Availability rows for this month
     await supabase.from('dj_availability').delete().eq('month', month);
 
-    // b. Clear DJ Submissions rows for this month (column B = month)
+    // b. Clear DJ Submissions rows for this month
     {
-      let rows = [];
-      try {
-        rows = (await sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C`,
-        })).data.values || [];
-      } catch(e) {}
-      const header = rows[0] || [];
-      const keep = rows.slice(1).filter(r => (r[1] || '') !== month);
-      await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A:C` });
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID, range: `${DJ_SUBMISSIONS_SHEET}!A1`,
-        valueInputOption: 'RAW', requestBody: { values: [header, ...keep] },
-      });
+      const { error: subDelError } = await supabase
+        .from('dj_submissions')
+        .delete()
+        .eq('month', month);
+      if (subDelError) throw new Error(subDelError.message);
     }
 
     // c. Flush roster cache
