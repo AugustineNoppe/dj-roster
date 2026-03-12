@@ -625,7 +625,7 @@ async function loadDJList() {
     const data = await fetch('/api/djs').then(r => r.json());
     const sel = $('djSelect');
     sel.innerHTML = '<option value="">Select your name…</option>';
-    (data.djs || []).forEach(dj => {
+    (data.djs || []).sort((a, b) => a.name.localeCompare(b.name)).forEach(dj => {
       const opt = document.createElement('option');
       opt.value = dj.name;
       opt.textContent = dj.name;
