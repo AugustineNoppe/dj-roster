@@ -1,6 +1,5 @@
 const express = require('express');
 const path = require('path');
-const { google } = require('googleapis');
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -61,20 +60,6 @@ function rateLimiter(req, res, next) {
 
 app.use(express.json());
 
-/* == GOOGLE SHEETS AUTH (cached singleton) ================================ */
-let _sheets = null;
-function getSheets() {
-  if (_sheets) return _sheets;
-  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-  _sheets = google.sheets({ version: 'v4', auth });
-  return _sheets;
-}
-
-const SHEET_ID = process.env.SPREADSHEET_ID;
 const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
 // DJs with server-injected fixed schedules who are not residents.
 // Their blackout entries must also be tracked so a blackout can suppress a fixed slot.
@@ -242,17 +227,18 @@ async function fetchBlackouts(month) {
   if (isFresh(cache.blackouts) && cache.blackouts.month === month) {
     return cache.blackouts.data;
   }
-  const sheets = getSheets();
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID, range: 'Resident Blackouts!A2:E',
-  }).catch(() => ({ data: { values: [] } }));
+
+  let query = supabase.from('resident_blackouts').select('*');
+  if (month) query = query.eq('month', month);
+  const { data: rows, error } = await query;
+  if (error) throw new Error(error.message);
 
   const blackouts = {};
   RESIDENTS.forEach(r => { blackouts[r] = {}; });
   FIXED_SCHEDULE_DJS.forEach(dj => { blackouts[dj] = {}; });
-  for (const [dj, dateRaw, monthLabel, , type] of (response.data.values || [])) {
+  for (const { dj, date: dateRaw, month: monthLabel, type } of (rows || [])) {
     if (!dj || !dateRaw) continue;
-    if (!blackouts[dj]) blackouts[dj] = {}; // handle any DJ present in the sheet
+    if (!blackouts[dj]) blackouts[dj] = {};
     if (month && monthLabel !== month) continue;
     const dk = parseDateKey(dateRaw);
     if (dk) blackouts[dj][dk] = type || 'full';
@@ -270,30 +256,17 @@ async function fetchAvailability(month) {
     return cached.data;
   }
 
-  const sheets = getSheets();
   const parts = month.split(' ');
   const monthIdx = MONTH_NAMES.indexOf(parts[0]);
   const year = parseInt(parts[1]);
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
-  const [availRes, portalRows, blackouts] = await Promise.all([
-    sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: 'DJ Availability_Datasheet!A2:F',
-    }).catch(() => ({ data: { values: [] } })),
+  const [portalRows, blackouts] = await Promise.all([
     supabase.from('dj_availability').select('*').eq('month', month).then(({ data }) => data || []),
     fetchBlackouts(month),
   ]);
 
-  const filtered = (availRes.data.values || []).filter(r => r[2] === month);
   const map = {};
-  for (const [, dj, , dateRaw, , slot] of filtered) {
-    if (!dateRaw || !slot || !dj) continue;
-    const dk = parseDateKey(dateRaw);
-    if (!dk) continue;
-    const ns = normalizeSlot(slot);
-    (map[dk] ??= {})[ns] ??= [];
-    if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
-  }
 
   // Build slot-specific unavailability map for residents from DJ Availability portal submissions.
   // Residents submit 'unavailable' for slots they cannot do; these must override the default
@@ -475,18 +448,18 @@ app.post('/api/blackout', requireDJAuth, async (req, res) => {
   try {
     const { dj, month, dates } = req.body;
     if (!dj || !month || !Array.isArray(dates)) return res.json({ success: false, error: 'Missing fields' });
-    const sheets = getSheets();
-    const timestamp = new Date().toISOString();
-    const newRows = dates.map(({ date, type }) => [dj, date, month, timestamp, type || 'full']);
-    const existing = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: 'Resident Blackouts!A2:E',
-    }).catch(() => ({ data: { values: [] } }));
-    const keepRows = (existing.data.values || []).filter(r => !(r[0] === dj && r[2] === month));
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID, range: 'Resident Blackouts!A2',
-      valueInputOption: 'RAW',
-      requestBody: { values: [...keepRows, ...newRows].length > 0 ? [...keepRows, ...newRows] : [['']] },
-    });
+
+    // Delete existing blackouts for this DJ+month, then insert new ones.
+    await supabase.from('resident_blackouts').delete().eq('dj', dj).eq('month', month);
+
+    const newRows = dates.map(({ date, type }) => ({
+      dj, date, month, timestamp: new Date().toISOString(), type: type || 'full',
+    }));
+    if (newRows.length > 0) {
+      const { error } = await supabase.from('resident_blackouts').insert(newRows);
+      if (error) throw new Error(error.message);
+    }
+
     // Invalidate
     cache.blackouts.data = null;
     cache.availability.delete(month);
@@ -559,9 +532,7 @@ app.post('/api/roster/clear', requireAdmin, async (req, res) => {
   }
 });
 
-/* == DJ PORTAL — NEW SHEETS / CONSTANTS =================================== */
-const DJ_AVAIL_SHEET        = 'DJ Availability';
-const DJ_PINS_SHEET         = 'DJ PINs';
+/* == DJ PORTAL ============================================================ */
 
 cache.finalized = { data: null, time: 0, ttl: 5 * 60 * 1000 };
 
