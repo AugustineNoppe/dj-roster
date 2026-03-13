@@ -1188,13 +1188,11 @@ async function saveAvailability() {
   const month = getMonthStr();
   // Snapshot current state so we can roll back if the save fails.
   const snapshot = JSON.parse(JSON.stringify(availability));
-  // Only persist slots that differ from the default (residents=available, guests=unavailable).
-  // This prevents writing hundreds of default entries to the sheet on login.
-  const defaultStatus = isResident ? 'available' : 'unavailable';
+  // Send ALL slots — server upserts without deleting, so this is safe.
   const slots = [];
   for (const [date, slotMap] of Object.entries(availability)) {
     for (const [slot, status] of Object.entries(slotMap)) {
-      if (status !== defaultStatus) slots.push({ date, slot, status });
+      slots.push({ date, slot, status });
     }
   }
   try {

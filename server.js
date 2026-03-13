@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION:', err.stack || err.message);
 });
@@ -396,8 +398,8 @@ const DIAG_FIXED_TEMPLATE = {
     weekday: {
       0: { '14:00\u201315:00':'Donsine','15:00\u201316:00':'Donsine','16:00\u201317:00':'Donsine','20:00\u201321:00':'Cocoa','21:00\u201322:00':'Cocoa','22:00\u201323:00':'Cocoa','23:00\u201300:00':'Cocoa' },
       1: { '14:00\u201315:00':'Mostyx','15:00\u201316:00':'Mostyx','16:00\u201317:00':'Mostyx','20:00\u201321:00':'Pick','21:00\u201322:00':'Pick','22:00\u201323:00':'Pick','23:00\u201300:00':'Pick' },
-      2: { '14:00\u201315:00':'Vozka','15:00\u201316:00':'Vozka','16:00\u201317:00':'Vozka','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted' },
-      3: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted' },
+      2: { '14:00\u201315:00':'Vozka','15:00\u201316:00':'Vozka','16:00\u201317:00':'Vozka','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted','23:00\u201300:00':'Davoted' },
+      3: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted','23:00\u201300:00':'Davoted' },
       4: { '14:00\u201315:00':'Buba','15:00\u201316:00':'Buba','16:00\u201317:00':'Buba','20:00\u201321:00':'Jessi','21:00\u201322:00':'Jessi','22:00\u201323:00':'Jessi','23:00\u201300:00':'Jessi' },
       5: { '14:00\u201315:00':'Donsine','15:00\u201316:00':'Donsine','16:00\u201317:00':'Donsine','20:00\u201321:00':'Sky','21:00\u201322:00':'Sky','22:00\u201323:00':'Sky','23:00\u201300:00':'Sky' },
     },
@@ -674,6 +676,47 @@ app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
       }
     }
 
+    // DJ status overview: submission status + unavailability count per DJ
+    const { data: submissionRows } = await supabase
+      .from('dj_submissions')
+      .select('name, status')
+      .eq('month', month);
+    const submissionMap = {};
+    for (const r of (submissionRows || [])) submissionMap[r.name.trim()] = r.status;
+
+    const { data: allAvailRows } = await supabase
+      .from('dj_availability')
+      .select('name, status')
+      .eq('month', month);
+    const availStats = {};
+    for (const r of (allAvailRows || [])) {
+      const n = r.name.trim();
+      if (!availStats[n]) availStats[n] = { available: 0, unavailable: 0 };
+      availStats[n][r.status === 'unavailable' ? 'unavailable' : 'available']++;
+    }
+
+    const { data: djRows } = await supabase.from('dj_rates').select('name');
+    const djStatus = (djRows || []).map(d => {
+      const n = d.name.trim();
+      const stats = availStats[n] || { available: 0, unavailable: 0 };
+      return {
+        dj: n,
+        submissionStatus: submissionMap[n] || 'none',
+        availableSlots: stats.available,
+        unavailableSlots: stats.unavailable,
+        totalSlots: stats.available + stats.unavailable,
+      };
+    }).sort((a, b) => a.dj.localeCompare(b.dj));
+
+    console.log('[diagnostic] DJ Status for', month);
+    console.table(djStatus.map(d => ({
+      DJ: d.dj,
+      Submission: d.submissionStatus,
+      Available: d.availableSlots,
+      Unavailable: d.unavailableSlots,
+      Total: d.totalSlots,
+    })));
+
     res.json({
       success: true,
       month,
@@ -685,6 +728,7 @@ app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
       },
       violations,
       partialBlocks,
+      djStatus,
     });
   } catch (err) {
     console.error('[diagnostic] error:', err);
@@ -901,25 +945,21 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
     const finalized = await fetchFinalized();
     if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalized and cannot be edited' });
 
-    // Delete all existing rows for this DJ+month, then upsert the new ones.
-    const { error: delError } = await supabase
-      .from('dj_availability')
-      .delete()
-      .ilike('name', name.trim())
-      .eq('month', month);
-    if (delError) {
-      console.error('[dj/availability] delete error:', delError);
-      throw new Error(delError.message);
-    }
-
-    const newRows = slots.map(({ date, slot, status }) => ({ name, date, slot: slot.replace(/–/g, '-'), month, status }));
+    // Upsert only — never delete. Atomic: partial failure leaves existing data intact.
+    const newRows = slots.map(({ date, slot, status }) => ({
+      name: name.trim(), date, slot: slot.replace(/–/g, '-'), month, status,
+    }));
     if (newRows.length > 0) {
-      const { error } = await supabase
-        .from('dj_availability')
-        .upsert(newRows, { onConflict: 'name,date,slot' });
-      if (error) {
-        console.error('[dj/availability] upsert error:', error, 'sample row:', newRows[0], 'total rows:', newRows.length);
-        throw new Error(error.message);
+      // Batch in chunks of 500 to avoid Supabase payload limits
+      for (let i = 0; i < newRows.length; i += 500) {
+        const chunk = newRows.slice(i, i + 500);
+        const { error } = await supabase
+          .from('dj_availability')
+          .upsert(chunk, { onConflict: 'name,date,slot' });
+        if (error) {
+          console.error('[dj/availability] upsert error:', error, 'chunk:', i, 'sample:', chunk[0], 'total:', newRows.length);
+          throw new Error(error.message);
+        }
       }
     }
 
