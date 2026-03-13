@@ -320,11 +320,12 @@ async function fetchAvailability(month) {
     }
   }
 
-  // Add residents: available by default, blocked only if dj_availability
-  // has an explicit 'unavailable' status for that slot.
+  // Add residents: blocked if dj_availability says 'unavailable', or if
+  // no Supabase row exists, fall back to DJ_AVAILABILITY_PRELOAD config.
   if (year !== undefined && monthIdx >= 0) {
     for (let d = 1; d <= daysInMonth; d++) {
       const dk = makeDateKey(year, monthIdx + 1, d);
+      const dow = new Date(year, monthIdx, d).getDay();
       if (!map[dk]) map[dk] = {};
       for (const slot of ALL_SLOTS) {
         const ns = normalizeSlot(slot);
@@ -333,6 +334,13 @@ async function fetchAvailability(month) {
         for (const resident of RESIDENTS) {
           const slotStatus = djStatus[resident]?.[dk]?.[ns];
           if (slotStatus === 'unavailable') continue;
+          if (slotStatus === undefined) {
+            const cfg = DJ_AVAILABILITY_PRELOAD[resident];
+            if (cfg) {
+              if (cfg.unavailableDays && cfg.unavailableDays.includes(dow)) continue;
+              if (cfg.unavailableSlots && cfg.unavailableSlots.includes(ns)) continue;
+            }
+          }
           if (!arr.includes(resident)) arr.push(resident);
         }
         if (!arr.includes('Guest DJ')) arr.push('Guest DJ');
