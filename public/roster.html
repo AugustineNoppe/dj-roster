@@ -1250,6 +1250,12 @@ async function suggestRoster() {
   function canAssign(dj, dateStr, slot) {
     if (dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted') return false;
     const unavailDate = getUnavailLookupDate(dateStr, slot);
+    if (dj === 'Sound Bogie' && dateStr === '2026-03-15') {
+      const lookupKey = `${unavailDate}|${slot}`;
+      const entries = unavailabilityMap['Sound Bogie'];
+      const hit = entries && entries.includes(lookupKey);
+      console.log('[DEBUG canAssign] slot:', JSON.stringify(slot), 'key:', JSON.stringify(lookupKey), 'map entries:', entries, 'hit:', hit);
+    }
     if (unavailabilityMap[dj] && unavailabilityMap[dj].includes(`${unavailDate}|${slot}`)) return false;
     if ((djHours[dj] || 0) >= (TARGETS[dj] || 999)) return false;
     if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
