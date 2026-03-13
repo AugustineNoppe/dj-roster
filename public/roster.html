@@ -541,7 +541,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
     <div class="status-pill draft" id="statusPill">&#x25CF; Draft</div>
     <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
-      <button class="btn-sm btn-suggest" onclick="suggestRoster()">&#9889; Auto-suggest</button>
+      <button class="btn-sm btn-suggest" onclick="runAutoSuggest()">&#9889; Auto-suggest</button>
       <button class="btn-sm btn-clear" onclick="clearRoster()">Clear Roster</button>
       <button class="btn-sm btn-clear" id="btnResetMonth" onclick="resetMonthData()">Reset Month Data</button>
       <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
@@ -1143,11 +1143,11 @@ async function resetMonthData() {
 }
 
 // === AUTO-SUGGEST ===
-async function suggestRoster() {
+async function runAutoSuggest() {
   if (isPublished) { showToast('Unlock roster before auto-suggesting', 'error'); return; }
   if (currentVenue === 'hours') { showToast('Switch to a venue tab first', 'error'); return; }
 
-  // Always refresh submission state and unavailability so casual DJs who submitted after page load are included.
+  // Refresh submission state and unavailability.
   const enc = encodeURIComponent;
   const monthStr = getMonthString();
   try {
@@ -1157,7 +1157,7 @@ async function suggestRoster() {
     if (freshSubs.success !== false) {
       submittedDJs = new Map((freshSubs.submitted || []).map(s => [s.name, s.status]));
     }
-  } catch(e) { console.warn('suggestRoster: failed to refresh submissions', e); }
+  } catch(e) { console.warn('runAutoSuggest: failed to refresh submissions', e); }
   try {
     const unavailData = await fetch(`/api/roster/unavailability/${enc(monthStr)}`, {
       headers: { 'x-admin-password': adminPassword },
@@ -1165,13 +1165,12 @@ async function suggestRoster() {
     if (unavailData.success && unavailData.unavailability) {
       unavailabilityMap = unavailData.unavailability;
     } else {
-      console.warn('suggestRoster: unavailability endpoint returned', unavailData);
+      console.warn('runAutoSuggest: unavailability endpoint returned', unavailData);
     }
-  } catch(e) { console.warn('suggestRoster: failed to fetch unavailability', e); }
+  } catch(e) { console.warn('runAutoSuggest: failed to fetch unavailability', e); }
 
-  showToast('Auto-suggesting resident slots...', '');
+  showToast('Auto-suggesting all venues...', '');
 
-  const isLove = currentVenue === 'love';
   const month = getMonthString();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
@@ -1186,50 +1185,21 @@ async function suggestRoster() {
   ];
 
   // Zone definitions
-  const ZONE_AFTERNOON = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
   const ZONE_COOLDOWN  = ['17:00\u201318:00','18:00\u201319:00'];
   const ZONE_LATENIGHT = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
 
   const LATENIGHT_ROTATION = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
-  const AFTERNOON_ROTATION = ['Alex RedWhite', null, 'Raffo DJ', null];
-  const COOLDOWN_ROTATION = ['Raffo DJ', null, 'Sound Bogie', null];
+  const COOLDOWN_ROTATION = ['Sound Bogie', 'Raffo DJ', 'Alex RedWhite'];
 
-  const working = { ...rosterAssignments };
-
-  // Helper: get the "evening date" for a slot — post-midnight slots belong to previous day
-  function getEveningDate(dateStr, slot) {
-    if (slot && (slot.startsWith('00:') || slot.startsWith('01:'))) {
-      const d = new Date(dateStr);
-      d.setDate(d.getDate() - 1);
-      return makeDateStr(d.getFullYear(), d.getMonth(), d.getDate());
-    }
-    return dateStr;
-  }
-
-  // Build otherVenueDJs: DJs working at other venues on each "evening date"
-  const otherVenueMap = isLove ? arkbarAssignments : loveAssignments;
-  const otherVenueDJs = {};
-  function addToOtherVenueDJs(assignments) {
-    Object.entries(assignments).forEach(([k, dj]) => {
-      const [dateStr, slot] = k.split('|');
-      const eveningDate = getEveningDate(dateStr, slot);
-      (otherVenueDJs[eveningDate] ??= new Set()).add(dj);
-    });
-  }
-  addToOtherVenueDJs(otherVenueMap);
-  addToOtherVenueDJs(hipAssignments);
+  // Shared state — fresh for each run
+  const working = {};       // ARKbar assignments: "date|slot" → dj
+  const loveWorking = {};   // Love Beach assignments: "date|slot" → dj
+  hipAssignments = {};      // HIP assignments: reset fresh
+  const hipPlacedTonight = new Map(); // dateStr → Set<djName>
 
   const djHours = {};
   RESIDENTS.forEach(r => { djHours[r] = 0; });
   const djDaySlots = {};
-
-  Object.entries(working).forEach(([k,dj]) => {
-    if (RESIDENTS.includes(dj)) {
-      djHours[dj] = (djHours[dj] || 0) + 1;
-      const d = k.split('|')[0];
-      (djDaySlots[`${dj}|${d}`] ??= []).push(k.split('|')[1]);
-    }
-  });
 
   function getDaySlotCount(dj, dateStr) { return (djDaySlots[`${dj}|${dateStr}`] || []).length; }
   function addSlot(dj, dateStr, slot) {
@@ -1237,7 +1207,7 @@ async function suggestRoster() {
     djHours[dj] = (djHours[dj] || 0) + 1;
   }
 
-  // Post-midnight slots (00:xx, 01:xx) belong to the previous calendar day for unavailability lookup
+  // Post-midnight slots belong to the previous calendar day for unavailability lookup
   function getUnavailLookupDate(dateStr, slot) {
     if (slot.startsWith('00:') || slot.startsWith('01:')) {
       const d = new Date(dateStr);
@@ -1250,17 +1220,12 @@ async function suggestRoster() {
   function canAssign(dj, dateStr, slot) {
     if (dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted') return false;
     const unavailDate = getUnavailLookupDate(dateStr, slot);
-    if (dj === 'Sound Bogie' && dateStr === '2026-03-15') {
-      const lookupKey = `${unavailDate}|${slot}`;
-      const entries = unavailabilityMap['Sound Bogie'];
-      const hit = entries && entries.includes(lookupKey);
-      console.log('[DEBUG canAssign] slot:', JSON.stringify(slot), 'key:', JSON.stringify(lookupKey), 'map entries:', entries, 'hit:', hit);
-    }
     if (unavailabilityMap[dj] && unavailabilityMap[dj].includes(`${unavailDate}|${slot}`)) return false;
     if ((djHours[dj] || 0) >= (TARGETS[dj] || 999)) return false;
     if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
     if (working[`${dateStr}|${slot}`]) return false;
-    if (otherVenueDJs[dateStr]?.has(dj)) return false;
+    if (loveWorking[`${dateStr}|${slot}`]) return false;
+    if (hipPlacedTonight.get(dateStr)?.has(dj)) return false;
     return true;
   }
 
@@ -1277,260 +1242,35 @@ async function suggestRoster() {
     return maxRun > MAX_CONSECUTIVE;
   }
 
-  function playedZoneYesterday(dj, dateStr, zoneSlots) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() - 1);
-    const yesterday = makeDateStr(d.getFullYear(), d.getMonth(), d.getDate());
-    return zoneSlots.every(slot => working[`${yesterday}|${slot}`] === dj);
-  }
-
-  // === Baseline pass: re-use prev-month same-dow assignments where DJ is still available ===
-  const prevYear  = currentMonth === 0 ? currentYear - 1 : currentYear;
-  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-  const prevMonthStr = `${MONTHS[prevMonth]} ${prevYear}`;
-  const venue = currentVenue; // 'arkbar' | 'hip' | 'love' — already maps to API param
-  let prevRosterMap = {}; // "dow|slot" → dj
-  try {
-    const prevData = await fetch(`/api/roster?venue=${venue}&month=${encodeURIComponent(prevMonthStr)}`).then(r => r.json());
-    (prevData.roster || []).forEach(([date, slot, dj]) => {
-      if (!date || !slot || !dj || dj === 'Guest DJ') return;
-      const dow = new Date(date).getDay();
-      const key = `${dow}|${normalizeSlot(slot)}`;
-      if (!prevRosterMap[key]) prevRosterMap[key] = dj;
-    });
-  } catch(e) { /* baseline unavailable — continue without it */ }
-
-  const baselineToSave = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = makeDateStr(currentYear, currentMonth, d);
-    const dow = new Date(currentYear, currentMonth, d).getDay();
-    const slotsForVenue = isLove
-      ? (dow === 6 ? LOVE_SAT_SLOTS : LOVE_WEEKDAY_SLOTS)
-      : ALL_ARKBAR_SLOTS;
-    for (const slot of slotsForVenue) {
-      if (working[`${dateStr}|${slot}`]) continue; // already assigned
-      const prevDJ = prevRosterMap[`${dow}|${normalizeSlot(slot)}`];
-      if (!prevDJ) continue;
-      if (!RESIDENTS.includes(prevDJ)) continue; // baseline only for residents
-      if (!canAssign(prevDJ, dateStr, slot)) continue;
-      if (wouldBreakConsecutive(prevDJ, dateStr, [slot])) continue;
-      working[`${dateStr}|${slot}`] = prevDJ;
-      addSlot(prevDJ, dateStr, slot);
-      baselineToSave.push({ dateStr, slot, type: isLove ? 'love' : (venue === 'hip' ? 'hip' : 'arkbar'), dj: prevDJ });
-    }
-  }
-
-  if (!isLove) {
-    const toSave = [...baselineToSave];
-
-    // Pass 1: Late Night - strict 3-day rotation
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = makeDateStr(currentYear, currentMonth, d);
-      const dj = LATENIGHT_ROTATION[(d - 1) % LATENIGHT_ROTATION.length];
-      if (!canAssign(dj, dateStr, ZONE_LATENIGHT[0])) continue;
-      if (wouldBreakConsecutive(dj, dateStr, ZONE_LATENIGHT)) continue;
-      if (!ZONE_LATENIGHT.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
-      ZONE_LATENIGHT.forEach(slot => {
-        working[`${dateStr}|${slot}`] = dj;
-        addSlot(dj, dateStr, slot);
-        toSave.push({ dateStr, slot, type:'arkbar', dj });
-      });
-    }
-
-    // Pass 2: Afternoon - Alex & Raffo alternate with gaps
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = makeDateStr(currentYear, currentMonth, d);
-      const dj = AFTERNOON_ROTATION[(d - 1) % AFTERNOON_ROTATION.length];
-      if (!dj) continue;
-      if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
-      if (wouldBreakConsecutive(dj, dateStr, ZONE_AFTERNOON)) continue;
-      if (playedZoneYesterday(dj, dateStr, ZONE_AFTERNOON)) continue;
-      if (!ZONE_AFTERNOON.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
-      ZONE_AFTERNOON.forEach(slot => {
-        working[`${dateStr}|${slot}`] = dj;
-        addSlot(dj, dateStr, slot);
-        toSave.push({ dateStr, slot, type:'arkbar', dj });
-      });
-    }
-
-    // Pass 3: Cooldown - Raffo & Sound alternate with gaps
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = makeDateStr(currentYear, currentMonth, d);
-      const dj = COOLDOWN_ROTATION[(d - 1) % COOLDOWN_ROTATION.length];
-      if (!dj) continue;
-      if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
-      if (wouldBreakConsecutive(dj, dateStr, ZONE_COOLDOWN)) continue;
-      if (playedZoneYesterday(dj, dateStr, ZONE_COOLDOWN)) continue;
-      if (!ZONE_COOLDOWN.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
-      ZONE_COOLDOWN.forEach(slot => {
-        working[`${dateStr}|${slot}`] = dj;
-        addSlot(dj, dateStr, slot);
-        toSave.push({ dateStr, slot, type:'arkbar', dj });
-      });
-    }
-
-    // Pass 4: HIP Restaurant
-    const hipToSave = [];
-    let saturdayToggle = 0; // alternates Pick/Tony for Saturdays
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dow = new Date(currentYear, currentMonth, d).getDay();
-      const dateStr = makeDateStr(currentYear, currentMonth, d);
-      let hipDJ = HIP_ROTATION[dow];
-      if (!hipDJ) continue;
-      // Saturday alternates between Pick and Tony
-      if (Array.isArray(hipDJ)) {
-        hipDJ = hipDJ[saturdayToggle % hipDJ.length];
-        saturdayToggle++;
-      }
-      if (!HIP_SLOTS.every(slot => !hipAssignments[`${dateStr}|${slot}`])) continue;
-      if (!HIP_SLOTS.every(slot => canAssign(hipDJ, dateStr, slot))) continue;
-      HIP_SLOTS.forEach(slot => {
-        hipAssignments[`${dateStr}|${slot}`] = hipDJ;
-        hipToSave.push({ dateStr, slot, type:'hip', dj:hipDJ });
-      });
-    }
-
-    // Pass 5: Davoted's fixed ARKbar weekly slots
-    const davotedArkbar = fixedSchedules?.['Davoted']?.arkbar || {};
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dow = new Date(currentYear, currentMonth, d).getDay();
-      const fixedSlots = davotedArkbar[dow];
-      if (!fixedSlots) continue;
-      const dateStr = makeDateStr(currentYear, currentMonth, d);
-      if (otherVenueDJs[dateStr]?.has('Davoted')) continue;
-      fixedSlots.forEach(slot => {
-        if (!canAssign('Davoted', dateStr, slot)) return;
-        working[`${dateStr}|${slot}`] = 'Davoted';
-        toSave.push({ dateStr, slot, type:'arkbar', dj:'Davoted' });
-      });
-    }
-
-    // Pass 6: Fill remaining ARKbar slots with zone-based DJ rotation
-    // Zone definitions
-    const ARK_14_17 = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
-    const ARK_17_19 = ['17:00\u201318:00','18:00\u201319:00'];
-    const ARK_20_23 = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'];
-    const ARK_23_02 = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
-    // DJ pools per zone
-    const ARK_14_17_DJS = ['Pick', 'Jessi', 'Alex RedWhite'];
-    const ARK_17_19_DJS = ['Sound Bogie', 'Raffo DJ', 'Alex RedWhite'];
-    const ARK_20_23_DJS = ['Pick', 'Tony', 'Jessi', 'Davoted'];
-    const ARK_23_02_DJS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
-
-    // Helper: try to assign a zone block to first available DJ from pool (sorted by hours)
-    function tryAssignZone(dateStr, zoneSlots, djPool) {
-      // Check if any slot in zone is already filled
-      const emptySlots = zoneSlots.filter(slot => !working[`${dateStr}|${slot}`]);
-      if (emptySlots.length === 0) return;
-      // Sort DJ pool by current hours (ascending) for even distribution
-      const sorted = [...djPool]
-        .filter(dj => submittedDJs.get(dj) === 'submitted')
-        .sort((a, b) => (djHours[a] || 0) - (djHours[b] || 0));
-      for (const dj of sorted) {
-        if (otherVenueDJs[dateStr]?.has(dj)) continue;
-        // Check all empty slots can be assigned
-        const canFill = emptySlots.filter(slot => {
-          if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
-          return canAssign(dj, dateStr, slot);
-        });
-        if (canFill.length === 0) continue;
-        // Assign as many slots as possible up to MAX_DAY_HOURS
-        canFill.forEach(slot => {
-          if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return;
-          working[`${dateStr}|${slot}`] = dj;
-          addSlot(dj, dateStr, slot);
-          toSave.push({ dateStr, slot, type:'arkbar', dj });
-        });
-        // If zone fully filled, break; otherwise continue with next DJ
-        if (zoneSlots.every(slot => working[`${dateStr}|${slot}`])) break;
-      }
-    }
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = makeDateStr(currentYear, currentMonth, d);
-      // Fill zones in order: 14-17, 17-19, 20-23, 23-02
-      tryAssignZone(dateStr, ARK_14_17, ARK_14_17_DJS);
-      tryAssignZone(dateStr, ARK_17_19, ARK_17_19_DJS);
-      tryAssignZone(dateStr, ARK_20_23, ARK_20_23_DJS);
-      tryAssignZone(dateStr, ARK_23_02, ARK_23_02_DJS);
-    }
-
-    const totalSlots = toSave.length + hipToSave.length;
-    if (totalSlots === 0) { showToast('No slots could be auto-assigned', 'error'); return; }
-
-    rosterAssignments = { ...working };
-    arkbarAssignments = { ...working };
-    renderGrid();
-    updateHoursPanel();
-    // Apply consistent assignDJ styling to every auto-suggested slot so that
-    // unconfirmed DJs get amber colouring and the correct CSS class, matching
-    // the behaviour that runs when a user picks a DJ manually.
-    [...toSave, ...hipToSave].forEach(({dateStr, slot, type: slotType}) => {
-      const sel = [...document.querySelectorAll(`select[data-date="${dateStr}"][data-type="${slotType}"]`)]
-        .find(s => s.dataset.slot === slot);
-      if (sel) assignDJ(sel);
-    });
-
-    const summary = RESIDENTS.map(r => `${r}: ${djHours[r] || 0}h`).join(' \u00B7 ');
-    showToast(`Saving ${totalSlots} slots...`, 'success');
-
-    try {
-      const saves = [];
-      if (toSave.length > 0) saves.push(fetch('/api/roster/batch', {
-        method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
-        body: JSON.stringify({ venue:'arkbar', month, assignments:toSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
-      }));
-      if (hipToSave.length > 0) saves.push(fetch('/api/roster/batch', {
-        method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
-        body: JSON.stringify({ venue:'hip', month, assignments:hipToSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
-      }));
-      const results = await Promise.all(saves);
-      const allOk = (await Promise.all(results.map(r => r.json()))).every(d => d.success);
-      showToast(allOk
-        ? `Done: ARKbar ${toSave.length} + HIP ${hipToSave.length} slots \u00B7 ${summary}`
-        : 'Some saves failed \u2014 check sheet', allOk ? 'success' : 'error');
-    } catch(e) {
-      showToast('UI updated \u2014 check connection', 'error');
-    }
-    return;
-  }
-
-  // Love Beach auto-suggest with day-of-week patterns
-  const loveToSave = [...baselineToSave];
-  const loveWorking = { ...working };
+  // ── PHASE 1: Love Beach patterns ──
+  const loveToSave = [];
   const LOVE_AFTERNOON = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
   const LOVE_EVENING = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'];
 
-  // Day-of-week patterns: dow → { afternoon: [DJs], evening: [DJs] }
-  // First DJ is preferred, rest are fallbacks sorted by hours
   const LOVE_PATTERNS = {
-    0: { afternoon: ['Donsine'], evening: ['Cocoa'] },           // Sunday
-    1: { afternoon: ['Mostyx'], evening: ['Pick'] },             // Monday
-    2: { afternoon: ['Vozka'], evening: ['Davoted'] },           // Tuesday
-    3: { afternoon: ['Pick'], evening: ['Sky'] },                // Wednesday
-    4: { afternoon: ['Buba'], evening: ['Jessi'] },              // Thursday
-    5: { afternoon: ['Donsine'], evening: ['Sky'] },             // Friday
-    6: { afternoon: ['Pick', 'Bollie'], evening: ['Mostyx'] },   // Saturday (alternates Pick/Bollie)
+    0: { afternoon: ['Donsine'], evening: ['Cocoa'] },
+    1: { afternoon: ['Mostyx'], evening: ['Pick'] },
+    2: { afternoon: ['Vozka'], evening: ['Davoted'] },
+    3: { afternoon: ['Pick'], evening: ['Sky'] },
+    4: { afternoon: ['Buba'], evening: ['Jessi'] },
+    5: { afternoon: ['Donsine'], evening: ['Sky'] },
+    6: { afternoon: ['Pick', 'Bollie'], evening: ['Mostyx'] },
   };
-  let satAfternoonToggle = 0; // alternates Pick/Bollie for Saturday afternoon
+  let satAfternoonToggle = 0;
 
-  // Helper: try to assign a Love Beach block
   function tryAssignLoveBlock(dateStr, blockSlots, djPool) {
     const emptySlots = blockSlots.filter(slot => !loveWorking[`${dateStr}|${slot}`]);
     if (emptySlots.length === 0) return;
-    // Sort fallback DJs by current hours (ascending)
     const sorted = [...djPool]
       .filter(dj => submittedDJs.get(dj) === 'submitted')
       .sort((a, b) => (djHours[a] || 0) - (djHours[b] || 0));
     for (const dj of sorted) {
-      if (otherVenueDJs[dateStr]?.has(dj)) continue;
-      // Check if DJ is already at ARKbar this day
-      if (Object.entries(arkbarAssignments).some(([k,v]) => k.startsWith(dateStr + '|') && v === dj)) continue;
       const canFill = emptySlots.filter(slot => canAssign(dj, dateStr, slot));
       if (canFill.length === 0) continue;
       canFill.forEach(slot => {
         loveWorking[`${dateStr}|${slot}`] = dj;
         loveToSave.push({ dateStr, slot, type:'love', dj });
+        addSlot(dj, dateStr, slot);
       });
       if (blockSlots.every(slot => loveWorking[`${dateStr}|${slot}`])) break;
     }
@@ -1541,46 +1281,162 @@ async function suggestRoster() {
     const dateStr = makeDateStr(currentYear, currentMonth, d);
     const pattern = LOVE_PATTERNS[dow];
     if (!pattern) continue;
-
-    // Build afternoon DJ pool
     let afternoonPool = [...pattern.afternoon];
-    // Saturday alternates Pick/Bollie
     if (dow === 6 && afternoonPool.length > 1) {
       afternoonPool = [afternoonPool[satAfternoonToggle % afternoonPool.length]];
       satAfternoonToggle++;
     }
     tryAssignLoveBlock(dateStr, LOVE_AFTERNOON, afternoonPool);
-
-    // Build evening DJ pool
     const eveningPool = [...pattern.evening];
     tryAssignLoveBlock(dateStr, LOVE_EVENING, eveningPool);
   }
 
-  if (loveToSave.length === 0) { showToast('No available DJs for Love Beach empty slots', 'error'); return; }
+  // ── PHASE 2: Davoted fixed ARKbar ──
+  const toSave = [];
+  const davotedArkbar = fixedSchedules?.['Davoted']?.arkbar || {};
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(currentYear, currentMonth, d).getDay();
+    const fixedSlots = davotedArkbar[dow];
+    if (!fixedSlots) continue;
+    const dateStr = makeDateStr(currentYear, currentMonth, d);
+    fixedSlots.forEach(slot => {
+      if (!canAssign('Davoted', dateStr, slot)) return;
+      working[`${dateStr}|${slot}`] = 'Davoted';
+      addSlot('Davoted', dateStr, slot);
+      toSave.push({ dateStr, slot, type:'arkbar', dj:'Davoted' });
+    });
+  }
 
+  // ── PHASE 3: Late night ARKbar 23–02 ──
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = makeDateStr(currentYear, currentMonth, d);
+    const dj = LATENIGHT_ROTATION[(d - 1) % LATENIGHT_ROTATION.length];
+    if (!canAssign(dj, dateStr, ZONE_LATENIGHT[0])) continue;
+    if (wouldBreakConsecutive(dj, dateStr, ZONE_LATENIGHT)) continue;
+    if (!ZONE_LATENIGHT.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
+    ZONE_LATENIGHT.forEach(slot => {
+      working[`${dateStr}|${slot}`] = dj;
+      addSlot(dj, dateStr, slot);
+      toSave.push({ dateStr, slot, type:'arkbar', dj });
+    });
+  }
+
+  // ── PHASE 4: Cooldown ARKbar 17–19 ──
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = makeDateStr(currentYear, currentMonth, d);
+    const dj = COOLDOWN_ROTATION[(d - 1) % COOLDOWN_ROTATION.length];
+    if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
+    if (wouldBreakConsecutive(dj, dateStr, ZONE_COOLDOWN)) continue;
+    if (!ZONE_COOLDOWN.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
+    ZONE_COOLDOWN.forEach(slot => {
+      working[`${dateStr}|${slot}`] = dj;
+      addSlot(dj, dateStr, slot);
+      toSave.push({ dateStr, slot, type:'arkbar', dj });
+    });
+  }
+
+  // ── PHASE 5: HIP blocks ──
+  const hipToSave = [];
+  let saturdayToggle = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(currentYear, currentMonth, d).getDay();
+    const dateStr = makeDateStr(currentYear, currentMonth, d);
+    let hipDJ = HIP_ROTATION[dow];
+    if (!hipDJ) continue;
+    if (Array.isArray(hipDJ)) {
+      hipDJ = hipDJ[saturdayToggle % hipDJ.length];
+      saturdayToggle++;
+    }
+    if (!HIP_SLOTS.every(slot => !hipAssignments[`${dateStr}|${slot}`])) continue;
+    if (!HIP_SLOTS.every(slot => canAssign(hipDJ, dateStr, slot))) continue;
+    HIP_SLOTS.forEach(slot => {
+      hipAssignments[`${dateStr}|${slot}`] = hipDJ;
+      hipToSave.push({ dateStr, slot, type:'hip', dj:hipDJ });
+      addSlot(hipDJ, dateStr, slot);
+    });
+    // Record DJ as placed at HIP tonight so ARKbar passes skip them
+    if (!hipPlacedTonight.has(dateStr)) hipPlacedTonight.set(dateStr, new Set());
+    hipPlacedTonight.get(dateStr).add(hipDJ);
+  }
+
+  // ── PHASE 6: Zone fill remaining ARKbar gaps ──
+  const ARK_14_17 = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
+  const ARK_17_19 = ['17:00\u201318:00','18:00\u201319:00'];
+  const ARK_20_23 = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'];
+  const ARK_23_02 = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
+  const ARK_14_17_DJS = ['Pick', 'Jessi', 'Alex RedWhite'];
+  const ARK_17_19_DJS = ['Sound Bogie', 'Raffo DJ', 'Alex RedWhite'];
+  const ARK_20_23_DJS = ['Pick', 'Tony', 'Jessi', 'Davoted'];
+  const ARK_23_02_DJS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
+
+  function tryAssignZone(dateStr, zoneSlots, djPool) {
+    const emptySlots = zoneSlots.filter(slot => !working[`${dateStr}|${slot}`]);
+    if (emptySlots.length === 0) return;
+    const sorted = [...djPool]
+      .filter(dj => submittedDJs.get(dj) === 'submitted')
+      .sort((a, b) => (djHours[a] || 0) - (djHours[b] || 0));
+    for (const dj of sorted) {
+      const canFill = emptySlots.filter(slot => {
+        if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
+        return canAssign(dj, dateStr, slot);
+      });
+      if (canFill.length === 0) continue;
+      canFill.forEach(slot => {
+        if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return;
+        working[`${dateStr}|${slot}`] = dj;
+        addSlot(dj, dateStr, slot);
+        toSave.push({ dateStr, slot, type:'arkbar', dj });
+      });
+      if (zoneSlots.every(slot => working[`${dateStr}|${slot}`])) break;
+    }
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = makeDateStr(currentYear, currentMonth, d);
+    tryAssignZone(dateStr, ARK_14_17, ARK_14_17_DJS);
+    tryAssignZone(dateStr, ARK_17_19, ARK_17_19_DJS);
+    tryAssignZone(dateStr, ARK_20_23, ARK_20_23_DJS);
+    tryAssignZone(dateStr, ARK_23_02, ARK_23_02_DJS);
+  }
+
+  // ── RENDER & SAVE ──
+  const totalSlots = toSave.length + hipToSave.length + loveToSave.length;
+  if (totalSlots === 0) { showToast('No slots could be auto-assigned', 'error'); return; }
+
+  arkbarAssignments = { ...working };
+  rosterAssignments = currentVenue === 'love' ? { ...loveWorking } : { ...working };
   loveAssignments = { ...loveWorking };
-  rosterAssignments = loveAssignments;
   renderGrid();
   updateHoursPanel();
-  // Apply consistent assignDJ styling to every auto-suggested slot so that
-  // unconfirmed DJs get amber colouring and the correct CSS class, matching
-  // the behaviour that runs when a user picks a DJ manually.
-  loveToSave.forEach(({dateStr, slot, type: slotType}) => {
+
+  [...toSave, ...hipToSave, ...loveToSave].forEach(({dateStr, slot, type: slotType}) => {
     const sel = [...document.querySelectorAll(`select[data-date="${dateStr}"][data-type="${slotType}"]`)]
       .find(s => s.dataset.slot === slot);
     if (sel) assignDJ(sel);
   });
-  showToast(`Saving ${loveToSave.length} Love Beach slots...`, 'success');
+
+  const summary = RESIDENTS.map(r => `${r}: ${djHours[r] || 0}h`).join(' \u00B7 ');
+  showToast(`Saving ${totalSlots} slots...`, 'success');
 
   try {
-    const res = await fetch('/api/roster/batch', {
+    const saves = [];
+    if (toSave.length > 0) saves.push(fetch('/api/roster/batch', {
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
+      body: JSON.stringify({ venue:'arkbar', month, assignments:toSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
+    }));
+    if (hipToSave.length > 0) saves.push(fetch('/api/roster/batch', {
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
+      body: JSON.stringify({ venue:'hip', month, assignments:hipToSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
+    }));
+    if (loveToSave.length > 0) saves.push(fetch('/api/roster/batch', {
       method:'POST', headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
       body: JSON.stringify({ venue:'love', month, assignments:loveToSave.map(({dateStr,slot,dj}) => ({date:dateStr,slot,dj})) })
-    });
-    const data = await res.json();
-    showToast(data.success
-      ? `Done: ${loveToSave.length} Love Beach slots filled`
-      : 'UI updated \u2014 sheet sync failed', data.success ? 'success' : 'error');
+    }));
+    const results = await Promise.all(saves);
+    const allOk = (await Promise.all(results.map(r => r.json()))).every(d => d.success);
+    showToast(allOk
+      ? `Done: Love ${loveToSave.length} + ARKbar ${toSave.length} + HIP ${hipToSave.length} \u00B7 ${summary}`
+      : 'Some saves failed \u2014 check sheet', allOk ? 'success' : 'error');
   } catch(e) {
     showToast('UI updated \u2014 check connection', 'error');
   }
