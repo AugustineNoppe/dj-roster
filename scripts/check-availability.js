@@ -145,11 +145,19 @@ async function main() {
 
   // Check dj_submissions for all months
   console.log(`\n--- Checking ALL months in dj_submissions ---`);
-  const { data: allSubs } = await supabase
-    .from('dj_submissions')
-    .select('*');
+  const allSubs = [];
+  let subOffset = 0;
+  while (true) {
+    const { data } = await supabase
+      .from('dj_submissions')
+      .select('*')
+      .range(subOffset, subOffset + 999);
+    allSubs.push(...(data || []));
+    if (!data || data.length < 1000) break;
+    subOffset += 1000;
+  }
   const subByMonth = {};
-  for (const r of (allSubs || [])) {
+  for (const r of allSubs) {
     if (!subByMonth[r.month]) subByMonth[r.month] = [];
     subByMonth[r.month].push({ dj: r.name.trim(), status: r.status, cols: Object.keys(r).join(',') });
   }
