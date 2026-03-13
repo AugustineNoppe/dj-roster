@@ -29,11 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Running auto-suggest no longer assigns any DJ to a slot they marked unavailable
   3. Auto-suggest output is logged in enough detail to identify if a regression occurs in the future
   4. Existing valid assignments (Davoted fixed schedule, available DJs) are not disrupted by the fix
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
 - [ ] 01-01-PLAN.md — Diagnostic endpoint + root cause investigation
 - [ ] 01-02-PLAN.md — Fix auto-suggest block enforcement, dropdown filtering, decision logging
+- [ ] 01-03-PLAN.md — Extract roster logic into shared module + Jest test suite
 
 ### Phase 2: Data Integrity
 **Goal**: Availability saves, sign-off flow, and finalization accounting are verified correct end-to-end
@@ -96,7 +97,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auto-Suggest | 0/2 | Not started | - |
+| 1. Auto-Suggest | 0/3 | Not started | - |
 | 2. Data Integrity | 0/TBD | Not started | - |
 | 3. Security | 0/TBD | Not started | - |
 | 4. Stability | 0/TBD | Not started | - |
