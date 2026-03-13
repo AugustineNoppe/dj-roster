@@ -595,7 +595,7 @@ const ARKBAR_SLOTS = [
 const HIP_SLOTS = ['21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'];
 const LOVE_WEEKDAY_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
-  '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'
+  '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'
 ];
 const LOVE_SAT_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
@@ -848,7 +848,7 @@ function renderGrid() {
   } else {
     venueHeaderRow = `<tr>
       <th class="th-date" style="border-bottom:none;background:var(--love-dark)!important"></th>
-      <th colspan="${LOVE_SAT_SLOTS.length}" class="th-section-label" style="background:var(--love-pink);color:#fff">Love Beach Club &middot; Weekdays 14:00\u201317:00 &amp; 20:00\u201323:00 | Saturdays 14:00\u201300:00</th>
+      <th colspan="${LOVE_SAT_SLOTS.length}" class="th-section-label" style="background:var(--love-pink);color:#fff">Love Beach Club &middot; Weekdays 14:00\u201317:00 &amp; 20:00\u201300:00 | Saturdays 14:00\u201300:00</th>
     </tr>`;
     LOVE_SAT_SLOTS.forEach(s => slotHeaderRow += `<th class="th-love">${s}</th>`);
   }
@@ -913,69 +913,36 @@ function buildCell(dateStr, slot, type) {
   const styleAttr = assigned ? `style="background:${djColor};border-color:${djColor}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
 
-  // Categorize DJs into three groups
-  const available = [];
-  const unavailable = [];
-  const notSubmitted = [];
-
+  // Build flat DJ list with status suffixes
+  const djEntries = [];
   options.forEach(dj => {
     const isSelected = dj === assigned;
     const isSubmitted = submittedDJs.get(dj) === 'submitted';
     const isUnavailable = unavailabilityMap[dj] && unavailabilityMap[dj].includes(key);
     const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
 
-    const entry = { dj, isSelected, arkBooked };
-
-    if (dj === 'Guest DJ') {
-      available.push(entry);
-    } else if (isSubmitted) {
-      if (isUnavailable) {
-        unavailable.push(entry);
-      } else {
-        available.push(entry);
-      }
-    } else {
-      notSubmitted.push(entry);
+    let suffix = '';
+    if (dj !== 'Guest DJ') {
+      if (!isSubmitted) suffix = ' (?)';
+      else if (isUnavailable) suffix = ' (unavail)';
     }
+    if (arkBooked && !isSelected) suffix = ' \u26A0 ARKbar' + suffix;
+
+    djEntries.push({ dj, isSelected, suffix });
   });
 
-  // Sort each group, but keep Guest DJ at the end of available
-  const sortDJs = (a, b) => a.dj.localeCompare(b.dj);
-  const availableNonGuest = available.filter(e => e.dj !== 'Guest DJ').sort(sortDJs);
-  const guestDJ = available.find(e => e.dj === 'Guest DJ');
-  const sortedAvailable = guestDJ ? [...availableNonGuest, guestDJ] : availableNonGuest;
-  unavailable.sort(sortDJs);
-  notSubmitted.sort(sortDJs);
+  // Sort alphabetically, Guest DJ at end
+  djEntries.sort((a, b) => {
+    if (a.dj === 'Guest DJ') return 1;
+    if (b.dj === 'Guest DJ') return -1;
+    return a.dj.localeCompare(b.dj);
+  });
 
-  // Build options with groups
   let opts = '<option value="">\u2014 assign \u2014</option>';
-
-  if (sortedAvailable.length > 0) {
-    opts += '<optgroup label="AVAILABLE">';
-    sortedAvailable.forEach(({ dj, isSelected, arkBooked }) => {
-      const label = isSelected ? dj : (arkBooked ? `${dj} \u26A0 ARKbar` : dj);
-      opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
-    });
-    opts += '</optgroup>';
-  }
-
-  if (unavailable.length > 0) {
-    opts += '<optgroup label="UNAVAILABLE">';
-    unavailable.forEach(({ dj, isSelected, arkBooked }) => {
-      const label = isSelected ? dj : (arkBooked ? `${dj} \u26A0 ARKbar` : `${dj} \u26A0`);
-      opts += `<option value="${dj}"${isSelected ? ' selected' : ' disabled'}>${label}</option>`;
-    });
-    opts += '</optgroup>';
-  }
-
-  if (notSubmitted.length > 0) {
-    opts += '<optgroup label="NOT SUBMITTED">';
-    notSubmitted.forEach(({ dj, isSelected, arkBooked }) => {
-      const label = isSelected ? dj : (arkBooked ? `${dj} \u26A0 ARKbar` : `${dj} ?`);
-      opts += `<option value="${dj}"${isSelected ? ' selected' : ' disabled'}>${label}</option>`;
-    });
-    opts += '</optgroup>';
-  }
+  djEntries.forEach(({ dj, isSelected, suffix }) => {
+    const label = isSelected ? dj : `${dj}${suffix}`;
+    opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
+  });
 
   return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)">${opts}</select></td>`;
 }
@@ -1023,11 +990,10 @@ async function assignDJ(sel) {
       showToast(`${dj} is already on ARKbar at ${slot}`, 'error'); sel.value = ''; return;
     }
 
-    const otherAssignments = Object.entries(type === 'love' ? arkbarAssignments : loveAssignments)
-      .filter(([k,v]) => k.startsWith(date) && v === dj);
-    if (otherAssignments.length > 0) {
+    const otherMap = type === 'love' ? arkbarAssignments : loveAssignments;
+    if (otherMap[`${date}|${slot}`] === dj) {
       const otherVenue = type === 'love' ? 'ARKbar' : 'Love Beach';
-      showToast(`${dj} is already booked at ${otherVenue} on this date`, 'error'); sel.value = ''; return;
+      showToast(`${dj} is already on ${otherVenue} at ${slot}`, 'error'); sel.value = ''; return;
     }
   }
 
@@ -1201,8 +1167,8 @@ async function runAutoSuggest() {
       weekday: {
         0: { '14:00\u201315:00':'Donsine','15:00\u201316:00':'Donsine','16:00\u201317:00':'Donsine','20:00\u201321:00':'Cocoa','21:00\u201322:00':'Cocoa','22:00\u201323:00':'Cocoa','23:00\u201300:00':'Cocoa' },
         1: { '14:00\u201315:00':'Mostyx','15:00\u201316:00':'Mostyx','16:00\u201317:00':'Mostyx','20:00\u201321:00':'Pick','21:00\u201322:00':'Pick','22:00\u201323:00':'Pick','23:00\u201300:00':'Pick' },
-        2: { '14:00\u201315:00':'Vozka','15:00\u201316:00':'Vozka','16:00\u201317:00':'Vozka','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted' },
-        3: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted' },
+        2: { '14:00\u201315:00':'Vozka','15:00\u201316:00':'Vozka','16:00\u201317:00':'Vozka','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted','23:00\u201300:00':'Davoted' },
+        3: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted','23:00\u201300:00':'Davoted' },
         4: { '14:00\u201315:00':'Buba','15:00\u201316:00':'Buba','16:00\u201317:00':'Buba','20:00\u201321:00':'Jessi','21:00\u201322:00':'Jessi','22:00\u201323:00':'Jessi','23:00\u201300:00':'Jessi' },
         5: { '14:00\u201315:00':'Donsine','15:00\u201316:00':'Donsine','16:00\u201317:00':'Donsine','20:00\u201321:00':'Sky','21:00\u201322:00':'Sky','22:00\u201323:00':'Sky','23:00\u201300:00':'Sky' },
       },
