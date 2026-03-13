@@ -929,7 +929,23 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       }
     }
 
-    res.json({ success: true, availability, isFinalized, isResident, submissionStatus });
+    // Include per-date fixed schedule with venue labels for resident DJs
+    const fixedDisplay = {};
+    if (fixedSched && monthIdx >= 0 && !isNaN(year)) {
+      const days = new Date(year, monthIdx + 1, 0).getDate();
+      for (let d = 1; d <= days; d++) {
+        const dk = makeDateKey(year, monthIdx + 1, d);
+        const dow = new Date(year, monthIdx, d).getDay();
+        const daySlots = {};
+        for (const [venue, label] of [['arkbar', 'ARKbar'], ['loveBeach', 'Love Beach']]) {
+          const venueSlots = fixedSched[venue][dow] || [];
+          for (const s of venueSlots) daySlots[normalizeSlot(s)] = label;
+        }
+        if (Object.keys(daySlots).length > 0) fixedDisplay[dk] = daySlots;
+      }
+    }
+
+    res.json({ success: true, availability, isFinalized, isResident, submissionStatus, fixedSchedule: fixedDisplay });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

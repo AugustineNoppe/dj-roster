@@ -240,6 +240,7 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 .pill.unavail{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:var(--text-3)}
 .pill.unavail:hover:not(:disabled){background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:var(--text-2)}
 .pill:disabled{cursor:default;opacity:.7}
+.pill .fixed-venue{font-size:8px;font-weight:700;letter-spacing:0.5px;opacity:0.7;display:block;margin-top:1px}
 .slot-close{background:none;border:none;color:var(--text-3);font-size:16px;cursor:pointer;padding:2px 6px;border-radius:6px;transition:all var(--transition)}
 .slot-close:hover{color:#fff;background:rgba(255,255,255,0.1)}
 
@@ -559,6 +560,7 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 let djName = '', djPin = '', isResident = false, djRate = 0;
 let currentYear, currentMonth;
 let availability = {};   // dateKey → { slotKey: 'available'|'unavailable' }
+let fixedSchedule = {};  // dateKey → { slotKey: 'ARKbar'|'Love Beach' } — resident fixed template
 let schedule = [];       // [{venue, date, slot}]
 let signoffs = new Set(); // "date|slot|venue" keys for signed-off sets
 let isFinalized = false;
@@ -773,6 +775,7 @@ async function loadMonth() {
     ]);
 
     availability = availData.availability || {};
+    fixedSchedule = availData.fixedSchedule || {};
     isFinalized  = availData.isFinalized || false;
     submissionStatus = availData.submissionStatus || 'none';
     isLocked = submissionStatus === 'submitted';
@@ -836,11 +839,24 @@ function renderCalendar() {
 
   html += `<div class="cal-instruction-note ${isResident ? 'resident' : 'casual'}">${isResident ? '&#128683; Select your unavailable dates.' : '&#9989; Select your available dates.'}</div>`;
 
-  // "Available All Month" button for casual DJs only
-  if (!isResident && !isFinalized && !isLocked) {
+  // "Available All Month" toggle for all DJs
+  if (!isFinalized && !isLocked) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const allMonthAvail = (() => {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dk = makeDK(year, month + 1, d);
+        const slotMap = availability[dk] || {};
+        for (const s of ALL_SLOTS) {
+          const st = slotMap[s] !== undefined ? slotMap[s] : (isResident ? 'available' : 'unavailable');
+          if (st !== 'available') return false;
+        }
+      }
+      return true;
+    })();
+    const btnLabel = allMonthAvail ? 'Deselect All' : 'Available All Month';
     html += `<button class="all-month-btn" onclick="toggleAllMonth()">
       <span style="font-size:18px">&#128197;</span>
-      <span>Available All Month</span>
+      <span>${btnLabel}</span>
     </button>`;
   }
 
@@ -925,6 +941,7 @@ function buildSlotPanel(dk) {
         ? 'Teal = available. Tap to mark yourself unavailable.'
         : 'Tap to mark yourself available for a slot.';
 
+  const fixedDay = fixedSchedule[dk] || {};
   let pills = '';
   for (const slot of ALL_SLOTS) {
     const status = slotMap[slot] !== undefined ? slotMap[slot] : (isResident ? 'available' : 'unavailable');
@@ -932,7 +949,8 @@ function buildSlotPanel(dk) {
     const cls = `pill ${isAvail ? 'avail' : 'unavail'}`;
     const onclick = (isFinalized || isLocked) ? '' : `onclick="toggleSlot('${dk}','${slot.replace(/'/g, "\\'")}')"`;
     const disabled = (isFinalized || isLocked) ? 'disabled' : '';
-    pills += `<button class="${cls}" ${onclick} ${disabled}>${slot}</button>`;
+    const venueLabel = fixedDay[slot] ? `<span class="fixed-venue">${fixedDay[slot]}</span>` : '';
+    pills += `<button class="${cls}" ${onclick} ${disabled}>${slot}${venueLabel}</button>`;
   }
 
   const allAvail = ALL_SLOTS.every(s => {
@@ -996,15 +1014,30 @@ function toggleAllSlots(dk) {
   markDirty();
 }
 
-// ===== AVAILABLE ALL MONTH (casual DJs) =====
+// ===== AVAILABLE ALL MONTH (all DJs) =====
 function toggleAllMonth() {
-  if (isFinalized || isLocked || isResident) return;
+  if (isFinalized || isLocked) return;
   const year = currentYear, month = currentMonth;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Check if every slot in the month is already 'available'
+  const allAvail = (() => {
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dk = makeDK(year, month + 1, d);
+      const slotMap = availability[dk] || {};
+      for (const s of ALL_SLOTS) {
+        const st = slotMap[s] !== undefined ? slotMap[s] : (isResident ? 'available' : 'unavailable');
+        if (st !== 'available') return false;
+      }
+    }
+    return true;
+  })();
+
+  const newStatus = allAvail ? 'unavailable' : 'available';
   for (let d = 1; d <= daysInMonth; d++) {
     const dk = makeDK(year, month + 1, d);
     if (!availability[dk]) availability[dk] = {};
-    for (const s of ALL_SLOTS) availability[dk][s] = 'available';
+    for (const s of ALL_SLOTS) availability[dk][s] = newStatus;
   }
   renderCalendar();
   markDirty();
