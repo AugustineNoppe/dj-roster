@@ -29,10 +29,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Running auto-suggest no longer assigns any DJ to a slot they marked unavailable
   3. Auto-suggest output is logged in enough detail to identify if a regression occurs in the future
   4. Existing valid assignments (Davoted fixed schedule, available DJs) are not disrupted by the fix
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Diagnostic endpoint + root cause investigation
+- [ ] 01-02-PLAN.md — Fix auto-suggest block enforcement, dropdown filtering, decision logging
 
 ### Phase 2: Data Integrity
 **Goal**: Availability saves, sign-off flow, and finalization accounting are verified correct end-to-end
@@ -43,7 +44,7 @@ Plans:
   2. Admin sign-off and unsign-off actions update the correct record, and last-action-wins is respected on rapid toggles
   3. Batch sign-off applies to exactly the intended set of DJs with no silent failures
   4. Finalization report shows correct hours and costs per DJ per venue using their stored rates
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 02-01: TBD
@@ -57,7 +58,7 @@ Plans:
   2. Admin and manager passwords are stored as bcrypt hashes — string equality comparison is removed
   3. Login with the correct PIN or password succeeds; login with an incorrect credential is rejected
   4. No PIN, password, or credential value appears in any server log output under any code path
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 03-01: TBD
@@ -70,7 +71,7 @@ Plans:
   1. Rate limiter data structures are bounded — repeated requests over time do not grow memory unboundedly
   2. Updating a DJ's rate causes all dependent cached values to be invalidated on next read
   3. Security headers and rate limiting are provided by helmet and express-rate-limit, and the custom implementations are removed
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 04-01: TBD
@@ -83,7 +84,7 @@ Plans:
   1. The reset-month endpoint does not exist in the running server and no UI element references it
   2. Jest tests cover availability logic, accounting calculations, and auto-suggest and all pass
   3. No commented-out code blocks, unreachable paths, or orphaned functions remain in server.js
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 05-01: TBD
@@ -95,7 +96,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auto-Suggest | 0/TBD | Not started | - |
+| 1. Auto-Suggest | 0/2 | Not started | - |
 | 2. Data Integrity | 0/TBD | Not started | - |
 | 3. Security | 0/TBD | Not started | - |
 | 4. Stability | 0/TBD | Not started | - |
