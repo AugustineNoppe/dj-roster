@@ -9,7 +9,7 @@ Requirements for production readiness. Each maps to roadmap phases.
 
 ### Auto-Suggest
 
-- [ ] **ASGN-01**: Investigate root cause of DJs being assigned to slots they marked unavailable
+- [x] **ASGN-01**: Investigate root cause of DJs being assigned to slots they marked unavailable
 - [ ] **ASGN-02**: Fix auto-suggest to respect DJ unavailability markings
 - [ ] **ASGN-03**: Add logging/diagnostics around auto-suggest for future regression detection
 
@@ -66,7 +66,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ASGN-01 | Phase 1 | Pending |
+| ASGN-01 | Phase 1 | Complete (Plan 01-01) |
 | ASGN-02 | Phase 1 | Pending |
 | ASGN-03 | Phase 1 | Pending |
 | DATA-01 | Phase 2 | Pending |

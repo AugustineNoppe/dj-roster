@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Diagnostic endpoint + root cause investigation
+- [x] 01-01-PLAN.md — Diagnostic endpoint + root cause investigation
 - [ ] 01-02-PLAN.md — Fix auto-suggest block enforcement, dropdown filtering, decision logging
 - [ ] 01-03-PLAN.md — Extract roster logic into shared module + Jest test suite
 
@@ -97,7 +97,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auto-Suggest | 0/3 | Not started | - |
+| 1. Auto-Suggest | 1/3 | In progress | - |
 | 2. Data Integrity | 0/TBD | Not started | - |
 | 3. Security | 0/TBD | Not started | - |
 | 4. Stability | 0/TBD | Not started | - |
