@@ -387,6 +387,311 @@ app.get('/api/roster/unavailability/:month', requireAdmin, async (req, res) => {
   }
 });
 
+/* == DIAGNOSTIC ENDPOINT ================================================== */
+
+// Server-side copy of FIXED_TEMPLATE from roster.html (lines 1199-1230).
+// Keys use en-dash (\u2013) to match normalizeSlot convention.
+const DIAG_FIXED_TEMPLATE = {
+  love: {
+    weekday: {
+      0: { '14:00\u201315:00':'Donsine','15:00\u201316:00':'Donsine','16:00\u201317:00':'Donsine','20:00\u201321:00':'Cocoa','21:00\u201322:00':'Cocoa','22:00\u201323:00':'Cocoa','23:00\u201300:00':'Cocoa' },
+      1: { '14:00\u201315:00':'Mostyx','15:00\u201316:00':'Mostyx','16:00\u201317:00':'Mostyx','20:00\u201321:00':'Pick','21:00\u201322:00':'Pick','22:00\u201323:00':'Pick','23:00\u201300:00':'Pick' },
+      2: { '14:00\u201315:00':'Vozka','15:00\u201316:00':'Vozka','16:00\u201317:00':'Vozka','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted' },
+      3: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted' },
+      4: { '14:00\u201315:00':'Buba','15:00\u201316:00':'Buba','16:00\u201317:00':'Buba','20:00\u201321:00':'Jessi','21:00\u201322:00':'Jessi','22:00\u201323:00':'Jessi','23:00\u201300:00':'Jessi' },
+      5: { '14:00\u201315:00':'Donsine','15:00\u201316:00':'Donsine','16:00\u201317:00':'Donsine','20:00\u201321:00':'Sky','21:00\u201322:00':'Sky','22:00\u201323:00':'Sky','23:00\u201300:00':'Sky' },
+    },
+    satA: { '14:00\u201315:00':'Cocoa','15:00\u201316:00':'Cocoa','16:00\u201317:00':'Bollie','17:00\u201318:00':'Bollie','18:00\u201319:00':'Mostyx','19:00\u201320:00':'Mostyx','20:00\u201321:00':'Donsine','21:00\u201322:00':'Donsine','22:00\u201323:00':'Donsine','23:00\u201300:00':'Donsine' },
+    satB: { '14:00\u201315:00':'Laina','15:00\u201316:00':'Laina','16:00\u201317:00':'Jessi','17:00\u201318:00':'Jessi','18:00\u201319:00':'Pick','19:00\u201320:00':'Pick','20:00\u201321:00':'Donsine','21:00\u201322:00':'Donsine','22:00\u201323:00':'Donsine','23:00\u201300:00':'Donsine' },
+  },
+  arkbar: {
+    0: { '14:00\u201315:00':'Alex RedWhite','15:00\u201316:00':'Alex RedWhite','16:00\u201317:00':'Alex RedWhite','20:00\u201321:00':'Pick','21:00\u201322:00':'Pick','22:00\u201323:00':'Pick','23:00\u201300:00':'Alex RedWhite','00:00\u201301:00':'Alex RedWhite','01:00\u201302:00':'Alex RedWhite' },
+    1: { '14:00\u201315:00':'Davoted','15:00\u201316:00':'Davoted','17:00\u201318:00':'Alex RedWhite','18:00\u201319:00':'Alex RedWhite','20:00\u201321:00':'Raffo DJ','21:00\u201322:00':'Raffo DJ','22:00\u201323:00':'Raffo DJ','23:00\u201300:00':'Tony','00:00\u201301:00':'Tony','01:00\u201302:00':'Tony' },
+    2: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','17:00\u201318:00':'Tony','18:00\u201319:00':'Tony','23:00\u201300:00':'Raffo DJ','00:00\u201301:00':'Raffo DJ','01:00\u201302:00':'Raffo DJ' },
+    3: { '14:00\u201315:00':'Davoted','15:00\u201316:00':'Davoted','16:00\u201317:00':'Davoted','17:00\u201318:00':'Sound Bogie','18:00\u201319:00':'Sound Bogie','20:00\u201321:00':'Raffo DJ','21:00\u201322:00':'Raffo DJ','22:00\u201323:00':'Raffo DJ','23:00\u201300:00':'Alex RedWhite','00:00\u201301:00':'Alex RedWhite','01:00\u201302:00':'Alex RedWhite' },
+    4: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','17:00\u201318:00':'Raffo DJ','18:00\u201319:00':'Raffo DJ','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted','23:00\u201300:00':'Raffo DJ','00:00\u201301:00':'Raffo DJ','01:00\u201302:00':'Raffo DJ' },
+    5: { '14:00\u201315:00':'Davoted','15:00\u201316:00':'Davoted','16:00\u201317:00':'Davoted','17:00\u201318:00':'Jessi','18:00\u201319:00':'Jessi','20:00\u201321:00':'Alex RedWhite','21:00\u201322:00':'Alex RedWhite','22:00\u201323:00':'Alex RedWhite','23:00\u201300:00':'Sound Bogie','00:00\u201301:00':'Sound Bogie','01:00\u201302:00':'Sound Bogie' },
+    6: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','17:00\u201318:00':'Alex RedWhite','18:00\u201319:00':'Alex RedWhite','20:00\u201321:00':'Sound Bogie','21:00\u201322:00':'Raffo DJ','22:00\u201323:00':'Raffo DJ' },
+  },
+  hip: {
+    0: 'Tony',
+    1: 'Vozka',
+    2: 'Buba',
+    3: 'Pick',
+    4: 'Tobi',
+    5: 'Vozka',
+    6: ['Pick','Tony'],
+  },
+};
+
+// Verify FIXED_TEMPLATE against known failing cases.
+// Raffo DJ should be in ARKbar Tuesday (dow=1) for 23:00-00:00, 00:00-01:00, 01:00-02:00.
+// Pick should be in ARKbar Tuesday (dow=1) for 14:00-15:00, 15:00-16:00, 16:00-17:00.
+function getDiagTemplateWarnings() {
+  const warnings = [];
+  const tue = DIAG_FIXED_TEMPLATE.arkbar[1] || {};
+
+  const raffoTueLateSlots = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
+  const raffoMissing = raffoTueLateSlots.filter(s => tue[s] !== 'Raffo DJ');
+  if (raffoMissing.length > 0) {
+    warnings.push(
+      `TEMPLATE_STALE: Raffo DJ missing from ARKbar Tuesday slots: ${raffoMissing.join(', ')}. ` +
+      `Found: ${raffoTueLateSlots.map(s => `${s}=${tue[s]||'(empty)'}`).join(', ')}`
+    );
+  }
+
+  const pickTueDaySlots = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
+  const pickMissing = pickTueDaySlots.filter(s => tue[s] !== 'Pick');
+  if (pickMissing.length > 0) {
+    warnings.push(
+      `TEMPLATE_STALE: Pick missing from ARKbar Tuesday slots: ${pickMissing.join(', ')}. ` +
+      `Found: ${pickTueDaySlots.map(s => `${s}=${tue[s]||'(empty)'}`).join(', ')}`
+    );
+  }
+
+  return warnings;
+}
+
+// Post-midnight slot date-shifting: slots starting 00: or 01: belong to the previous calendar day.
+function diagGetUnavailLookupDate(dateStr, slot) {
+  if (slot.startsWith('00:') || slot.startsWith('01:')) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() - 1);
+    return makeDateKey(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+  }
+  return dateStr;
+}
+
+// Build contiguous block groups from a DJ's template slots on a given day+venue.
+// Returns an array of slot arrays, where each inner array is one contiguous block.
+function getDJTemplateBlocks(venue, dow, djName, satToggle) {
+  const ALL_ARKBAR = [
+    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+    '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+    '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00',
+  ];
+  const ALL_LOVE_WEEKDAY = [
+    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
+    '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00',
+  ];
+  const ALL_LOVE_SATURDAY = [
+    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
+    '17:00\u201318:00','18:00\u201319:00','19:00\u201320:00',
+    '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00',
+  ];
+  const HIP_SLOTS = ['21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'];
+
+  let template = null;
+  let orderedSlots = [];
+
+  if (venue === 'arkbar') {
+    template = DIAG_FIXED_TEMPLATE.arkbar[dow] || {};
+    orderedSlots = ALL_ARKBAR;
+  } else if (venue === 'love') {
+    if (dow === 6) {
+      template = satToggle % 2 === 0 ? DIAG_FIXED_TEMPLATE.love.satA : DIAG_FIXED_TEMPLATE.love.satB;
+      orderedSlots = ALL_LOVE_SATURDAY;
+    } else {
+      template = DIAG_FIXED_TEMPLATE.love.weekday[dow] || {};
+      orderedSlots = ALL_LOVE_WEEKDAY;
+    }
+  } else if (venue === 'hip') {
+    let hipDJ = DIAG_FIXED_TEMPLATE.hip[dow];
+    if (!hipDJ) return [];
+    if (Array.isArray(hipDJ)) hipDJ = hipDJ[satToggle % hipDJ.length];
+    if (hipDJ !== djName) return [];
+    return [HIP_SLOTS];
+  }
+
+  if (!template) return [];
+
+  // Find contiguous runs of this DJ's slots in template order
+  const blocks = [];
+  let current = [];
+  for (const slot of orderedSlots) {
+    if (template[slot] === djName) {
+      current.push(slot);
+    } else {
+      if (current.length > 0) { blocks.push(current); current = []; }
+    }
+  }
+  if (current.length > 0) blocks.push(current);
+  return blocks;
+}
+
+app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
+  try {
+    const month = decodeURIComponent(req.params.month);
+    const parts = month.split(' ');
+    if (parts.length !== 2) return res.status(400).json({ success: false, error: 'Month must be "MonthName YYYY"' });
+    const monthIdx = MONTH_NAMES.indexOf(parts[0]);
+    const year = parseInt(parts[1]);
+    if (monthIdx < 0 || isNaN(year)) return res.status(400).json({ success: false, error: 'Invalid month' });
+
+    const templateWarnings = getDiagTemplateWarnings();
+
+    const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+
+    // Fetch all roster assignments for all 3 venues
+    const [arkData, hipData, loveData] = await Promise.all([
+      supabase.from('roster_assignments').select('date, slot, dj').eq('venue', 'arkbar').eq('month', month),
+      supabase.from('roster_assignments').select('date, slot, dj').eq('venue', 'hip').eq('month', month),
+      supabase.from('roster_assignments').select('date, slot, dj').eq('venue', 'love').eq('month', month),
+    ]);
+    if (arkData.error) throw new Error(arkData.error.message);
+    if (hipData.error) throw new Error(hipData.error.message);
+    if (loveData.error) throw new Error(loveData.error.message);
+
+    // Fetch all unavailability records for this month
+    const { data: unavailRows, error: unavailError } = await supabase
+      .from('dj_availability')
+      .select('name, date, slot')
+      .eq('month', month)
+      .eq('status', 'unavailable');
+    if (unavailError) throw new Error(unavailError.message);
+
+    // Build unavailability lookup: djName -> Set of "dateKey|normalizedSlot"
+    const unavailSet = {};
+    for (const { name, date, slot } of (unavailRows || [])) {
+      const dk = parseDateKey(date);
+      if (!dk || !slot) continue;
+      const ns = normalizeSlot(slot);
+      (unavailSet[name] ??= new Set()).add(`${dk}|${ns}`);
+    }
+
+    const violations = [];
+    const partialBlocks = [];
+    let totalAssignments = 0;
+
+    // Process assignments from all venues
+    const allAssignments = [
+      ...(arkData.data || []).map(r => ({ ...r, venue: 'arkbar' })),
+      ...(hipData.data || []).map(r => ({ ...r, venue: 'hip' })),
+      ...(loveData.data || []).map(r => ({ ...r, venue: 'love' })),
+    ];
+
+    totalAssignments = allAssignments.length;
+
+    for (const { date: dateRaw, slot: slotRaw, dj, venue } of allAssignments) {
+      const dateKey = parseDateKey(dateRaw);
+      if (!dateKey || !slotRaw || !dj) continue;
+      const slot = normalizeSlot(slotRaw);
+
+      // Unavailability violation check with post-midnight date shifting
+      const unavailDateKey = diagGetUnavailLookupDate(dateKey, slot);
+      if (unavailSet[dj] && unavailSet[dj].has(`${unavailDateKey}|${slot}`)) {
+        violations.push({
+          type: 'unavailability',
+          dj,
+          date: dateKey,
+          slot,
+          venue,
+          detail: 'DJ marked unavailable for this date+slot',
+        });
+      }
+    }
+
+    // Partial block detection: group actual slots by dj+date+venue, compare to template blocks
+    // Build satToggle counters (must iterate days in order to match auto-suggest logic)
+    const satLoveToggleMap = {}; // used for love beach Saturday alternation
+    const satHipToggleMap = {};  // used for hip Saturday alternation
+    let satLoveCnt = 0;
+    let satHipCnt = 0;
+    const daySatLoveToggle = {};
+    const daySatHipToggle = {};
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = new Date(year, monthIdx, d).getDay();
+      const dk = makeDateKey(year, monthIdx + 1, d);
+      if (dow === 6) {
+        daySatLoveToggle[dk] = satLoveCnt++;
+        daySatHipToggle[dk] = satHipCnt++;
+      }
+    }
+
+    // Build actual slot map: "dj|dateKey|venue" -> Set of slots
+    const actualSlotMap = {};
+    for (const { date: dateRaw, slot: slotRaw, dj, venue } of allAssignments) {
+      const dateKey = parseDateKey(dateRaw);
+      if (!dateKey || !slotRaw || !dj) continue;
+      const slot = normalizeSlot(slotRaw);
+      const key = `${dj}|${dateKey}|${venue}`;
+      (actualSlotMap[key] ??= new Set()).add(slot);
+    }
+
+    // For each day and venue, check each DJ's template blocks against actual assignments
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = new Date(year, monthIdx, d).getDay();
+      const dateKey = makeDateKey(year, monthIdx + 1, d);
+
+      for (const venue of ['arkbar', 'love', 'hip']) {
+        // Collect all DJs who appear in template for this day+venue
+        const djsInTemplate = new Set();
+        let tpl = null;
+        if (venue === 'arkbar') {
+          tpl = DIAG_FIXED_TEMPLATE.arkbar[dow];
+          if (tpl) Object.values(tpl).forEach(dj => djsInTemplate.add(dj));
+        } else if (venue === 'love') {
+          if (dow === 6) {
+            const toggle = daySatLoveToggle[dateKey] ?? 0;
+            tpl = toggle % 2 === 0 ? DIAG_FIXED_TEMPLATE.love.satA : DIAG_FIXED_TEMPLATE.love.satB;
+          } else {
+            tpl = DIAG_FIXED_TEMPLATE.love.weekday[dow];
+          }
+          if (tpl) Object.values(tpl).forEach(dj => djsInTemplate.add(dj));
+        } else if (venue === 'hip') {
+          let hipDJ = DIAG_FIXED_TEMPLATE.hip[dow];
+          if (hipDJ) {
+            const toggle = daySatHipToggle[dateKey] ?? 0;
+            if (Array.isArray(hipDJ)) hipDJ = hipDJ[toggle % hipDJ.length];
+            djsInTemplate.add(hipDJ);
+          }
+        }
+
+        for (const djName of djsInTemplate) {
+          const satToggle = dow === 6 ? (daySatLoveToggle[dateKey] ?? 0) : 0;
+          const blocks = getDJTemplateBlocks(venue, dow, djName, satToggle);
+          if (blocks.length === 0) continue;
+
+          const actualKey = `${djName}|${dateKey}|${venue}`;
+          const actualSlots = actualSlotMap[actualKey] || new Set();
+
+          for (const expectedSlots of blocks) {
+            const assignedFromBlock = expectedSlots.filter(s => actualSlots.has(s));
+            if (assignedFromBlock.length > 0 && assignedFromBlock.length < expectedSlots.length) {
+              const missingSlots = expectedSlots.filter(s => !actualSlots.has(s));
+              partialBlocks.push({
+                dj: djName,
+                date: dateKey,
+                venue,
+                expectedSlots,
+                actualSlots: assignedFromBlock,
+                missing: missingSlots,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      month,
+      templateWarnings,
+      summary: {
+        totalAssignments,
+        unavailabilityViolations: violations.length,
+        partialBlocks: partialBlocks.length,
+      },
+      violations,
+      partialBlocks,
+    });
+  } catch (err) {
+    console.error('[diagnostic] error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 /* == ASSIGN SINGLE CELL =================================================== */
 app.post('/api/roster/assign', requireAdmin, async (req, res) => {
   try {
