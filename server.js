@@ -374,6 +374,8 @@ app.get('/api/roster/unavailability/:month', requireAdmin, async (req, res) => {
       .eq('month', month)
       .eq('status', 'unavailable');
     if (error) throw new Error(error.message);
+    console.log('[DEBUG unavailability] month param:', JSON.stringify(month));
+    console.log('[DEBUG unavailability] raw rows:', JSON.stringify(rows));
     const map = {};
     for (const { name, date, slot } of (rows || [])) {
       const dk = parseDateKey(date);
@@ -381,6 +383,7 @@ app.get('/api/roster/unavailability/:month', requireAdmin, async (req, res) => {
       const ns = normalizeSlot(slot);
       (map[name] ??= []).push(`${dk}|${ns}`);
     }
+    console.log('[DEBUG unavailability] final map:', JSON.stringify(map));
     res.json({ success: true, unavailability: map });
   } catch (err) {
     res.json({ success: false, error: err.message });
