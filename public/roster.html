@@ -1210,7 +1210,7 @@ async function runAutoSuggest() {
       satB: { '14:00\u201315:00':'Laina','15:00\u201316:00':'Laina','16:00\u201317:00':'Jessi','17:00\u201318:00':'Jessi','18:00\u201319:00':'Pick','19:00\u201320:00':'Pick','20:00\u201321:00':'Donsine','21:00\u201322:00':'Donsine','22:00\u201323:00':'Donsine','23:00\u201300:00':'Donsine' },
     },
     arkbar: {
-      0: { '14:00\u201315:00':'Alex RedWhite','15:00\u201316:00':'Alex RedWhite','16:00\u201317:00':'Alex RedWhite','17:00\u201318:00':'Sound Bogie','18:00\u201319:00':'Sound Bogie','20:00\u201321:00':'Pick','21:00\u201322:00':'Pick','22:00\u201323:00':'Pick','23:00\u201300:00':'Alex RedWhite','00:00\u201301:00':'Alex RedWhite','01:00\u201302:00':'Alex RedWhite' },
+      0: { '14:00\u201315:00':'Alex RedWhite','15:00\u201316:00':'Alex RedWhite','16:00\u201317:00':'Alex RedWhite','20:00\u201321:00':'Pick','21:00\u201322:00':'Pick','22:00\u201323:00':'Pick','23:00\u201300:00':'Alex RedWhite','00:00\u201301:00':'Alex RedWhite','01:00\u201302:00':'Alex RedWhite' },
       1: { '14:00\u201315:00':'Davoted','15:00\u201316:00':'Davoted','17:00\u201318:00':'Alex RedWhite','18:00\u201319:00':'Alex RedWhite','20:00\u201321:00':'Raffo DJ','21:00\u201322:00':'Raffo DJ','22:00\u201323:00':'Raffo DJ','23:00\u201300:00':'Tony','00:00\u201301:00':'Tony','01:00\u201302:00':'Tony' },
       2: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','17:00\u201318:00':'Tony','18:00\u201319:00':'Tony','23:00\u201300:00':'Raffo DJ','00:00\u201301:00':'Raffo DJ','01:00\u201302:00':'Raffo DJ' },
       3: { '14:00\u201315:00':'Davoted','15:00\u201316:00':'Davoted','16:00\u201317:00':'Davoted','17:00\u201318:00':'Sound Bogie','18:00\u201319:00':'Sound Bogie','20:00\u201321:00':'Raffo DJ','21:00\u201322:00':'Raffo DJ','22:00\u201323:00':'Raffo DJ','23:00\u201300:00':'Alex RedWhite','00:00\u201301:00':'Alex RedWhite','01:00\u201302:00':'Alex RedWhite' },
@@ -1253,7 +1253,6 @@ async function runAutoSuggest() {
     const unavailDate = getUnavailLookupDate(dateStr, slot);
     if (unavailabilityMap[dj]?.includes(`${unavailDate}|${slot}`)) return false;
     if (targetMap[`${dateStr}|${slot}`]) return false;
-    if (placedTonight.get(dateStr)?.has(dj)) return false;
     return true;
   }
 
@@ -1328,6 +1327,7 @@ async function runAutoSuggest() {
     }
 
     if (!LOCAL_HIP_SLOTS.every(slot => canAssign(hipDJ, dateStr, slot, hipAssignments))) continue;
+    if (placedTonight.get(dateStr)?.has(hipDJ)) continue;
 
     for (const slot of LOCAL_HIP_SLOTS) {
       recordPlacement(hipDJ, dateStr, slot, hipAssignments, hipToSave, 'hip');
