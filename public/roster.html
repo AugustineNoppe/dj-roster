@@ -1174,38 +1174,68 @@ async function runAutoSuggest() {
   const month = getMonthString();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  // Configuration
-  const MAX_CONSECUTIVE = 3;
-  const MAX_DAY_HOURS = 6;
-
+  // ── STEP 1: Slot definitions ──
   const ALL_ARKBAR_SLOTS = [
-    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
-    '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
-    '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
+    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
+    '17:00\u201318:00','18:00\u201319:00',
+    '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00',
+    '23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
   ];
 
-  // Zone definitions
-  const ZONE_COOLDOWN  = ['17:00\u201318:00','18:00\u201319:00'];
-  const ZONE_LATENIGHT = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
+  const ALL_LOVE_SLOTS_WEEKDAY = [
+    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
+    '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'
+  ];
 
-  const LATENIGHT_ROTATION = ['Alex RedWhite','Raffo DJ','Sound Bogie'];
-  const COOLDOWN_ROTATION = ['Sound Bogie', 'Raffo DJ', 'Alex RedWhite'];
+  const ALL_LOVE_SLOTS_SATURDAY = [
+    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
+    '17:00\u201318:00','18:00\u201319:00','19:00\u201320:00',
+    '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'
+  ];
 
-  // Shared state — fresh for each run
-  const working = {};       // ARKbar assignments: "date|slot" → dj
-  const loveWorking = {};   // Love Beach assignments: "date|slot" → dj
-  hipAssignments = {};      // HIP assignments: reset fresh
-  const hipPlacedTonight = new Map(); // dateStr → Set<djName>
+  const LOCAL_HIP_SLOTS = ['21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'];
 
+  // ── STEP 2: Fixed schedule template ──
+  const FIXED_TEMPLATE = {
+    love: {
+      weekday: {
+        0: { '14:00\u201315:00':'Donsine','15:00\u201316:00':'Donsine','16:00\u201317:00':'Donsine','20:00\u201321:00':'Cocoa','21:00\u201322:00':'Cocoa','22:00\u201323:00':'Cocoa','23:00\u201300:00':'Cocoa' },
+        1: { '14:00\u201315:00':'Mostyx','15:00\u201316:00':'Mostyx','16:00\u201317:00':'Mostyx','20:00\u201321:00':'Pick','21:00\u201322:00':'Pick','22:00\u201323:00':'Pick','23:00\u201300:00':'Pick' },
+        2: { '14:00\u201315:00':'Vozka','15:00\u201316:00':'Vozka','16:00\u201317:00':'Vozka','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted' },
+        3: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted' },
+        4: { '14:00\u201315:00':'Buba','15:00\u201316:00':'Buba','16:00\u201317:00':'Buba','20:00\u201321:00':'Jessi','21:00\u201322:00':'Jessi','22:00\u201323:00':'Jessi','23:00\u201300:00':'Jessi' },
+        5: { '14:00\u201315:00':'Donsine','15:00\u201316:00':'Donsine','16:00\u201317:00':'Donsine','20:00\u201321:00':'Sky','21:00\u201322:00':'Sky','22:00\u201323:00':'Sky','23:00\u201300:00':'Sky' },
+      },
+      satA: { '14:00\u201315:00':'Cocoa','15:00\u201316:00':'Cocoa','16:00\u201317:00':'Bollie','17:00\u201318:00':'Bollie','18:00\u201319:00':'Mostyx','19:00\u201320:00':'Mostyx','20:00\u201321:00':'Donsine','21:00\u201322:00':'Donsine','22:00\u201323:00':'Donsine','23:00\u201300:00':'Donsine' },
+      satB: { '14:00\u201315:00':'Laina','15:00\u201316:00':'Laina','16:00\u201317:00':'Jessi','17:00\u201318:00':'Jessi','18:00\u201319:00':'Pick','19:00\u201320:00':'Pick','20:00\u201321:00':'Donsine','21:00\u201322:00':'Donsine','22:00\u201323:00':'Donsine','23:00\u201300:00':'Donsine' },
+    },
+    arkbar: {
+      0: { '14:00\u201315:00':'Alex RedWhite','15:00\u201316:00':'Alex RedWhite','16:00\u201317:00':'Alex RedWhite','17:00\u201318:00':'Sound Bogie','18:00\u201319:00':'Sound Bogie','20:00\u201321:00':'Pick','21:00\u201322:00':'Pick','22:00\u201323:00':'Pick','23:00\u201300:00':'Alex RedWhite','00:00\u201301:00':'Alex RedWhite','01:00\u201302:00':'Alex RedWhite' },
+      1: { '14:00\u201315:00':'Davoted','15:00\u201316:00':'Davoted','17:00\u201318:00':'Alex RedWhite','18:00\u201319:00':'Alex RedWhite','20:00\u201321:00':'Raffo DJ','21:00\u201322:00':'Raffo DJ','22:00\u201323:00':'Raffo DJ','23:00\u201300:00':'Tony','00:00\u201301:00':'Tony','01:00\u201302:00':'Tony' },
+      2: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','17:00\u201318:00':'Tony','18:00\u201319:00':'Tony','23:00\u201300:00':'Raffo DJ','00:00\u201301:00':'Raffo DJ','01:00\u201302:00':'Raffo DJ' },
+      3: { '14:00\u201315:00':'Davoted','15:00\u201316:00':'Davoted','16:00\u201317:00':'Davoted','17:00\u201318:00':'Sound Bogie','18:00\u201319:00':'Sound Bogie','20:00\u201321:00':'Raffo DJ','21:00\u201322:00':'Raffo DJ','22:00\u201323:00':'Raffo DJ','23:00\u201300:00':'Alex RedWhite','00:00\u201301:00':'Alex RedWhite','01:00\u201302:00':'Alex RedWhite' },
+      4: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','17:00\u201318:00':'Raffo DJ','18:00\u201319:00':'Raffo DJ','20:00\u201321:00':'Davoted','21:00\u201322:00':'Davoted','22:00\u201323:00':'Davoted','23:00\u201300:00':'Raffo DJ','00:00\u201301:00':'Raffo DJ','01:00\u201302:00':'Raffo DJ' },
+      5: { '14:00\u201315:00':'Davoted','15:00\u201316:00':'Davoted','16:00\u201317:00':'Davoted','17:00\u201318:00':'Jessi','18:00\u201319:00':'Jessi','20:00\u201321:00':'Alex RedWhite','21:00\u201322:00':'Alex RedWhite','22:00\u201323:00':'Alex RedWhite','23:00\u201300:00':'Sound Bogie','00:00\u201301:00':'Sound Bogie','01:00\u201302:00':'Sound Bogie' },
+      6: { '14:00\u201315:00':'Pick','15:00\u201316:00':'Pick','16:00\u201317:00':'Pick','17:00\u201318:00':'Alex RedWhite','18:00\u201319:00':'Alex RedWhite','20:00\u201321:00':'Sound Bogie','21:00\u201322:00':'Raffo DJ','22:00\u201323:00':'Raffo DJ' },
+    },
+    hip: {
+      0: 'Tony',
+      1: 'Vozka',
+      2: 'Buba',
+      3: 'Pick',
+      4: 'Tobi',
+      5: 'Vozka',
+      6: ['Pick','Tony'],
+    },
+  };
+
+  // ── STEP 3: Shared state ──
+  const working = {};
+  const loveWorking = {};
+  hipAssignments = {};
+  const placedTonight = new Map();
   const djHours = {};
-  RESIDENTS.forEach(r => { djHours[r] = 0; });
   const djDaySlots = {};
-
-  function getDaySlotCount(dj, dateStr) { return (djDaySlots[`${dj}|${dateStr}`] || []).length; }
-  function addSlot(dj, dateStr, slot) {
-    (djDaySlots[`${dj}|${dateStr}`] ??= []).push(slot);
-    djHours[dj] = (djHours[dj] || 0) + 1;
-  }
 
   // Post-midnight slots belong to the previous calendar day for unavailability lookup
   function getUnavailLookupDate(dateStr, slot) {
@@ -1217,186 +1247,91 @@ async function runAutoSuggest() {
     return dateStr;
   }
 
-  function canAssign(dj, dateStr, slot) {
+  // ── STEP 4: canAssign + recordPlacement ──
+  function canAssign(dj, dateStr, slot, targetMap) {
     if (dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted') return false;
     const unavailDate = getUnavailLookupDate(dateStr, slot);
-    if (unavailabilityMap[dj] && unavailabilityMap[dj].includes(`${unavailDate}|${slot}`)) return false;
-    if ((djHours[dj] || 0) >= (TARGETS[dj] || 999)) return false;
-    if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
-    if (working[`${dateStr}|${slot}`]) return false;
-    if (loveWorking[`${dateStr}|${slot}`]) return false;
-    if (hipPlacedTonight.get(dateStr)?.has(dj)) return false;
+    if (unavailabilityMap[dj]?.includes(`${unavailDate}|${slot}`)) return false;
+    if (targetMap[`${dateStr}|${slot}`]) return false;
+    if (placedTonight.get(dateStr)?.has(dj)) return false;
     return true;
   }
 
-  function wouldBreakConsecutive(dj, dateStr, zoneSlots) {
-    const allSlotIdx = new Set();
-    (djDaySlots[`${dj}|${dateStr}`] || []).forEach(s => { const i = ALL_ARKBAR_SLOTS.indexOf(s); if (i >= 0) allSlotIdx.add(i); });
-    zoneSlots.forEach(s => { const i = ALL_ARKBAR_SLOTS.indexOf(s); if (i >= 0) allSlotIdx.add(i); });
-    const sorted = [...allSlotIdx].sort((a,b) => a - b);
-    let maxRun = 1, run = 1;
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i] === sorted[i-1] + 1) { run++; maxRun = Math.max(maxRun, run); }
-      else run = 1;
-    }
-    return maxRun > MAX_CONSECUTIVE;
+  function recordPlacement(dj, dateStr, slot, targetMap, saveArray, type) {
+    targetMap[`${dateStr}|${slot}`] = dj;
+    if (!placedTonight.has(dateStr)) placedTonight.set(dateStr, new Set());
+    placedTonight.get(dateStr).add(dj);
+    (djDaySlots[`${dj}|${dateStr}`] ??= []).push(slot);
+    djHours[dj] = (djHours[dj] || 0) + 1;
+    saveArray.push({ dateStr, slot, dj, type });
   }
 
-  // ── PHASE 1: Love Beach patterns ──
+  // ── PASS 1: Love Beach ──
   const loveToSave = [];
-  const LOVE_AFTERNOON = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
-  const LOVE_EVENING = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'];
-
-  const LOVE_PATTERNS = {
-    0: { afternoon: ['Donsine'], evening: ['Cocoa'] },
-    1: { afternoon: ['Mostyx'], evening: ['Pick'] },
-    2: { afternoon: ['Vozka'], evening: ['Davoted'] },
-    3: { afternoon: ['Pick'], evening: ['Sky'] },
-    4: { afternoon: ['Buba'], evening: ['Jessi'] },
-    5: { afternoon: ['Donsine'], evening: ['Sky'] },
-    6: { afternoon: ['Pick', 'Bollie'], evening: ['Mostyx'] },
-  };
-  let satAfternoonToggle = 0;
-
-  function tryAssignLoveBlock(dateStr, blockSlots, djPool) {
-    const emptySlots = blockSlots.filter(slot => !loveWorking[`${dateStr}|${slot}`]);
-    if (emptySlots.length === 0) return;
-    const sorted = [...djPool]
-      .filter(dj => submittedDJs.get(dj) === 'submitted')
-      .sort((a, b) => (djHours[a] || 0) - (djHours[b] || 0));
-    for (const dj of sorted) {
-      const canFill = emptySlots.filter(slot => canAssign(dj, dateStr, slot));
-      if (canFill.length === 0) continue;
-      canFill.forEach(slot => {
-        loveWorking[`${dateStr}|${slot}`] = dj;
-        loveToSave.push({ dateStr, slot, type:'love', dj });
-        addSlot(dj, dateStr, slot);
-      });
-      if (blockSlots.every(slot => loveWorking[`${dateStr}|${slot}`])) break;
-    }
-  }
+  let satLoveToggle = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(currentYear, currentMonth, d).getDay();
     const dateStr = makeDateStr(currentYear, currentMonth, d);
-    const pattern = LOVE_PATTERNS[dow];
-    if (!pattern) continue;
-    let afternoonPool = [...pattern.afternoon];
-    if (dow === 6 && afternoonPool.length > 1) {
-      afternoonPool = [afternoonPool[satAfternoonToggle % afternoonPool.length]];
-      satAfternoonToggle++;
+    let template, slots;
+
+    if (dow === 6) {
+      template = satLoveToggle % 2 === 0 ? FIXED_TEMPLATE.love.satA : FIXED_TEMPLATE.love.satB;
+      satLoveToggle++;
+      slots = ALL_LOVE_SLOTS_SATURDAY;
+    } else {
+      template = FIXED_TEMPLATE.love.weekday[dow];
+      slots = ALL_LOVE_SLOTS_WEEKDAY;
     }
-    tryAssignLoveBlock(dateStr, LOVE_AFTERNOON, afternoonPool);
-    const eveningPool = [...pattern.evening];
-    tryAssignLoveBlock(dateStr, LOVE_EVENING, eveningPool);
+    if (!template) continue;
+
+    for (const slot of slots) {
+      const dj = template[slot];
+      if (!dj) continue;
+      if (canAssign(dj, dateStr, slot, loveWorking)) {
+        recordPlacement(dj, dateStr, slot, loveWorking, loveToSave, 'love');
+      }
+    }
   }
 
-  // ── PHASE 2: Davoted fixed ARKbar ──
+  // ── PASS 2: ARKbar ──
   const toSave = [];
-  const davotedArkbar = fixedSchedules?.['Davoted']?.arkbar || {};
+
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(currentYear, currentMonth, d).getDay();
-    const fixedSlots = davotedArkbar[dow];
-    if (!fixedSlots) continue;
     const dateStr = makeDateStr(currentYear, currentMonth, d);
-    fixedSlots.forEach(slot => {
-      if (!canAssign('Davoted', dateStr, slot)) return;
-      working[`${dateStr}|${slot}`] = 'Davoted';
-      addSlot('Davoted', dateStr, slot);
-      toSave.push({ dateStr, slot, type:'arkbar', dj:'Davoted' });
-    });
+    const template = FIXED_TEMPLATE.arkbar[dow];
+    if (!template) continue;
+
+    for (const slot of ALL_ARKBAR_SLOTS) {
+      const dj = template[slot];
+      if (!dj) continue;
+      if (canAssign(dj, dateStr, slot, working)) {
+        recordPlacement(dj, dateStr, slot, working, toSave, 'arkbar');
+      }
+    }
   }
 
-  // ── PHASE 3: Late night ARKbar 23–02 ──
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = makeDateStr(currentYear, currentMonth, d);
-    const dj = LATENIGHT_ROTATION[(d - 1) % LATENIGHT_ROTATION.length];
-    if (!canAssign(dj, dateStr, ZONE_LATENIGHT[0])) continue;
-    if (wouldBreakConsecutive(dj, dateStr, ZONE_LATENIGHT)) continue;
-    if (!ZONE_LATENIGHT.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
-    ZONE_LATENIGHT.forEach(slot => {
-      working[`${dateStr}|${slot}`] = dj;
-      addSlot(dj, dateStr, slot);
-      toSave.push({ dateStr, slot, type:'arkbar', dj });
-    });
-  }
-
-  // ── PHASE 4: Cooldown ARKbar 17–19 ──
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = makeDateStr(currentYear, currentMonth, d);
-    const dj = COOLDOWN_ROTATION[(d - 1) % COOLDOWN_ROTATION.length];
-    if ((djHours[dj] || 0) >= TARGETS[dj]) continue;
-    if (wouldBreakConsecutive(dj, dateStr, ZONE_COOLDOWN)) continue;
-    if (!ZONE_COOLDOWN.every(slot => !working[`${dateStr}|${slot}`] && canAssign(dj, dateStr, slot))) continue;
-    ZONE_COOLDOWN.forEach(slot => {
-      working[`${dateStr}|${slot}`] = dj;
-      addSlot(dj, dateStr, slot);
-      toSave.push({ dateStr, slot, type:'arkbar', dj });
-    });
-  }
-
-  // ── PHASE 5: HIP blocks ──
+  // ── PASS 3: HIP ──
   const hipToSave = [];
-  let saturdayToggle = 0;
+  let satHipToggle = 0;
+
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(currentYear, currentMonth, d).getDay();
     const dateStr = makeDateStr(currentYear, currentMonth, d);
-    let hipDJ = HIP_ROTATION[dow];
+    let hipDJ = FIXED_TEMPLATE.hip[dow];
     if (!hipDJ) continue;
+
     if (Array.isArray(hipDJ)) {
-      hipDJ = hipDJ[saturdayToggle % hipDJ.length];
-      saturdayToggle++;
+      hipDJ = hipDJ[satHipToggle % hipDJ.length];
+      satHipToggle++;
     }
-    if (!HIP_SLOTS.every(slot => !hipAssignments[`${dateStr}|${slot}`])) continue;
-    if (!HIP_SLOTS.every(slot => canAssign(hipDJ, dateStr, slot))) continue;
-    HIP_SLOTS.forEach(slot => {
-      hipAssignments[`${dateStr}|${slot}`] = hipDJ;
-      hipToSave.push({ dateStr, slot, type:'hip', dj:hipDJ });
-      addSlot(hipDJ, dateStr, slot);
-    });
-    // Record DJ as placed at HIP tonight so ARKbar passes skip them
-    if (!hipPlacedTonight.has(dateStr)) hipPlacedTonight.set(dateStr, new Set());
-    hipPlacedTonight.get(dateStr).add(hipDJ);
-  }
 
-  // ── PHASE 6: Zone fill remaining ARKbar gaps ──
-  const ARK_14_17 = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'];
-  const ARK_17_19 = ['17:00\u201318:00','18:00\u201319:00'];
-  const ARK_20_23 = ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'];
-  const ARK_23_02 = ['23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
-  const ARK_14_17_DJS = ['Pick', 'Jessi', 'Alex RedWhite'];
-  const ARK_17_19_DJS = ['Sound Bogie', 'Raffo DJ', 'Alex RedWhite'];
-  const ARK_20_23_DJS = ['Pick', 'Tony', 'Jessi', 'Davoted'];
-  const ARK_23_02_DJS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
+    if (!LOCAL_HIP_SLOTS.every(slot => canAssign(hipDJ, dateStr, slot, hipAssignments))) continue;
 
-  function tryAssignZone(dateStr, zoneSlots, djPool) {
-    const emptySlots = zoneSlots.filter(slot => !working[`${dateStr}|${slot}`]);
-    if (emptySlots.length === 0) return;
-    const sorted = [...djPool]
-      .filter(dj => submittedDJs.get(dj) === 'submitted')
-      .sort((a, b) => (djHours[a] || 0) - (djHours[b] || 0));
-    for (const dj of sorted) {
-      const canFill = emptySlots.filter(slot => {
-        if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
-        return canAssign(dj, dateStr, slot);
-      });
-      if (canFill.length === 0) continue;
-      canFill.forEach(slot => {
-        if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return;
-        working[`${dateStr}|${slot}`] = dj;
-        addSlot(dj, dateStr, slot);
-        toSave.push({ dateStr, slot, type:'arkbar', dj });
-      });
-      if (zoneSlots.every(slot => working[`${dateStr}|${slot}`])) break;
+    for (const slot of LOCAL_HIP_SLOTS) {
+      recordPlacement(hipDJ, dateStr, slot, hipAssignments, hipToSave, 'hip');
     }
-  }
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = makeDateStr(currentYear, currentMonth, d);
-    tryAssignZone(dateStr, ARK_14_17, ARK_14_17_DJS);
-    tryAssignZone(dateStr, ARK_17_19, ARK_17_19_DJS);
-    tryAssignZone(dateStr, ARK_20_23, ARK_20_23_DJS);
-    tryAssignZone(dateStr, ARK_23_02, ARK_23_02_DJS);
   }
 
   // ── RENDER & SAVE ──
@@ -1404,8 +1339,8 @@ async function runAutoSuggest() {
   if (totalSlots === 0) { showToast('No slots could be auto-assigned', 'error'); return; }
 
   arkbarAssignments = { ...working };
-  rosterAssignments = currentVenue === 'love' ? { ...loveWorking } : { ...working };
   loveAssignments = { ...loveWorking };
+  rosterAssignments = currentVenue === 'love' ? { ...loveWorking } : { ...working };
   renderGrid();
   updateHoursPanel();
 
