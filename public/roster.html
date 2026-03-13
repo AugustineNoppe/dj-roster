@@ -1236,6 +1236,9 @@ async function runAutoSuggest() {
   const placedTonight = new Map();
   const djHours = {};
   const djDaySlots = {};
+  let assignedCount = 0, unavailSkips = 0, partialSkips = 0, notSubmittedSkips = 0;
+
+  console.group('Auto-Suggest: ' + month);
 
   // Post-midnight slots belong to the previous calendar day for unavailability lookup
   function getUnavailLookupDate(dateStr, slot) {
@@ -1269,6 +1272,7 @@ async function runAutoSuggest() {
   const loveToSave = [];
   let satLoveToggle = 0;
 
+  console.group('Pass: Love Beach');
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(currentYear, currentMonth, d).getDay();
     const dateStr = makeDateStr(currentYear, currentMonth, d);
@@ -1284,37 +1288,89 @@ async function runAutoSuggest() {
     }
     if (!template) continue;
 
+    // Group template slots by DJ (all-or-nothing block enforcement)
+    const djBlocks = {};
     for (const slot of slots) {
       const dj = template[slot];
       if (!dj) continue;
-      if (canAssign(dj, dateStr, slot, loveWorking)) {
-        recordPlacement(dj, dateStr, slot, loveWorking, loveToSave, 'love');
+      (djBlocks[dj] ??= []).push(slot);
+    }
+    for (const [dj, blockSlots] of Object.entries(djBlocks)) {
+      if (dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted') {
+        console.log('SKIP (not submitted)', dj, dateStr, 'love');
+        notSubmittedSkips++;
+        continue;
+      }
+      if (blockSlots.every(slot => canAssign(dj, dateStr, slot, loveWorking))) {
+        for (const slot of blockSlots) {
+          recordPlacement(dj, dateStr, slot, loveWorking, loveToSave, 'love');
+        }
+        console.log('ASSIGN', dj, dateStr, blockSlots.join(', '), 'love');
+        assignedCount += blockSlots.length;
+      } else {
+        const assignableSlots = blockSlots.filter(slot => canAssign(dj, dateStr, slot, loveWorking));
+        if (assignableSlots.length === 0) {
+          const failedSlots = blockSlots.filter(slot => !canAssign(dj, dateStr, slot, loveWorking));
+          console.log('SKIP (unavailable)', dj, dateStr, 'failed slots:', failedSlots, 'love');
+          unavailSkips++;
+        } else {
+          console.log('SKIP (partial block)', dj, dateStr, 'has:', assignableSlots, 'needs:', blockSlots, 'love');
+          partialSkips++;
+        }
       }
     }
   }
+  console.groupEnd();
 
   // ── PASS 2: ARKbar ──
   const toSave = [];
 
+  console.group('Pass: ARKbar');
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(currentYear, currentMonth, d).getDay();
     const dateStr = makeDateStr(currentYear, currentMonth, d);
     const template = FIXED_TEMPLATE.arkbar[dow];
     if (!template) continue;
 
+    // Group template slots by DJ (all-or-nothing block enforcement)
+    const djBlocks = {};
     for (const slot of ALL_ARKBAR_SLOTS) {
       const dj = template[slot];
       if (!dj) continue;
-      if (canAssign(dj, dateStr, slot, working)) {
-        recordPlacement(dj, dateStr, slot, working, toSave, 'arkbar');
+      (djBlocks[dj] ??= []).push(slot);
+    }
+    for (const [dj, blockSlots] of Object.entries(djBlocks)) {
+      if (dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted') {
+        console.log('SKIP (not submitted)', dj, dateStr, 'arkbar');
+        notSubmittedSkips++;
+        continue;
+      }
+      if (blockSlots.every(slot => canAssign(dj, dateStr, slot, working))) {
+        for (const slot of blockSlots) {
+          recordPlacement(dj, dateStr, slot, working, toSave, 'arkbar');
+        }
+        console.log('ASSIGN', dj, dateStr, blockSlots.join(', '), 'arkbar');
+        assignedCount += blockSlots.length;
+      } else {
+        const assignableSlots = blockSlots.filter(slot => canAssign(dj, dateStr, slot, working));
+        if (assignableSlots.length === 0) {
+          const failedSlots = blockSlots.filter(slot => !canAssign(dj, dateStr, slot, working));
+          console.log('SKIP (unavailable)', dj, dateStr, 'failed slots:', failedSlots, 'arkbar');
+          unavailSkips++;
+        } else {
+          console.log('SKIP (partial block)', dj, dateStr, 'has:', assignableSlots, 'needs:', blockSlots, 'arkbar');
+          partialSkips++;
+        }
       }
     }
   }
+  console.groupEnd();
 
   // ── PASS 3: HIP ──
   const hipToSave = [];
   let satHipToggle = 0;
 
+  console.group('Pass: HIP');
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(currentYear, currentMonth, d).getDay();
     const dateStr = makeDateStr(currentYear, currentMonth, d);
@@ -1326,13 +1382,27 @@ async function runAutoSuggest() {
       satHipToggle++;
     }
 
-    if (!LOCAL_HIP_SLOTS.every(slot => canAssign(hipDJ, dateStr, slot, hipAssignments))) continue;
-    if (placedTonight.get(dateStr)?.has(hipDJ)) continue;
+    if (!LOCAL_HIP_SLOTS.every(slot => canAssign(hipDJ, dateStr, slot, hipAssignments))) {
+      const failedSlots = LOCAL_HIP_SLOTS.filter(slot => !canAssign(hipDJ, dateStr, slot, hipAssignments));
+      console.log('SKIP (unavailable)', hipDJ, dateStr, 'failed slots:', failedSlots, 'hip');
+      unavailSkips++;
+      continue;
+    }
+    if (placedTonight.get(dateStr)?.has(hipDJ)) {
+      console.log('SKIP (already placed)', hipDJ, dateStr, 'hip');
+      continue;
+    }
 
     for (const slot of LOCAL_HIP_SLOTS) {
       recordPlacement(hipDJ, dateStr, slot, hipAssignments, hipToSave, 'hip');
     }
+    console.log('ASSIGN', hipDJ, dateStr, LOCAL_HIP_SLOTS.join(', '), 'hip');
+    assignedCount += LOCAL_HIP_SLOTS.length;
   }
+  console.groupEnd();
+
+  console.log(`Summary: assigned ${assignedCount} slots, ${unavailSkips} unavailable skips, ${partialSkips} partial blocks rejected, ${notSubmittedSkips} not-submitted skips`);
+  console.groupEnd();
 
   // ── RENDER & SAVE ──
   const totalSlots = toSave.length + hipToSave.length + loveToSave.length;
@@ -1370,7 +1440,7 @@ async function runAutoSuggest() {
     const results = await Promise.all(saves);
     const allOk = (await Promise.all(results.map(r => r.json()))).every(d => d.success);
     showToast(allOk
-      ? `Done: Love ${loveToSave.length} + ARKbar ${toSave.length} + HIP ${hipToSave.length} \u00B7 ${summary}`
+      ? `Done: Love ${loveToSave.length} + ARKbar ${toSave.length} + HIP ${hipToSave.length} \u00B7 ${unavailSkips} unavail skips\u00B7 ${partialSkips} partial blocks rejected \u00B7 ${summary}`
       : 'Some saves failed \u2014 check sheet', allOk ? 'success' : 'error');
   } catch(e) {
     showToast('UI updated \u2014 check connection', 'error');
