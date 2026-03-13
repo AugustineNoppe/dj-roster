@@ -216,15 +216,16 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .toast{
-  position:fixed;bottom:24px;right:24px;background:rgba(30,40,80,0.95);
-  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border:1px solid rgba(255,255,255,0.15);color:#fff;padding:12px 20px;
-  border-radius:10px;font-size:12px;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,0.4);
-  transform:translateY(80px);opacity:0;transition:all .3s ease;z-index:1000;
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);
+  min-width:320px;max-width:480px;text-align:center;
+  background:rgba(30,40,80,0.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid rgba(255,255,255,0.15);color:#fff;padding:20px 28px;
+  border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 16px 48px rgba(0,0,0,0.6);
+  opacity:0;transition:all .3s ease;z-index:9999;pointer-events:none;
 }
-.toast.show{transform:translateY(0);opacity:1}
+.toast.show{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
 .toast.success{background:rgba(27,94,32,0.95);border-color:rgba(105,240,174,0.3)}
-.toast.error{background:rgba(183,28,28,0.95);border-color:rgba(255,100,100,0.3)}
+.toast.error{background:rgba(183,28,28,0.95);border:1px solid rgba(255,100,100,0.6);box-shadow:0 16px 48px rgba(0,0,0,0.6)}
 
 /* === HOURS PAGE === */
 .hours-wrap{display:flex;flex-direction:column;gap:20px}
@@ -442,7 +443,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   .status-bar-right{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .btn-sm{padding:8px 10px;font-size:10px;min-height:40px;text-align:center;justify-content:center;display:flex;align-items:center}
   .status-pill{font-size:10px}
-  .toast{bottom:12px;right:12px;left:12px;font-size:11px}
   .summary-row{grid-template-columns:1fr 1fr}
   .hours-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .hours-table{min-width:520px}
@@ -576,7 +576,6 @@ let rosterAssignments = {};
 let arkbarAssignments = {};
 let hipAssignments = {};
 let loveAssignments = {};
-let residentBlackouts = {};
 let djList = [];
 let submittedDJs = new Map(); // name → status ('pre-loaded' | 'submitted')
 let unavailabilityMap = {};   // DJ name → array of "date|slot" strings
@@ -806,7 +805,6 @@ async function loadAll() {
     submittedDJs = new Map((submissionsData.submitted || []).map(s => [s.name, s.status]));
 
     availability = availData.availability || {};
-    residentBlackouts = availData.blackouts || {};
 
     function parseRoster(rows) {
       const map = {};
@@ -898,14 +896,8 @@ function buildCell(dateStr, slot, type) {
   const assigned = assignMap[key] || '';
   const avail = (availability[dateStr] && availability[dateStr][slotKey]) || [];
 
-  // All non-resident DJs always appear — no submission gating for manual assignment.
-  const options = djList.map(d => d.name).filter(dj => !RESIDENTS.includes(dj) && dj !== 'Guest DJ').sort((a, b) => a.localeCompare(b));
-  RESIDENTS.forEach(res => {
-    const bo = residentBlackouts[res] && residentBlackouts[res][dateStr];
-    if (bo === 'full') return;
-    if (type === 'arkbar' && bo === 'morning' && MORNING_SLOTS.includes(slot)) return;
-    options.push(res);
-  });
+  // All DJs appear in dropdown — no submission gating for manual assignment.
+  const options = djList.map(d => d.name).filter(dj => dj !== 'Guest DJ').sort((a, b) => a.localeCompare(b));
   options.push('Guest DJ');
 
   const isHip = type === 'hip';
@@ -1263,9 +1255,6 @@ async function suggestRoster() {
     if (getDaySlotCount(dj, dateStr) >= MAX_DAY_HOURS) return false;
     if (working[`${dateStr}|${slot}`]) return false;
     if (otherVenueDJs[dateStr]?.has(dj)) return false;
-    const bo = residentBlackouts[dj]?.[dateStr];
-    if (bo === 'full') return false;
-    if (bo === 'morning' && MORNING_SLOTS.includes(slot)) return false;
     return true;
   }
 
@@ -1958,7 +1947,7 @@ async function previewMonth() {
     (loveRes.roster || []).forEach(r => {
       if (!r[2]) return;
       const djName = r[2];
-      if (djName !== 'Guest DJ' && !RESIDENTS.includes(djName)) {
+      if (djName !== 'Guest DJ') {
         const slotAvail = (availability[r[0]] && availability[r[0]][normalizeSlot(r[1])]) || [];
         if (!slotAvail.includes(djName)) return; // no confirmed availability → exclude
       }

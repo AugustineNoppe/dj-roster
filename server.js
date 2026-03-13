@@ -113,100 +113,6 @@ const FIXED_SCHEDULES = {
   },
 };
 
-/* ============================================================================
-   DJ AVAILABILITY PRELOAD — Single source of truth for all preloaded availability
-   ============================================================================
-   This config defines availability patterns that get pre-loaded when a DJ first
-   views a month. DJs must still submit to confirm (keeps amber state on roster).
-
-   Day-of-week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-
-   Pattern types:
-   - availableDays + availableSlots: specific days & slots available, rest unavailable
-   - availableDays + allSlotsOnAvailableDays: specific days all slots available
-   - unavailableDays: specific days all unavailable, rest available
-   - unavailableSlotsByDay: available by default, specific day+slot combos blocked
-   - effectiveFrom: YYYY-MM format, pattern only applies from this month onward
-   ============================================================================ */
-
-const DJ_AVAILABILITY_PRELOAD = {
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RESIDENTS — default available, with specific unavailable patterns
-  // ─────────────────────────────────────────────────────────────────────────
-
-  // Sound Bogie: Sundays all unavailable, early slots (14:00-17:00) unavailable every day
-  'Sound Bogie': {
-    isResident: true,
-    defaultStatus: 'available',
-    unavailableDays: [0], // Sun
-    unavailableSlots: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00']
-  },
-
-  // Alex RedWhite: Wednesdays 14:00-17:00 unavailable (from current month onward)
-  'Alex RedWhite': {
-    isResident: true,
-    defaultStatus: 'available',
-    effectiveFrom: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })(),
-    unavailableSlotsByDay: {
-      3: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00'] // Wed 14:00-17:00
-    }
-  },
-
-  // Raffo DJ: no special patterns (fully available by default)
-  'Raffo DJ': {
-    isResident: true,
-    defaultStatus: 'available'
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // CASUAL DJs — specific availability patterns
-  // ─────────────────────────────────────────────────────────────────────────
-
-  // Vozka: Mon, Tue, Fri — evening slots only (21:00-01:00)
-  Vozka: {
-    availableDays: [1, 2, 5],
-    availableSlots: ['21:00\u201322:00', '22:00\u201323:00', '23:00\u201300:00', '00:00\u201301:00'],
-    allSlotsOnAvailableDays: false
-  },
-
-  // Tobi: Thu — evening slots only (21:00-01:00)
-  Tobi: {
-    availableDays: [4],
-    availableSlots: ['21:00\u201322:00', '22:00\u201323:00', '23:00\u201300:00', '00:00\u201301:00'],
-    allSlotsOnAvailableDays: false
-  },
-
-  // Buba: Sun & Mon all unavailable, rest available
-  Buba: {
-    unavailableDays: [0, 1],
-    allSlotsOnUnavailableDays: true
-  },
-
-  // Sky: Wed & Fri all slots available, rest unavailable
-  Sky: {
-    availableDays: [3, 5],
-    allSlotsOnAvailableDays: true
-  },
-
-  // Donsine: Thu, Fri, Sat, Sun all slots available
-  Donsine: {
-    availableDays: [4, 5, 6, 0],
-    allSlotsOnAvailableDays: true
-  },
-
-  // Mostyx: available by default, specific day+slot combos blocked
-  Mostyx: {
-    defaultStatus: 'available',
-    unavailableSlotsByDay: {
-      4: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00'], // Thu 14:00-17:00
-      6: ['14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00', '17:00\u201318:00'] // Sat 14:00-18:00
-    }
-  }
-};
-
-// Legacy alias for backward compatibility with generateFixedAvailabilityRows
-const FIXED_AVAILABILITY = DJ_AVAILABILITY_PRELOAD;
 const ALL_ARKBAR_SLOTS = [
   '14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00', '17:00\u201318:00',
   '18:00\u201319:00', '19:00\u201320:00', '20:00\u201321:00', '21:00\u201322:00',
@@ -285,15 +191,14 @@ async function fetchAvailability(month) {
   const year = parseInt(parts[1]);
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
-  // Only include availability from DJs who have submitted for this month
-  // (residents are always shown via the loop below regardless).
+  // Include availability from all DJs who have submitted for this month.
   const [{ data: portalRows }, { data: submittedRows }] = await Promise.all([
     supabase.from('dj_availability').select('*').eq('month', month),
     supabase.from('dj_submissions').select('name').eq('month', month).eq('status', 'submitted'),
   ]);
   const submittedNames = new Set((submittedRows || []).map(r => r.name.trim().toLowerCase()));
   const rows = (portalRows || []).filter(r =>
-    RESIDENTS.includes(r.name) || submittedNames.has(r.name.trim().toLowerCase())
+    submittedNames.has(r.name.trim().toLowerCase())
   );
 
   const map = {};
@@ -308,9 +213,8 @@ async function fetchAvailability(month) {
     ((djStatus[dj] ??= {})[dk] ??= {})[ns] = status || 'available';
   }
 
-  // Add non-resident DJs who are explicitly available.
+  // Add all DJs (residents and casuals) who are explicitly available.
   for (const [dj, dates] of Object.entries(djStatus)) {
-    if (RESIDENTS.includes(dj)) continue;
     for (const [dk, slots] of Object.entries(dates)) {
       for (const [ns, status] of Object.entries(slots)) {
         if (status === 'unavailable') continue;
@@ -320,30 +224,15 @@ async function fetchAvailability(month) {
     }
   }
 
-  // Add residents: blocked if dj_availability says 'unavailable', or if
-  // no Supabase row exists, fall back to DJ_AVAILABILITY_PRELOAD config.
+  // Ensure every date+slot has a Guest DJ option.
   if (year !== undefined && monthIdx >= 0) {
     for (let d = 1; d <= daysInMonth; d++) {
       const dk = makeDateKey(year, monthIdx + 1, d);
-      const dow = new Date(year, monthIdx, d).getDay();
       if (!map[dk]) map[dk] = {};
       for (const slot of ALL_SLOTS) {
         const ns = normalizeSlot(slot);
         if (!map[dk][ns]) map[dk][ns] = [];
-        const arr = map[dk][ns];
-        for (const resident of RESIDENTS) {
-          const slotStatus = djStatus[resident]?.[dk]?.[ns];
-          if (slotStatus === 'unavailable') continue;
-          if (slotStatus === undefined) {
-            const cfg = DJ_AVAILABILITY_PRELOAD[resident];
-            if (cfg) {
-              if (cfg.unavailableDays && cfg.unavailableDays.includes(dow)) continue;
-              if (cfg.unavailableSlots && cfg.unavailableSlots.includes(ns)) continue;
-            }
-          }
-          if (!arr.includes(resident)) arr.push(resident);
-        }
-        if (!arr.includes('Guest DJ')) arr.push('Guest DJ');
+        if (!map[dk][ns].includes('Guest DJ')) map[dk][ns].push('Guest DJ');
       }
     }
   }
@@ -657,71 +546,19 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 
     let submissionStatus = submissionRow ? (submissionRow.status || 'none') : 'none';
 
-    // For residents with no existing submission record, pre-load default availability.
+    // Read stored availability from Supabase.
     const stored = {};
-    let preloaded = false;
-    if (!submissionRow && isResident && monthIdx >= 0 && !isNaN(year)) {
-      const preloadRows = generatePreloadRows(name, month, monthIdx, year);
-      if (preloadRows && preloadRows.length > 0) {
-        // Write avail rows and submission record in parallel — no need to read back what we just wrote.
-        await Promise.all([
-          supabase.from('dj_availability').upsert(
-            preloadRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot: slot.replace(/–/g, '-'), month: mo, status })),
-            { onConflict: 'name,date,slot' }
-          ),
-          supabase.from('dj_submissions').upsert(
-            { name, month, status: 'pre-loaded' },
-            { onConflict: 'name,month' }
-          ),
-        ]);
-        submissionStatus = 'pre-loaded';
-        for (const [, dk, ns, , status] of preloadRows) {
-          if (!stored[dk]) stored[dk] = {};
-          stored[dk][ns] = status;
-        }
-        preloaded = true;
-      }
-    }
-
-    // For FIXED_AVAILABILITY DJs with no existing submission record, pre-load fixed availability.
-    if (!submissionRow && !preloaded && FIXED_AVAILABILITY[name] && monthIdx >= 0 && !isNaN(year)) {
-      const fixedRows = generateFixedAvailabilityRows(name, year, monthIdx + 1);
-      if (fixedRows.length > 0) {
-        // Expand to 5-column sheet format: [name, dateKey, normalizedSlot, month, status]
-        const sheetRows = fixedRows.map(([n, dk, slot, status]) => [n, dk, normalizeSlot(slot), month, status]);
-        await Promise.all([
-          supabase.from('dj_availability').upsert(
-            sheetRows.map(([n, date, slot, mo, status]) => ({ name: n, date, slot: slot.replace(/–/g, '-'), month: mo, status })),
-            { onConflict: 'name,date,slot' }
-          ),
-          supabase.from('dj_submissions').upsert(
-            { name, month, status: 'pre-loaded' },
-            { onConflict: 'name,month' }
-          ),
-        ]);
-        submissionStatus = 'pre-loaded';
-        for (const [, dk, ns, , status] of sheetRows) {
-          if (!stored[dk]) stored[dk] = {};
-          stored[dk][ns] = status;
-        }
-        preloaded = true;
-      }
-    }
-
-    // Read stored availability from Supabase (skipped when we just pre-loaded it above).
-    if (!preloaded) {
-      const { data: availRows } = await supabase
-        .from('dj_availability')
-        .select('*')
-        .ilike('name', name.trim())
-        .eq('month', month);
-      for (const row of (availRows || [])) {
-        const dk = parseDateKey(row.date);
-        if (!dk || !row.slot) continue;
-        const ns = normalizeSlot(row.slot);
-        if (!stored[dk]) stored[dk] = {};
-        stored[dk][ns] = row.status || (isResident ? 'available' : 'unavailable');
-      }
+    const { data: availRows } = await supabase
+      .from('dj_availability')
+      .select('*')
+      .ilike('name', name.trim())
+      .eq('month', month);
+    for (const row of (availRows || [])) {
+      const dk = parseDateKey(row.date);
+      if (!dk || !row.slot) continue;
+      const ns = normalizeSlot(row.slot);
+      if (!stored[dk]) stored[dk] = {};
+      stored[dk][ns] = row.status || 'unavailable';
     }
 
     const availability = {};
@@ -735,9 +572,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
         availability[dk] = {};
         for (const slot of ALL_SLOTS) {
           const ns = normalizeSlot(slot);
-          const defaultStatus = isResident ? 'available'
-            : (fixedToday && fixedToday.has(ns)) ? 'available'
-            : 'unavailable';
+          const defaultStatus = (fixedToday && fixedToday.has(ns)) ? 'available' : 'unavailable';
           availability[dk][ns] = (stored[dk] && stored[dk][ns] !== undefined)
             ? stored[dk][ns]
             : defaultStatus;
@@ -753,85 +588,6 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 
 /* -- POST /api/dj/availability -------------------------------------------- */
 
-
-/* -- Generate pre-load rows for residents ----------------------------------- */
-function generatePreloadRows(name, month, monthIdx, year) {
-  if (!RESIDENTS.includes(name)) return null;
-
-  const config = DJ_AVAILABILITY_PRELOAD[name];
-  const days = new Date(year, monthIdx + 1, 0).getDate();
-  const rows = [];
-
-  // Check effectiveFrom — skip pattern if month is before effective date
-  const requestedMonth = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
-  const patternActive = !config?.effectiveFrom || requestedMonth >= config.effectiveFrom;
-
-  // Pre-compute blocked slots sets
-  const unavailableDaysSet = new Set(config?.unavailableDays || []);
-  const unavailableSlotsSet = new Set(config?.unavailableSlots || []);
-  const unavailableSlotsByDay = config?.unavailableSlotsByDay || {};
-
-  for (let d = 1; d <= days; d++) {
-    const dk = makeDateKey(year, monthIdx + 1, d);
-    const dow = new Date(year, monthIdx, d).getDay();
-
-    for (const slot of ALL_SLOTS) {
-      const ns = normalizeSlot(slot);
-      let status = config?.defaultStatus || 'available';
-
-      if (patternActive && config) {
-        // Day-level unavailability (e.g., Sound Bogie Sundays)
-        if (unavailableDaysSet.has(dow)) status = 'unavailable';
-        // Slot-level unavailability every day (e.g., Sound Bogie early slots)
-        if (unavailableSlotsSet.has(ns)) status = 'unavailable';
-        // Day+slot combo unavailability (e.g., Alex RedWhite Wed 14-17)
-        const dayBlockedSlots = unavailableSlotsByDay[dow];
-        if (dayBlockedSlots && dayBlockedSlots.includes(ns)) status = 'unavailable';
-      }
-
-      rows.push([name, dk, ns, month, status]);
-    }
-  }
-  return rows;
-}
-
-/* -- Generate pre-load rows for FIXED_AVAILABILITY DJs --------------------- */
-function generateFixedAvailabilityRows(djName, year, month) {
-  const config = FIXED_AVAILABILITY[djName];
-  if (!config) return [];
-  const rows = [];
-  const daysInMonth = new Date(year, month, 0).getDate();
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month - 1, day);
-    const dow = date.getDay(); // 0=Sun
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    for (const slot of ALL_ARKBAR_SLOTS) {
-      let status;
-      if (config.unavailableDays !== undefined) {
-        // Buba / Sky pattern — specific days all unavailable, rest all available
-        status = config.unavailableDays.includes(dow) ? 'unavailable' : 'available';
-      } else if (config.availableDays !== undefined && config.allSlotsOnAvailableDays) {
-        // Donsine pattern — specific days all available, rest all unavailable
-        status = config.availableDays.includes(dow) ? 'available' : 'unavailable';
-      } else if (config.availableDays !== undefined && !config.allSlotsOnAvailableDays) {
-        // Vozka / Tobi pattern — specific days + specific slots available, rest unavailable
-        if (config.availableDays.includes(dow) && config.availableSlots.includes(slot)) {
-          status = 'available';
-        } else {
-          status = 'unavailable';
-        }
-      } else if (config.unavailableSlotsByDay !== undefined) {
-        // Mostyx pattern — available by default, specific day+slot combos unavailable
-        const blockedSlots = config.unavailableSlotsByDay[dow] || [];
-        status = blockedSlots.includes(slot) ? 'unavailable' : 'available';
-      } else {
-        status = 'available';
-      }
-      rows.push([djName, dateStr, slot, status]);
-    }
-  }
-  return rows;
-}
 
 app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
   try {
