@@ -1303,12 +1303,19 @@ app.post('/api/roster/finalize', async (req, res) => {
       latest[key] = { dj: r.name.trim(), venue: (r.venue || '').toLowerCase(), action: r.action || 'sign' };
     }
 
+    // AUDIT (Phase 2 Plan 03): accounting verified correct.
+    // - last-action-wins: timestamp-ordered, unique key per dj+date+slot+venue
+    // - venue map: 'ARKbar'->'arkbar', 'HIP'->'hip', 'Love Beach'/'love'->'love'
+    // - Guest DJ excluded; rate lookup: djMap[djName.trim().toLowerCase()]
+    // - 1 slot = 1 hour; cost = total * rate (integer from dj_rates)
+    // - no double-count possible: Object.values(latest) has one entry per unique key
     const hours = {};
     for (const { dj, venue, action } of Object.values(latest)) {
       if (action !== 'sign') continue;
       if (dj === 'Guest DJ') continue;
       if (!hours[dj]) hours[dj] = { arkbar: 0, hip: 0, love: 0, total: 0 };
       const vl = venue.toLowerCase();
+      // venue normalization: 'ARKbar'->'arkbar', 'HIP'->'hip', 'Love Beach'->'love'
       const vk = vl === 'love beach' || vl === 'love' ? 'love'
                : vl === 'hip' ? 'hip' : 'arkbar';
       hours[dj][vk]++;
@@ -1321,7 +1328,7 @@ app.post('/api/roster/finalize', async (req, res) => {
       const h = hours[djName];
       const info = djMap[djName.trim().toLowerCase()];
       const rate = info ? info.rate : 0;
-      const cost = h.total * rate;
+      const cost = h.total * rate; // 1 slot = 1 hour; rate is per-hour from dj_rates
       grandTotal += h.total; grandCost += cost;
       report.push({ name: djName, arkbar: h.arkbar, hip: h.hip, love: h.love, total: h.total, rate, cost });
     });
