@@ -1163,6 +1163,7 @@ app.post('/api/dj/signoff-batch', async (req, res) => {
 });
 
 /* -- POST /api/dj/unsignoff-day ------------------------------------------- */
+// AUDIT (Phase 2 Plan 02): filters dj+month+date; null action defaults to 'sign'; append-only write. OK.
 app.post('/api/dj/unsignoff-day', async (req, res) => {
   try {
     const { name, date, month, password } = req.body;
