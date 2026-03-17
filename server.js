@@ -76,6 +76,7 @@ const ALL_SLOTS = [
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 const SHORT_MONTHS = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+// CANONICAL slot format — always use normalizeSlot() on slot values before DB writes and after DB reads.
 const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
 const pad2 = n => String(n).padStart(2, '0');
 const makeDateKey = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
@@ -1008,7 +1009,7 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
 
     // Upsert only — never delete. Atomic: partial failure leaves existing data intact.
     const newRows = slots.map(({ date, slot, status }) => ({
-      name: name.trim(), date, slot: slot.replace(/–/g, '-'), month, status,
+      name: name.trim(), date, slot: normalizeSlot(slot), month, status,
     }));
     if (newRows.length > 0) {
       // Batch in chunks of 500 to avoid Supabase payload limits
@@ -1167,7 +1168,8 @@ app.post('/api/dj/unsignoff-day', async (req, res) => {
     if (!name || !date || !month) return res.json({ success: false, error: 'Missing fields' });
     // Read all signoff log entries for this DJ/date/month
     const { data: rows, error: readError } = await supabase.from('dj_signoffs')
-      .select('*').eq('month', month).ilike('name', name).eq('date', date);
+      .select('*').eq('month', month).ilike('name', name).eq('date', date)
+      .order('timestamp', { ascending: true });
     if (readError) throw new Error(readError.message);
     // Determine which slot|venue combos are currently net-signed
     const net = {};
@@ -1193,7 +1195,8 @@ app.get('/api/dj/signoffs/:name/:month', async (req, res) => {
     const name  = decodeURIComponent(req.params.name);
     const month = decodeURIComponent(req.params.month);
     const { data, error } = await supabase.from('dj_signoffs')
-      .select('*').ilike('name', name).eq('month', month);
+      .select('*').ilike('name', name).eq('month', month)
+      .order('timestamp', { ascending: true });
     if (error) throw new Error(error.message);
     // Process log: last action per date|slot|venue wins
     const latest = {};
