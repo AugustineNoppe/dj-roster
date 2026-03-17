@@ -929,7 +929,14 @@ function buildCell(dateStr, slot, type) {
     }
     if (arkBooked && !isSelected) suffix = ' \u26A0 ARKbar' + suffix;
 
-    djEntries.push({ dj, isSelected, suffix });
+    let color = '';
+    if (dj !== 'Guest DJ') {
+      if (!isSubmitted) color = '#F87171';
+      else if (isUnavailable) color = '#F5A623';
+      else color = '#4ADE80';
+    }
+
+    djEntries.push({ dj, isSelected, suffix, color });
   });
 
   // Sort alphabetically, Guest DJ at end
@@ -940,9 +947,10 @@ function buildCell(dateStr, slot, type) {
   });
 
   let opts = '<option value="">\u2014 assign \u2014</option>';
-  djEntries.forEach(({ dj, isSelected, suffix }) => {
+  djEntries.forEach(({ dj, isSelected, suffix, color }) => {
     const label = isSelected ? dj : `${dj}${suffix}`;
-    opts += `<option value="${dj}"${isSelected ? ' selected' : ''}>${label}</option>`;
+    const colorStyle = color ? ` style="color:${color}"` : '';
+    opts += `<option value="${dj}"${isSelected ? ' selected' : ''}${colorStyle}>${label}</option>`;
   });
 
   return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)">${opts}</select></td>`;
