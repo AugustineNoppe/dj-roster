@@ -100,6 +100,23 @@ function parseDateKey(dateStr) {
 /* == FIXED DJ SCHEDULES =================================================== */
 // Single source of truth for DJs with server-injected recurring weekly schedules.
 // Keys are day-of-week (0=Sun … 6=Sat).
+//
+// Two key types:
+//   arkbar / loveBeach  — actual venue bookings (injected into schedule endpoint + availability defaults)
+//   availability        — availability defaults only (calendar pre-load; never injected as bookings)
+
+const _A12 = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+              '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+              '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
+const _SB  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
+              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
+const _AW  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
+              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00']; // Alex Wed (no 14–17)
+const _MT  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
+              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00']; // Mostyx Thu (no 14–17)
+const _MS  = ['18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+              '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];                   // Mostyx Sat (no 14–18)
+
 const FIXED_SCHEDULES = {
   'Davoted': {
     arkbar: {
@@ -112,6 +129,30 @@ const FIXED_SCHEDULES = {
       2: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'],
       3: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'],
     },
+  },
+  'Alex RedWhite': {
+    availability: { 0:_A12, 1:_A12, 2:_A12, 3:_AW, 4:_A12, 5:_A12, 6:_A12 },
+  },
+  'Raffo DJ': {
+    availability: { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_A12, 5:_A12, 6:_A12 },
+  },
+  'Sound Bogie': {
+    availability: { 1:_SB, 2:_SB, 3:_SB, 4:_SB, 5:_SB, 6:_SB },
+  },
+  'Vozka': {
+    availability: { 1:_A12, 2:_A12, 5:_A12 },
+  },
+  'Tobi': {
+    availability: { 4:_A12 },
+  },
+  'Buba': {
+    availability: { 2:_A12, 3:_A12, 4:_A12, 5:_A12, 6:_A12 },
+  },
+  'Donsine': {
+    availability: { 4:_A12, 5:_A12, 6:_A12, 0:_A12 },
+  },
+  'Mostyx': {
+    availability: { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_MT, 5:_A12, 6:_MS },
   },
 };
 
@@ -872,9 +913,13 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     // Build combined per-dow slot Set from FIXED_SCHEDULES for DJs with fixed schedules.
     const FIXED_PORTAL = {};
     if (fixedSched) {
-      for (const [dow, slots] of [...Object.entries(fixedSched.arkbar), ...Object.entries(fixedSched.loveBeach)]) {
+      for (const [dow, slots] of [
+        ...Object.entries(fixedSched.arkbar || {}),
+        ...Object.entries(fixedSched.loveBeach || {}),
+        ...Object.entries(fixedSched.availability || {}),
+      ]) {
         if (!FIXED_PORTAL[dow]) FIXED_PORTAL[dow] = new Set();
-        slots.forEach(s => FIXED_PORTAL[dow].add(s));
+        slots.forEach(s => FIXED_PORTAL[dow].add(normalizeSlot(s)));
       }
     }
 
@@ -938,7 +983,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
         const dow = new Date(year, monthIdx, d).getDay();
         const daySlots = {};
         for (const [venue, label] of [['arkbar', 'ARKbar'], ['loveBeach', 'Love Beach']]) {
-          const venueSlots = fixedSched[venue][dow] || [];
+          const venueSlots = (fixedSched[venue] || {})[dow] || [];
           for (const s of venueSlots) daySlots[normalizeSlot(s)] = label;
         }
         if (Object.keys(daySlots).length > 0) fixedDisplay[dk] = daySlots;
