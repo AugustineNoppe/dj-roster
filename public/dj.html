@@ -632,6 +632,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+// Flush pending saves when navigating away
+window.addEventListener('beforeunload', () => {
+  if (saveState === 'pending' && djName) {
+    clearTimeout(saveTimer);
+    const month = getMonthStr();
+    const slots = [];
+    for (const [date, slotMap] of Object.entries(availability)) {
+      for (const [slot, status] of Object.entries(slotMap)) {
+        slots.push({ date, slot, status });
+      }
+    }
+    fetch('/api/dj/availability', {
+      method: 'POST', keepalive: true,
+      headers: { 'Content-Type': 'application/json', 'x-dj-pin': djPin },
+      body: JSON.stringify({ name: djName, month, slots }),
+    });
+  }
+});
+
 async function loadDJList() {
   try {
     const data = await fetch('/api/djs').then(r => r.json());
@@ -1133,7 +1152,7 @@ async function confirmSignoff() {
 
 // ===== DIRTY TRACKING =====
 function markDirty() {
-  setSaveState('pending');
+  startSaveTimer();
 }
 
 // ===== SUBMIT AVAILABILITY =====
@@ -1400,37 +1419,13 @@ function renderHours() {
     total++;
   }
 
-  // For residents: count available slots and derive remaining
-  let remaining = null;
-  if (isResident) {
-    let totalAvail = 0;
-    for (const slotMap of Object.values(availability)) {
-      for (const status of Object.values(slotMap)) {
-        if (status === 'available') totalAvail++;
-      }
-    }
-    remaining = Math.max(0, totalAvail - total);
-  }
-
-  const cardsStyle = remaining !== null
-    ? 'grid-template-columns:repeat(2,1fr)'
-    : 'grid-template-columns:1fr;max-width:220px';
-
-  const remainingCard = remaining !== null ? `
-    <div class="hours-card">
-      <div class="hours-card-label">Remaining</div>
-      <div class="hours-card-value" style="color:var(--teal)">${remaining}h</div>
-      <div class="hours-card-sub">Available to book</div>
-    </div>` : '';
-
   $('mainContent').innerHTML = `<div class="hours-wrap">
-    <div class="hours-cards" style="${cardsStyle}">
+    <div class="hours-cards" style="grid-template-columns:1fr;max-width:220px">
       <div class="hours-card accent">
         <div class="hours-card-label">Booked</div>
         <div class="hours-card-value">${total}h</div>
         <div class="hours-card-sub">${monthStr}</div>
       </div>
-      ${remainingCard}
     </div>
     <div class="hours-breakdown">
       <div class="breakdown-title">Breakdown by Venue</div>
@@ -1438,7 +1433,7 @@ function renderHours() {
       <div class="breakdown-row"><span>HIP</span><span>${counts.HIP}h</span></div>
       <div class="breakdown-row"><span>Love Beach</span><span>${counts['Love Beach']}h</span></div>
     </div>
-    ${total === 0 && remaining === null ? `
+    ${total === 0 ? `
     <div class="empty-state" style="margin-top:16px">
       <div class="empty-icon">&#128202;</div>
       <div class="empty-title">No confirmed hours yet</div>
