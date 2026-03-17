@@ -2,16 +2,32 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: "Completed 01-01-PLAN.md (diagnostic endpoint)"
-last_updated: "2026-03-13T10:00:00Z"
-last_activity: 2026-03-13 — Roadmap created, Phase 1 ready to plan
+status: in-progress
+stopped_at: Completed 02-02-PLAN.md (signoff timestamp ordering + audit)
+last_updated: "2026-03-17T17:50:27.243Z"
+last_activity: 2026-03-18 — Phase 2 Plan 01 complete (availability slot normalization fix)
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 6
+  completed_plans: 3
+  percent: 50
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: in-progress
+stopped_at: "Completed 02-01-PLAN.md (availability slot normalization fix)"
+last_updated: "2026-03-18T00:12:00Z"
+last_activity: 2026-03-18 — Phase 2 Plan 01 complete (availability slot normalization fix)
+progress:
+  [█████░░░░░] 50%
+  completed_phases: 0
+  total_plans: 30
+  completed_plans: 2
+  percent: 7
 ---
 
 # Project State
@@ -25,12 +41,12 @@ See: .planning/PROJECT.md (updated 2026-03-13)
 
 ## Current Position
 
-Phase: 1 of 5 (Auto-Suggest)
-Plan: 1 of 3 completed
+Phase: 2 of 5 (Data Integrity)
+Plan: 1 of 3 completed in phase 2
 Status: In progress
-Last activity: 2026-03-13 — Plan 01 complete (diagnostic endpoint + root cause analysis)
+Last activity: 2026-03-18 — Phase 2 Plan 01 complete (availability slot normalization fix)
 
-Progress: [░░░░░░░░░░] 3% (1 of ~30 plans)
+Progress: [█░░░░░░░░░] 7% (2 of ~30 plans)
 
 ## Performance Metrics
 
@@ -50,6 +66,7 @@ Progress: [░░░░░░░░░░] 3% (1 of ~30 plans)
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 02-data-integrity P02 | 15 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -64,6 +81,9 @@ Recent decisions affecting current work:
 - Phase 1 Plan 01: Root cause confirmed — slot-by-slot iteration without .every() block enforcement in Love Beach and ARKbar passes
 - Phase 1 Plan 01: FIXED_TEMPLATE cross-check warns that Tony (not Raffo DJ) and Davoted (not Pick) occupy Tuesday ARKbar 11PM-2AM and 2PM-5PM slots — template may have been updated since failing cases observed
 - Phase 1 Plan 01: Diagnostic endpoint emits templateWarnings at runtime for Plan 02 to act on
+- Phase 2 Plan 01: Use normalizeSlot() on save (POST /api/dj/availability) to match canonical en-dash convention — prevents silent duplicate rows from upsert key mismatches
+- [Phase 02-data-integrity]: Phase 02-02: Add .order('timestamp', { ascending: true }) to all four dj_signoffs read queries — Supabase default order is not guaranteed by API contract
+- [Phase 02-data-integrity]: Phase 02-02: Supabase batch insert is atomic — no per-row silent failure path exists
 
 ### Pending Todos
 
@@ -77,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T10:00:00Z
-Stopped at: Completed 01-01-PLAN.md (diagnostic endpoint + root cause analysis)
-Resume file: .planning/phases/01-auto-suggest/01-02-PLAN.md
+Last session: 2026-03-17T17:50:27.240Z
+Stopped at: Completed 02-02-PLAN.md (signoff timestamp ordering + audit)
+Resume file: None

@@ -16,7 +16,7 @@ Requirements for production readiness. Each maps to roadmap phases.
 ### Data Integrity
 
 - [ ] **DATA-01**: Verify DJ availability submissions persist correctly to Supabase
-- [ ] **DATA-02**: Verify sign-off flow end-to-end (sign/unsign/batch-sign, last-action-wins logic)
+- [x] **DATA-02**: Verify sign-off flow end-to-end (sign/unsign/batch-sign, last-action-wins logic)
 - [ ] **DATA-03**: Verify finalization accounting: hours per DJ by venue, rates, cost calculations
 
 ### Security
@@ -70,7 +70,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASGN-02 | Phase 1 | Pending |
 | ASGN-03 | Phase 1 | Pending |
 | DATA-01 | Phase 2 | Pending |
-| DATA-02 | Phase 2 | Pending |
+| DATA-02 | Phase 2 | Complete |
 | DATA-03 | Phase 2 | Pending |
 | SEC-01 | Phase 3 | Pending |
 | SEC-02 | Phase 3 | Pending |
