@@ -786,7 +786,7 @@ async function loadAll() {
   const month = getMonthString();
   try {
     const enc = encodeURIComponent;
-    const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes, submissionsRes] = await Promise.all([
+    const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes, submissionsRes, unavailRes] = await Promise.all([
       fetch(`/api/availability?month=${enc(month)}`),
       fetch(`/api/roster?venue=arkbar&month=${enc(month)}`),
       fetch(`/api/roster?venue=hip&month=${enc(month)}`),
@@ -794,14 +794,16 @@ async function loadAll() {
       fetch('/api/djs'),
       fetch('/api/config'),
       fetch(`/api/dj/submissions/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
+      fetch(`/api/roster/unavailability/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
     ]);
-    const [availData, arkbarData, hipData, loveData, djData, configData, submissionsData] = await Promise.all([
-      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json(), configRes.json(), submissionsRes.json()
+    const [availData, arkbarData, hipData, loveData, djData, configData, submissionsData, unavailData] = await Promise.all([
+      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json(), configRes.json(), submissionsRes.json(), unavailRes.json()
     ]);
     if (configData.success && Array.isArray(configData.residents) && configData.residents.length) {
       RESIDENTS = configData.residents;
     }
     submittedDJs = new Map((submissionsData.submitted || []).map(s => [s.name, s.status]));
+    if (unavailData.success && unavailData.unavailability) unavailabilityMap = unavailData.unavailability;
 
     availability = availData.availability || {};
 
