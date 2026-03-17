@@ -1218,7 +1218,8 @@ app.get('/api/signoffs/:month', async (req, res) => {
   }
   try {
     const month = decodeURIComponent(req.params.month);
-    const { data, error } = await supabase.from('dj_signoffs').select('*').eq('month', month);
+    const { data, error } = await supabase.from('dj_signoffs').select('*').eq('month', month)
+      .order('timestamp', { ascending: true });
     if (error) throw new Error(error.message);
     // Last action wins per DJ+date+slot+venue key
     const latest = {};
@@ -1282,7 +1283,8 @@ app.post('/api/roster/finalize', async (req, res) => {
     if (finalized.months.includes(month)) return res.json({ success: false, error: `${month} is already finalized` });
 
     const [signoffData, djData] = await Promise.all([
-      supabase.from('dj_signoffs').select('*').eq('month', month),
+      supabase.from('dj_signoffs').select('*').eq('month', month)
+        .order('timestamp', { ascending: true }),
       fetchDJs(),
     ]);
     if (signoffData.error) throw new Error(signoffData.error.message);
