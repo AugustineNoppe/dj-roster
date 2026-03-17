@@ -998,7 +998,8 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 });
 
 /* -- POST /api/dj/availability -------------------------------------------- */
-
+// DATA INTEGRITY AUDIT (Phase 2 Plan 01): slot normalization verified consistent.
+// Save: normalizeSlot(slot). Read: normalizeSlot(row.slot). Cache: deleted on write.
 
 app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
   try {
@@ -1142,6 +1143,7 @@ app.post('/api/dj/signoff', async (req, res) => {
 });
 
 /* -- POST /api/dj/signoff-batch ------------------------------------------- */
+// AUDIT (Phase 2 Plan 02): batch insert is atomic; error path throws; count returned. OK.
 app.post('/api/dj/signoff-batch', async (req, res) => {
   try {
     const { name, date, slots, month, password } = req.body;
