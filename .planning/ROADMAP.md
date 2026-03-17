@@ -45,10 +45,12 @@ Plans:
   2. Admin sign-off and unsign-off actions update the correct record, and last-action-wins is respected on rapid toggles
   3. Batch sign-off applies to exactly the intended set of DJs with no silent failures
   4. Finalization report shows correct hours and costs per DJ per venue using their stored rates
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md — Fix slot normalization bug in availability save path (DATA-01)
+- [ ] 02-02-PLAN.md — Fix timestamp ordering in sign-off read paths, audit batch/unsign (DATA-02)
+- [ ] 02-03-PLAN.md — Audit finalization accounting, write offline verification script (DATA-03)
 
 ### Phase 3: Security
 **Goal**: Credentials are stored securely and sensitive values never appear in log output
@@ -98,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Auto-Suggest | 1/3 | In progress | - |
-| 2. Data Integrity | 0/TBD | Not started | - |
+| 2. Data Integrity | 0/3 | Not started | - |
 | 3. Security | 0/TBD | Not started | - |
 | 4. Stability | 0/TBD | Not started | - |
 | 5. Cleanup | 0/TBD | Not started | - |
