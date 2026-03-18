@@ -1215,21 +1215,10 @@ async function runAutoSuggest() {
 
   console.group('Auto-Suggest: ' + month);
 
-  // Post-midnight slots belong to the previous calendar day for unavailability lookup
-  function getUnavailLookupDate(dateStr, slot) {
-    if (slot.startsWith('00:') || slot.startsWith('01:')) {
-      const d = new Date(dateStr);
-      d.setDate(d.getDate() - 1);
-      return makeDateStr(d.getFullYear(), d.getMonth(), d.getDate());
-    }
-    return dateStr;
-  }
-
   // ── STEP 4: canAssign + recordPlacement ──
   function canAssign(dj, dateStr, slot, targetMap) {
     if (dj !== 'Guest DJ' && submittedDJs.get(dj) !== 'submitted') return false;
-    const unavailDate = getUnavailLookupDate(dateStr, slot);
-    if (unavailabilityMap[dj]?.includes(`${unavailDate}|${slot}`)) return false;
+    if (unavailabilityMap[dj]?.includes(`${dateStr}|${slot}`)) return false;
     if (targetMap[`${dateStr}|${slot}`]) return false;
     return true;
   }
@@ -1363,8 +1352,9 @@ async function runAutoSuggest() {
       unavailSkips++;
       continue;
     }
-    if (placedTonight.get(dateStr)?.has(hipDJ)) {
-      console.log('SKIP (already placed)', hipDJ, dateStr, 'hip');
+    const alreadyPlaced = djDaySlots[`${hipDJ}|${dateStr}`] || [];
+    if (LOCAL_HIP_SLOTS.some(s => alreadyPlaced.includes(s))) {
+      console.log('SKIP (slot conflict)', hipDJ, dateStr, 'hip overlaps:', alreadyPlaced.filter(s => LOCAL_HIP_SLOTS.includes(s)));
       continue;
     }
 

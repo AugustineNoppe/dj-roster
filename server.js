@@ -501,14 +501,10 @@ function getDiagTemplateWarnings() {
   return warnings;
 }
 
-// Post-midnight slot date-shifting: slots starting 00: or 01: belong to the previous calendar day.
-function diagGetUnavailLookupDate(dateStr, slot) {
-  if (slot.startsWith('00:') || slot.startsWith('01:')) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const dt = new Date(y, m - 1, d);
-    dt.setDate(dt.getDate() - 1);
-    return makeDateKey(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
-  }
+// Unavailability lookup uses the booking date directly — no date-shifting.
+// All slots (including post-midnight 00:00–01:00, 01:00–02:00) are stored and
+// checked against the same calendar date in both dj_availability and roster_assignments.
+function diagGetUnavailLookupDate(dateStr, _slot) {
   return dateStr;
 }
 
