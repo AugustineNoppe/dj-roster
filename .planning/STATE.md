@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md (bcrypt password comparison for admin and manager)
-last_updated: "2026-03-18T07:50:40.399Z"
+stopped_at: Completed 04-01-PLAN.md (helmet and express-rate-limit replacing custom security middleware)
+last_updated: "2026-03-18T10:43:38.174Z"
 last_activity: 2026-03-18 — Phase 2 Plan 01 complete (availability slot normalization fix)
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 6
+  total_plans: 10
+  completed_plans: 7
   percent: 7
 ---
 
@@ -53,6 +53,7 @@ Progress: [█░░░░░░░░░] 7% (2 of ~30 plans)
 | Phase 02-data-integrity P03 | 2 | 2 tasks | 2 files |
 | Phase 03-security P01 | 3 | 2 tasks | 4 files |
 | Phase 03-security P02 | 8 | 2 tasks | 2 files |
+| Phase 04-stability P01 | 8 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 03-security]: Migration script is idempotent (skips $2b$/$2a$ hashes) — safe to re-run in production
 - [Phase 03-security]: Env vars store bcrypt hashes instead of plaintext for ADMIN_PASSWORD and MANAGER_PASSWORD — timing-safe and avoids plaintext secrets in environment
 - [Phase 03-security]: All admin/manager password checks use async bcrypt.compare with .catch(() => false) safety pattern
+- [Phase 04-stability]: Use helmet() with explicit CSP directives matching prior custom headers; unsafe-inline preserved for script/style
+- [Phase 04-stability]: Named loginLimiter (login-specific, not global) replacing rateLimiter; express-rate-limit MemoryStore prevents unbounded _rateCounts Map memory growth
+- [Phase 04-stability]: Preserved Phase 3 _loginAttempts account lockout system — separate concern from IP-based rate limiting
 
 ### Pending Todos
 
@@ -88,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:46:22.493Z
-Stopped at: Completed 03-02-PLAN.md (bcrypt password comparison for admin and manager)
+Last session: 2026-03-18T10:43:38.172Z
+Stopped at: Completed 04-01-PLAN.md (helmet and express-rate-limit replacing custom security middleware)
 Resume file: None

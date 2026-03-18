@@ -27,9 +27,9 @@ Requirements for production readiness. Each maps to roadmap phases.
 
 ### Stability
 
-- [ ] **STAB-01**: Fix unbounded memory growth in custom rate limiter
+- [x] **STAB-01**: Fix unbounded memory growth in custom rate limiter
 - [ ] **STAB-02**: Fix cache invalidation gaps (DJ rate updates not invalidating dependent caches)
-- [ ] **STAB-03**: Replace custom security headers and rate limiter with helmet and express-rate-limit
+- [x] **STAB-03**: Replace custom security headers and rate limiter with helmet and express-rate-limit
 
 ### Cleanup
 
@@ -48,6 +48,10 @@ Deferred to future milestone. Tracked but not in current roadmap.
 ### Stability
 
 - **STAB-04**: Try-catch all Supabase calls, return graceful errors, prevent route crashes
+
+### Admin
+
+- **ADMIN-01**: Admin "Manage DJs" page — add new DJ (name, PIN auto-hashed, rate), edit rate, deactivate DJ (remove from dropdowns/auto-suggest without deleting historical data). When built, remove individual rate edit icons from DJ Hours tab — rate management moves entirely to Manage DJs page.
 
 ## Out of Scope
 
@@ -75,9 +79,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-01 | Phase 3 | Complete |
 | SEC-02 | Phase 3 | Complete |
 | SEC-03 | Phase 3 | Complete |
-| STAB-01 | Phase 4 | Pending |
+| STAB-01 | Phase 4 | Complete |
 | STAB-02 | Phase 4 | Pending |
-| STAB-03 | Phase 4 | Pending |
+| STAB-03 | Phase 4 | Complete |
 | CLN-01 | Phase 5 | Pending |
 | CLN-02 | Phase 5 | Pending |
 | CLN-03 | Phase 5 | Pending |
