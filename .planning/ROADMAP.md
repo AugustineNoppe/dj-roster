@@ -17,6 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Security** - Hash PINs and passwords, remove sensitive data from logs (completed 2026-03-18)
 - [x] **Phase 4: Stability** - Fix rate limiter memory leak, cache invalidation gaps, adopt helmet/express-rate-limit (completed 2026-03-18)
 - [x] **Phase 5: Cleanup** - Remove reset-month feature, add test coverage, remove dead code (completed 2026-03-18)
+- [ ] **Phase 6: Tech Debt** - Fix cache initialization order, remove dead imports, deduplicate DIAG_FIXED_TEMPLATE
 
 ## Phase Details
 
@@ -95,15 +96,30 @@ Plans:
 - [ ] 05-01-PLAN.md — Remove reset-month endpoint and UI references, audit and remove dead code (CLN-01, CLN-03)
 - [ ] 05-02-PLAN.md — Extract business logic into testable module, add Jest test coverage (CLN-02)
 
+### Phase 6: Tech Debt
+**Goal**: Eliminate structural fragility and dead code residuals identified by milestone audit
+**Depends on**: Phase 5
+**Requirements**: (tech debt — no new requirements; hardens STAB-02, CLN-03)
+**Gap Closure**: Closes tech debt from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. cache.finalized is initialized in the cache object literal alongside other cache entries, not deferred to a later line
+  2. No unused imports remain in the server.js require/destructure from lib/business-logic.js
+  3. DIAG_FIXED_TEMPLATE exists in one canonical location only — server.js imports it from lib
+**Plans**: 1 plan
+
+Plans:
+- [ ] 06-01: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auto-Suggest | 1/3 | In progress | - |
+| 1. Auto-Suggest | 3/3 | Complete | 2026-03-18 |
 | 2. Data Integrity | 3/3 | Complete    | 2026-03-17 |
 | 3. Security | 2/2 | Complete   | 2026-03-18 |
 | 4. Stability | 2/2 | Complete   | 2026-03-18 |
 | 5. Cleanup | 2/2 | Complete   | 2026-03-18 |
+| 6. Tech Debt | 0/TBD | Not started | - |
