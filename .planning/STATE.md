@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md (finalization accounting audit)
-last_updated: "2026-03-17T18:00:03.784Z"
+stopped_at: Completed 03-01-PLAN.md (bcrypt PIN hashing and account lockout)
+last_updated: "2026-03-18T07:41:49.340Z"
 last_activity: 2026-03-18 — Phase 2 Plan 01 complete (availability slot normalization fix)
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 6
-  completed_plans: 4
+  total_plans: 8
+  completed_plans: 5
   percent: 7
 ---
 
@@ -51,6 +51,7 @@ Progress: [█░░░░░░░░░] 7% (2 of ~30 plans)
 
 *Updated after each plan completion*
 | Phase 02-data-integrity P03 | 2 | 2 tasks | 2 files |
+| Phase 03-security P01 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Recent decisions affecting current work:
 - Phase 1 Plan 01: Diagnostic endpoint emits templateWarnings at runtime for Plan 02 to act on
 - Phase 2 Plan 01: Use normalizeSlot() on save (POST /api/dj/availability) to match canonical en-dash convention — prevents silent duplicate rows from upsert key mismatches
 - [Phase 02-data-integrity]: All 8 finalization accounting checklist items verified correct — no code bugs found, only audit comments added
+- [Phase 03-security]: Use bcrypt (not bcryptjs) for PIN hashing — native bindings faster for server use, cost factor 10
+- [Phase 03-security]: In-memory Map for account lockout tracking — consistent with existing _rateCounts pattern, zero DB overhead
+- [Phase 03-security]: Migration script is idempotent (skips $2b$/$2a$ hashes) — safe to re-run in production
 
 ### Pending Todos
 
@@ -81,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T17:55:39.170Z
-Stopped at: Completed 02-03-PLAN.md (finalization accounting audit)
+Last session: 2026-03-18T07:41:49.333Z
+Stopped at: Completed 03-01-PLAN.md (bcrypt PIN hashing and account lockout)
 Resume file: None
