@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Data Integrity** - Verify availability saves, sign-off flow, and accounting calculations are correct (completed 2026-03-17)
 - [x] **Phase 3: Security** - Hash PINs and passwords, remove sensitive data from logs (completed 2026-03-18)
 - [x] **Phase 4: Stability** - Fix rate limiter memory leak, cache invalidation gaps, adopt helmet/express-rate-limit (completed 2026-03-18)
-- [ ] **Phase 5: Cleanup** - Remove reset-month feature, add test coverage, remove dead code
+- [x] **Phase 5: Cleanup** - Remove reset-month feature, add test coverage, remove dead code (completed 2026-03-18)
 
 ## Phase Details
 
@@ -106,4 +106,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Data Integrity | 3/3 | Complete    | 2026-03-17 |
 | 3. Security | 2/2 | Complete   | 2026-03-18 |
 | 4. Stability | 2/2 | Complete   | 2026-03-18 |
-| 5. Cleanup | 1/2 | In Progress|  |
+| 5. Cleanup | 2/2 | Complete   | 2026-03-18 |

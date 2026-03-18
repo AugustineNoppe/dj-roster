@@ -34,7 +34,7 @@ Requirements for production readiness. Each maps to roadmap phases.
 ### Cleanup
 
 - [x] **CLN-01**: Remove reset-month endpoint and all UI references to it
-- [ ] **CLN-02**: Add Jest test coverage for business logic (availability, accounting, auto-suggest)
+- [x] **CLN-02**: Add Jest test coverage for business logic (availability, accounting, auto-suggest)
 - [x] **CLN-03**: Remove dead code, commented-out blocks, unreachable paths
 
 ## v2 Requirements
@@ -83,7 +83,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STAB-02 | Phase 4 | Complete |
 | STAB-03 | Phase 4 | Complete |
 | CLN-01 | Phase 5 | Complete |
-| CLN-02 | Phase 5 | Pending |
+| CLN-02 | Phase 5 | Complete |
 | CLN-03 | Phase 5 | Complete |
 
 **Coverage:**
