@@ -384,39 +384,6 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 .signoff-confirm-btn:hover{opacity:.85}
 .signoff-cancel-btn{background:rgba(255,255,255,0.08);color:var(--text-2)}
 .signoff-cancel-btn:hover{background:rgba(255,255,255,0.14)}
-/* Change PIN button */
-.change-pin-btn{
-  background:none;border:1px solid rgba(255,255,255,0.12);border-radius:20px;
-  color:var(--text-3);font-family:inherit;font-size:11px;font-weight:700;
-  cursor:pointer;padding:5px 12px;transition:all var(--transition);white-space:nowrap;
-}
-.change-pin-btn:hover{color:#fff;border-color:rgba(255,255,255,0.3)}
-/* Change PIN modal */
-.change-pin-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:600;
-  display:flex;align-items:center;justify-content:center;padding:16px;
-}
-.change-pin-modal{
-  background:rgba(15,22,50,0.98);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
-  border:1px solid rgba(93,184,192,0.3);border-radius:18px;padding:28px 24px;
-  width:min(340px,100%);box-shadow:0 32px 80px rgba(0,0,0,0.6);
-}
-.change-pin-modal h3{font-size:16px;font-weight:900;margin-bottom:6px}
-.change-pin-modal p{font-size:12px;color:var(--text-3);margin-bottom:20px;line-height:1.5}
-.change-pin-modal input{
-  width:100%;padding:12px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;
-  background:rgba(255,255,255,0.06);color:#fff;font-family:inherit;font-size:14px;font-weight:600;
-  outline:none;margin-bottom:12px;box-sizing:border-box;
-}
-.change-pin-modal input:focus{border-color:var(--teal)}
-.change-pin-modal-btns{display:flex;gap:10px;margin-top:4px}
-.change-pin-modal-btns button{
-  flex:1;padding:12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;
-  cursor:pointer;border:none;transition:opacity var(--transition);
-}
-.cp-confirm-btn{background:var(--teal);color:#0b1020}
-.cp-confirm-btn:hover{opacity:.85}
-.cp-cancel-btn{background:rgba(255,255,255,0.08);color:var(--text-2)}
 .cp-cancel-btn:hover{background:rgba(255,255,255,0.14)}
 /* DJ edit modal (admin) */
 </style>
@@ -494,7 +461,6 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   <header class="app-header">
     <a class="portal-btn" href="/">← Portal</a>
     <div class="dj-badge" id="djBadge">—</div>
-    <button class="change-pin-btn" onclick="openChangePinModal()">Change PIN</button>
     <button class="logout-btn" onclick="logout()">Log out</button>
   </header>
 
@@ -532,24 +498,6 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   </div>
 </div>
 
-<!-- Change PIN modal -->
-<div class="change-pin-overlay" id="changePinOverlay" style="display:none">
-  <div class="change-pin-modal">
-    <h3>&#128273; Change PIN</h3>
-    <p>Enter your current PIN and choose a new 4-digit PIN.</p>
-    <input type="password" id="cpCurrent" placeholder="Current PIN" maxlength="4" inputmode="numeric"
-           onkeydown="if(event.key==='Enter')$('cpNew').focus()">
-    <input type="password" id="cpNew" placeholder="New PIN (4 digits)" maxlength="4" inputmode="numeric"
-           onkeydown="if(event.key==='Enter')$('cpConfirm').focus()">
-    <input type="password" id="cpConfirm" placeholder="Confirm new PIN" maxlength="4" inputmode="numeric"
-           onkeydown="if(event.key==='Enter')submitChangePin()">
-    <div id="changePinErr" style="font-size:11px;color:var(--orange);margin-bottom:8px;display:none"></div>
-    <div id="changePinOk" style="font-size:11px;color:#69f0ae;margin-bottom:8px;display:none">PIN updated successfully!</div>
-    <div class="change-pin-modal-btns">
-      <button class="cp-cancel-btn" onclick="closeChangePinModal()">Cancel</button>
-      <button class="cp-confirm-btn" onclick="submitChangePin()">Update PIN</button>
-    </div>
-  </div>
 </div>
 
 <!-- Toast -->
@@ -737,45 +685,6 @@ function logout() {
   $('mainApp').classList.remove('visible');
   $('pinInput').value = '';
   $('djSelect').value = '';
-}
-
-// ===== CHANGE PIN =====
-function openChangePinModal() {
-  $('cpCurrent').value = '';
-  $('cpNew').value = '';
-  $('cpConfirm').value = '';
-  $('changePinErr').style.display = 'none';
-  $('changePinOk').style.display = 'none';
-  $('changePinOverlay').style.display = 'flex';
-  setTimeout(() => $('cpCurrent').focus(), 50);
-}
-function closeChangePinModal() {
-  $('changePinOverlay').style.display = 'none';
-}
-async function submitChangePin() {
-  const currentPin = $('cpCurrent').value.trim();
-  const newPin     = $('cpNew').value.trim();
-  const confirmPin = $('cpConfirm').value.trim();
-  $('changePinErr').style.display = 'none';
-  $('changePinOk').style.display  = 'none';
-  if (!currentPin)                   return _cpErr('Enter your current PIN.');
-  if (!/^\d{4}$/.test(newPin))       return _cpErr('New PIN must be exactly 4 digits.');
-  if (newPin !== confirmPin)          return _cpErr('New PIN fields do not match.');
-  try {
-    const r = await fetch('/api/dj/change-pin', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: djName, currentPin, newPin }),
-    });
-    const d = await r.json();
-    if (!d.success) return _cpErr(d.error || 'Failed to update PIN.');
-    $('changePinOk').style.display = 'block';
-    setTimeout(closeChangePinModal, 1500);
-  } catch(e) { _cpErr('Network error. Please try again.'); }
-}
-function _cpErr(msg) {
-  const el = $('changePinErr');
-  el.textContent = msg;
-  el.style.display = 'block';
 }
 
 // ===== DATA LOADING =====

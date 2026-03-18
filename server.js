@@ -939,32 +939,6 @@ app.post('/api/dj/login', rateLimiter, async (req, res) => {
   }
 });
 
-/* -- POST /api/dj/change-pin ----------------------------------------------- */
-app.post('/api/dj/change-pin', rateLimiter, async (req, res) => {
-  try {
-    const { name, currentPin, newPin } = req.body;
-    if (!name || !currentPin || !newPin) return res.json({ success: false, error: 'Missing fields' });
-    if (!/^\d{4}$/.test(String(newPin))) return res.json({ success: false, error: 'New PIN must be exactly 4 digits' });
-    const { data: pinData } = await supabase
-      .from('dj_pins')
-      .select('name, pin')
-      .ilike('name', name.trim())
-      .single();
-    const pinMatch = pinData ? await bcrypt.compare(String(currentPin).trim(), pinData.pin) : false;
-    if (!pinMatch) {
-      return res.json({ success: false, error: 'Current PIN is incorrect' });
-    }
-    const hashedPin = await bcrypt.hash(String(newPin), 10);
-    const { error: upsertError } = await supabase
-      .from('dj_pins')
-      .upsert({ name: pinData.name, pin: hashedPin }, { onConflict: 'name' });
-    if (upsertError) throw new Error(upsertError.message);
-    res.json({ success: true });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
-
 /* -- GET /api/dj/availability/:name/:month --------------------------------- */
 app.get('/api/dj/availability/:name/:month', async (req, res) => {
   try {
