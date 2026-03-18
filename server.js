@@ -376,16 +376,31 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 /* == AUTH ================================================================== */
-app.post('/api/auth', rateLimiter, (req, res) => {
-  res.json({ success: req.body.password === process.env.ADMIN_PASSWORD });
+// SECURITY: ADMIN_PASSWORD and MANAGER_PASSWORD env vars must contain bcrypt hashes.
+// Generate with: node scripts/hash-password.js "yourpassword"
+// Or inline:    node -e "require('bcrypt').hash('yourpassword', 10).then(h => console.log(h))"
+app.post('/api/auth', rateLimiter, async (req, res) => {
+  try {
+    const match = req.body.password
+      ? await bcrypt.compare(req.body.password, process.env.ADMIN_PASSWORD)
+      : false;
+    res.json({ success: match });
+  } catch (err) {
+    res.json({ success: false });
+  }
 });
 
 /* -- Reusable auth middleware ---------------------------------------------- */
-function requireAdmin(req, res, next) {
-  if (req.headers['x-admin-password'] !== process.env.ADMIN_PASSWORD) {
-    return res.status(401).json({ success: false, error: 'Unauthorised' });
+async function requireAdmin(req, res, next) {
+  try {
+    const pw = req.headers['x-admin-password'];
+    if (!pw || !(await bcrypt.compare(pw, process.env.ADMIN_PASSWORD))) {
+      return res.status(401).json({ success: false, error: 'Unauthorised' });
+    }
+    next();
+  } catch (err) {
+    res.status(401).json({ success: false, error: 'Unauthorised' });
   }
-  next();
 }
 
 async function requireDJAuth(req, res, next) {
@@ -1110,7 +1125,7 @@ app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
 
 /* -- GET /api/dj/submissions/:month --------------------------------------- */
 app.get('/api/dj/submissions/:month', async (req, res) => {
-  if (req.headers['x-admin-password'] !== process.env.ADMIN_PASSWORD) {
+  if (!req.headers['x-admin-password'] || !(await bcrypt.compare(req.headers['x-admin-password'], process.env.ADMIN_PASSWORD).catch(() => false))) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
   try {
@@ -1184,7 +1199,7 @@ app.get('/api/dj/schedule/:name/:month', async (req, res) => {
 app.post('/api/dj/signoff', async (req, res) => {
   try {
     const { name, date, slot, venue, month, password } = req.body;
-    if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
+    if (!password || !(await bcrypt.compare(password, process.env.MANAGER_PASSWORD))) return res.json({ success: false, error: 'Unauthorized' });
     if (!name || !date || !slot || !venue || !month) return res.json({ success: false, error: 'Missing fields' });
     const { error } = await supabase.from('dj_signoffs').insert(
       { date, slot: normalizeSlot(slot), name, venue, month, timestamp: new Date().toISOString(), action: 'sign' }
@@ -1201,7 +1216,7 @@ app.post('/api/dj/signoff', async (req, res) => {
 app.post('/api/dj/signoff-batch', async (req, res) => {
   try {
     const { name, date, slots, month, password } = req.body;
-    if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
+    if (!password || !(await bcrypt.compare(password, process.env.MANAGER_PASSWORD))) return res.json({ success: false, error: 'Unauthorized' });
     if (!name || !date || !month || !Array.isArray(slots) || slots.length === 0)
       return res.json({ success: false, error: 'Missing fields' });
     const ts = new Date().toISOString();
@@ -1221,7 +1236,7 @@ app.post('/api/dj/signoff-batch', async (req, res) => {
 app.post('/api/dj/unsignoff-day', async (req, res) => {
   try {
     const { name, date, month, password } = req.body;
-    if (password !== process.env.MANAGER_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
+    if (!password || !(await bcrypt.compare(password, process.env.MANAGER_PASSWORD))) return res.json({ success: false, error: 'Unauthorized' });
     if (!name || !date || !month) return res.json({ success: false, error: 'Missing fields' });
     // Read all signoff log entries for this DJ/date/month
     const { data: rows, error: readError } = await supabase.from('dj_signoffs')
@@ -1270,7 +1285,7 @@ app.get('/api/dj/signoffs/:name/:month', async (req, res) => {
 
 /* -- GET /api/signoffs/:month  (all DJs, for accounting report) ----------- */
 app.get('/api/signoffs/:month', async (req, res) => {
-  if (req.headers['x-admin-password'] !== process.env.ADMIN_PASSWORD) {
+  if (!req.headers['x-admin-password'] || !(await bcrypt.compare(req.headers['x-admin-password'], process.env.ADMIN_PASSWORD).catch(() => false))) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
   try {
@@ -1300,7 +1315,9 @@ app.get('/api/signoffs/:month', async (req, res) => {
 app.post('/api/djs/update', async (req, res) => {
   try {
     const { oldName, newName, rate, password } = req.body;
-    if (password !== process.env.ADMIN_PASSWORD && password !== process.env.MANAGER_PASSWORD) {
+    const isAdmin = password ? await bcrypt.compare(password, process.env.ADMIN_PASSWORD).catch(() => false) : false;
+    const isManager = password ? await bcrypt.compare(password, process.env.MANAGER_PASSWORD).catch(() => false) : false;
+    if (!isAdmin && !isManager) {
       return res.json({ success: false, error: 'Unauthorized' });
     }
     if (!oldName || !newName || rate === undefined) return res.json({ success: false, error: 'Missing fields' });
@@ -1333,7 +1350,7 @@ app.get('/api/finalized', async (req, res) => {
 app.post('/api/roster/finalize', async (req, res) => {
   try {
     const { month, password } = req.body;
-    if (password !== process.env.ADMIN_PASSWORD) return res.json({ success: false, error: 'Unauthorized' });
+    if (!password || !(await bcrypt.compare(password, process.env.ADMIN_PASSWORD))) return res.json({ success: false, error: 'Unauthorized' });
     if (!month) return res.json({ success: false, error: 'Month required' });
 
     const finalized = await fetchFinalized();
