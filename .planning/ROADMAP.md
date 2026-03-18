@@ -78,7 +78,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Replace custom rate limiter and security headers with helmet + express-rate-limit (STAB-01, STAB-03)
+- [ ] 04-02-PLAN.md — Centralize cache invalidation, fix DJ rate update gap (STAB-02)
 
 ### Phase 5: Cleanup
 **Goal**: The codebase is safe to ship — dangerous endpoints removed, business logic tested, dead code gone
@@ -103,5 +104,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Auto-Suggest | 1/3 | In progress | - |
 | 2. Data Integrity | 3/3 | Complete    | 2026-03-17 |
 | 3. Security | 2/2 | Complete   | 2026-03-18 |
-| 4. Stability | 0/TBD | Not started | - |
+| 4. Stability | 0/2 | Not started | - |
 | 5. Cleanup | 0/TBD | Not started | - |
