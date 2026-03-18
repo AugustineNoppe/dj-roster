@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md (centralized cache invalidation, fixed stale availability after DJ rate update)
-last_updated: "2026-03-18T14:46:44.103Z"
+stopped_at: Completed 05-01-PLAN.md (removed reset-month endpoint and dead code)
+last_updated: "2026-03-18T15:34:44.947Z"
 last_activity: 2026-03-18 — Phase 2 Plan 01 complete (availability slot normalization fix)
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 8
+  total_plans: 12
+  completed_plans: 9
   percent: 7
 ---
 
@@ -55,6 +55,7 @@ Progress: [█░░░░░░░░░] 7% (2 of ~30 plans)
 | Phase 03-security P02 | 8 | 2 tasks | 2 files |
 | Phase 04-stability P01 | 8 | 2 tasks | 1 files |
 | Phase 04-stability P02 | 8 | 1 tasks | 1 files |
+| Phase 05-cleanup P01 | 33 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 04-stability]: Preserved Phase 3 _loginAttempts account lockout system — separate concern from IP-based rate limiting
 - [Phase 04-stability]: Centralize all cache invalidation in invalidateCaches() so cache dependency graph is documented in one place
 - [Phase 04-stability]: invalidateCaches('djs') clears both cache.djs AND cache.availability.clear() — DJ rate changes affect all availability months
+- [Phase 05-cleanup]: Removed reset-month endpoint entirely per pre-Phase-1 decision — no safeguard or replacement needed, feature is too dangerous for production
+- [Phase 05-cleanup]: Removed ALL_ARKBAR_SLOTS constant and satLoveToggleMap/satHipToggleMap variables — orphaned dead code with no references
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T10:49:17.247Z
-Stopped at: Completed 04-02-PLAN.md (centralized cache invalidation, fixed stale availability after DJ rate update)
+Last session: 2026-03-18T15:34:44.943Z
+Stopped at: Completed 05-01-PLAN.md (removed reset-month endpoint and dead code)
 Resume file: None
