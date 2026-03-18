@@ -184,12 +184,6 @@ const FIXED_AVAILABILITY = {
   'Mostyx':        { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_MT, 5:_A12, 6:_MS },
 };
 
-const ALL_ARKBAR_SLOTS = [
-  '14:00\u201315:00', '15:00\u201316:00', '16:00\u201317:00', '17:00\u201318:00',
-  '18:00\u201319:00', '19:00\u201320:00', '20:00\u201321:00', '21:00\u201322:00',
-  '22:00\u201323:00', '23:00\u201300:00', '00:00\u201301:00', '01:00\u201302:00'
-];
-
 /* == CACHE LAYER ========================================================== */
 /*
  * TTLs tuned by data volatility:
@@ -730,8 +724,6 @@ app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
 
     // Partial block detection: group actual slots by dj+date+venue, compare to template blocks
     // Build satToggle counters (must iterate days in order to match auto-suggest logic)
-    const satLoveToggleMap = {}; // used for love beach Saturday alternation
-    const satHipToggleMap = {};  // used for hip Saturday alternation
     let satLoveCnt = 0;
     let satHipCnt = 0;
     const daySatLoveToggle = {};
