@@ -920,18 +920,22 @@ function buildCell(dateStr, slot, type) {
     const isSelected = dj === assigned;
     const isSubmitted = submittedDJs.get(dj) === 'submitted';
     const isUnavailable = unavailabilityMap[dj] && unavailabilityMap[dj].includes(key);
-    const arkBooked = RESIDENTS.includes(dj) && (type === 'hip' || type === 'love') && arkbarAssignments[`${dateStr}|${slot}`] === dj;
+    // Cross-venue booking: DJ assigned to another venue for same date+slot
+    const crossVenueBooked = (type !== 'arkbar' && arkbarAssignments[key] === dj) ||
+                             (type !== 'hip' && hipAssignments[key] === dj) ||
+                             (type !== 'love' && loveAssignments[key] === dj);
 
     let suffix = '';
     if (dj !== 'Guest DJ') {
-      if (!isSubmitted) suffix = ' (?)';
+      if (crossVenueBooked && !isSelected) suffix = ' (booked)';
+      else if (!isSubmitted) suffix = ' (?)';
       else if (isUnavailable) suffix = ' (unavail)';
     }
-    if (arkBooked && !isSelected) suffix = ' \u26A0 ARKbar' + suffix;
 
     let color = '';
     if (dj !== 'Guest DJ') {
-      if (!isSubmitted) color = '#F87171';
+      if (crossVenueBooked && !isSelected) color = '#F5A623';
+      else if (!isSubmitted) color = '#F87171';
       else if (isUnavailable) color = '#F5A623';
       else color = '#4ADE80';
     }
