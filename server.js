@@ -13,6 +13,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const app = express();
 
 /* == SECURITY HEADERS ==================================================== */
@@ -56,21 +57,17 @@ app.use((req, res, next) => {
 });
 
 /* == RATE LIMITER ========================================================== */
-// Simple in-memory sliding-window counter — 10 requests per IP per 60 s.
-const _rateCounts = new Map(); // ip -> [timestamp, ...]
-const RATE_WINDOW_MS = 60 * 1000;
-const RATE_MAX = 10;
-function rateLimiter(req, res, next) {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const hits = (_rateCounts.get(ip) || []).filter(t => now - t < RATE_WINDOW_MS);
-  if (hits.length >= RATE_MAX) {
-    return res.status(429).json({ success: false, error: 'Too many attempts, please try again later.' });
-  }
-  hits.push(now);
-  _rateCounts.set(ip, hits);
-  next();
-}
+// Login-specific rate limiter: 10 requests per IP per 60 seconds.
+// Uses express-rate-limit's built-in memory store which automatically
+// prunes expired entries, preventing unbounded memory growth.
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many attempts, please try again later.' },
+  keyGenerator: (req) => req.ip || req.socket.remoteAddress || 'unknown',
+});
 
 /* == ACCOUNT LOCKOUT ======================================================= */
 // In-memory lockout tracker for DJ login attempts.
@@ -386,7 +383,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 // SECURITY: ADMIN_PASSWORD and MANAGER_PASSWORD env vars must contain bcrypt hashes.
 // Generate with: node scripts/hash-password.js "yourpassword"
 // Or inline:    node -e "require('bcrypt').hash('yourpassword', 10).then(h => console.log(h))"
-app.post('/api/auth', rateLimiter, async (req, res) => {
+app.post('/api/auth', loginLimiter, async (req, res) => {
   try {
     const match = req.body.password
       ? await bcrypt.compare(req.body.password, process.env.ADMIN_PASSWORD)
@@ -919,7 +916,7 @@ async function fetchFinalized() {
 app.get('/dj', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dj.html')));
 
 /* -- POST /api/dj/login --------------------------------------------------- */
-app.post('/api/dj/login', rateLimiter, async (req, res) => {
+app.post('/api/dj/login', loginLimiter, async (req, res) => {
   try {
     const { name, pin } = req.body;
     if (!name || !pin) return res.json({ success: false, error: 'Name and PIN required' });
