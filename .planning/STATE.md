@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md (bcrypt PIN hashing and account lockout)
-last_updated: "2026-03-18T07:41:49.340Z"
+stopped_at: Completed 03-02-PLAN.md (bcrypt password comparison for admin and manager)
+last_updated: "2026-03-18T07:46:22.496Z"
 last_activity: 2026-03-18 — Phase 2 Plan 01 complete (availability slot normalization fix)
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 7
 ---
 
@@ -52,6 +52,7 @@ Progress: [█░░░░░░░░░] 7% (2 of ~30 plans)
 *Updated after each plan completion*
 | Phase 02-data-integrity P03 | 2 | 2 tasks | 2 files |
 | Phase 03-security P01 | 3 | 2 tasks | 4 files |
+| Phase 03-security P02 | 8 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 03-security]: Use bcrypt (not bcryptjs) for PIN hashing — native bindings faster for server use, cost factor 10
 - [Phase 03-security]: In-memory Map for account lockout tracking — consistent with existing _rateCounts pattern, zero DB overhead
 - [Phase 03-security]: Migration script is idempotent (skips $2b$/$2a$ hashes) — safe to re-run in production
+- [Phase 03-security]: Env vars store bcrypt hashes instead of plaintext for ADMIN_PASSWORD and MANAGER_PASSWORD — timing-safe and avoids plaintext secrets in environment
+- [Phase 03-security]: All admin/manager password checks use async bcrypt.compare with .catch(() => false) safety pattern
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:41:49.333Z
-Stopped at: Completed 03-01-PLAN.md (bcrypt PIN hashing and account lockout)
+Last session: 2026-03-18T07:46:22.493Z
+Stopped at: Completed 03-02-PLAN.md (bcrypt password comparison for admin and manager)
 Resume file: None

@@ -22,7 +22,7 @@ Requirements for production readiness. Each maps to roadmap phases.
 ### Security
 
 - [x] **SEC-01**: Hash DJ PINs with bcrypt, use timing-safe comparison, add account lockout
-- [ ] **SEC-02**: Hash admin/manager passwords, replace string equality comparison with hashed verification
+- [x] **SEC-02**: Hash admin/manager passwords, replace string equality comparison with hashed verification
 - [x] **SEC-03**: Remove PIN values, passwords, and sensitive data from all log output
 
 ### Stability
@@ -73,7 +73,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-02 | Phase 2 | Complete |
 | DATA-03 | Phase 2 | Complete |
 | SEC-01 | Phase 3 | Complete |
-| SEC-02 | Phase 3 | Pending |
+| SEC-02 | Phase 3 | Complete |
 | SEC-03 | Phase 3 | Complete |
 | STAB-01 | Phase 4 | Pending |
 | STAB-02 | Phase 4 | Pending |
