@@ -798,14 +798,9 @@ async function loadMonth() {
     isFinalized  = availData.isFinalized || false;
     submissionStatus = availData.submissionStatus || 'none';
     isLocked = submissionStatus === 'submitted';
-    // Only keep schedule entries where the DJ's submitted availability matches the slot.
-    // Residents default to 'available'; casuals default to 'unavailable'.
-    const rawSchedule = schedData.schedule || [];
-    schedule = rawSchedule.filter(({ date, slot }) => {
-      const slotMap = availability[date] || {};
-      const status = slotMap[slot] !== undefined ? slotMap[slot] : (isResident ? 'available' : 'unavailable');
-      return status === 'available';
-    });
+    // Show all roster assignments — the booking is the source of truth,
+    // regardless of the DJ's submitted availability status for that slot.
+    schedule = schedData.schedule || [];
     signoffs = new Set((signoffData.signoffs || []).map(s => `${s.date}|${s.slot}|${s.venue}`));
 
     renderCurrentTab();
