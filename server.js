@@ -234,6 +234,40 @@ function invalidateAllRosters(month) {
   }
 }
 
+/**
+ * Centralized cache invalidation.
+ * Call after any mutation to ensure dependent caches are cleared.
+ *
+ * Cache dependency graph:
+ *   djs       -> availability (availability display uses DJ list context)
+ *   availability (standalone — cleared per-month on DJ form submit)
+ *   roster    -> (standalone — cleared per venue|month on assign/batch/clear)
+ *   finalized -> (standalone — cleared on finalize)
+ *
+ * @param {'djs'|'availability'|'roster'|'finalized'} type - which data was mutated
+ * @param {object} [opts] - optional: { month, venue }
+ */
+function invalidateCaches(type, opts = {}) {
+  switch (type) {
+    case 'djs':
+      cache.djs.data = null;
+      // DJ rate changes affect availability context — clear all months
+      cache.availability.clear();
+      break;
+    case 'availability':
+      if (opts.month) cache.availability.delete(opts.month);
+      else cache.availability.clear();
+      break;
+    case 'roster':
+      if (opts.venue && opts.month) invalidateRoster(opts.venue, opts.month);
+      else if (opts.month) invalidateAllRosters(opts.month);
+      break;
+    case 'finalized':
+      cache.finalized.data = null;
+      break;
+  }
+}
+
 /* == PAGINATED SUPABASE FETCH ============================================= */
 // Supabase caps responses at 1 000 rows by default.  This helper pages through
 // the full result set so callers never silently lose data.
@@ -851,7 +885,7 @@ app.post('/api/roster/assign', requireAdmin, async (req, res) => {
         .delete().eq('venue', venue).eq('date', date).eq('slot', normSlot);
       if (error) throw new Error(error.message);
     }
-    invalidateRoster(venue, month);
+    invalidateCaches('roster', { venue, month });
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -870,7 +904,7 @@ app.post('/api/roster/batch', requireAdmin, async (req, res) => {
         rows, { onConflict: 'venue,date,slot' }
       );
       if (error) throw new Error(error.message);
-      invalidateRoster(venue, month);
+      invalidateCaches('roster', { venue, month });
       return { upserted: rows.length };
     });
     res.json({ success: true, ...result });
@@ -889,7 +923,7 @@ app.post('/api/roster/clear', requireAdmin, async (req, res) => {
     const { data: deleted, error } = await supabase.from('roster_assignments')
       .delete().eq('venue', venue).eq('month', month).select();
     if (error) throw new Error(error.message);
-    invalidateAllRosters(month);
+    invalidateCaches('roster', { month });
     res.json({ success: true, cleared: (deleted || []).length });
   } catch (err) {
     console.error('Clear error:', err);
@@ -1073,7 +1107,7 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
       }
     }
 
-    cache.availability.delete(month);
+    invalidateCaches('availability', { month });
     res.json({ success: true, saved: newRows.length });
   } catch (err) {
     console.error('[dj/availability] caught:', err.message);
@@ -1094,7 +1128,7 @@ app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
       .upsert({ name, month, status: 'submitted' }, { onConflict: 'name,month' });
     if (error) throw new Error(error.message);
 
-    cache.availability.delete(month);
+    invalidateCaches('availability', { month });
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -1306,7 +1340,7 @@ app.post('/api/djs/update', async (req, res) => {
       .from('dj_rates')
       .upsert({ name: newName, rate }, { onConflict: 'name' });
     if (upsertError) throw new Error(upsertError.message);
-    cache.djs.data = null;
+    invalidateCaches('djs');
     res.json({ success: true });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -1391,7 +1425,7 @@ app.post('/api/roster/finalize', async (req, res) => {
       return res.json({ success: false, error: 'Failed to record finalization: ' + finalizeError.message });
     }
 
-    cache.finalized.data = null;
+    invalidateCaches('finalized');
     res.json({ success: true, month, report, grandTotal, grandCost });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -1418,10 +1452,10 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     }
 
     // c. Flush roster cache
-    invalidateAllRosters(month);
+    invalidateCaches('roster', { month });
 
     // d. Flush availability cache for this month
-    cache.availability.delete(month);
+    invalidateCaches('availability', { month });
 
     // e. Clear all roster_assignments for this month
     const { error: rosterDelError } = await supabase.from('roster_assignments').delete().eq('month', month);
