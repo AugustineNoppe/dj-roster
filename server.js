@@ -5,6 +5,7 @@ process.on('uncaughtException', (err) => {
 });
 
 const express = require('express');
+const bcrypt = require('bcrypt');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(
@@ -62,6 +63,39 @@ function rateLimiter(req, res, next) {
   hits.push(now);
   _rateCounts.set(ip, hits);
   next();
+}
+
+/* == ACCOUNT LOCKOUT ======================================================= */
+// In-memory lockout tracker for DJ login attempts.
+// After MAX_LOGIN_ATTEMPTS consecutive failures, the account is locked for LOCKOUT_DURATION_MS.
+const _loginAttempts = new Map(); // key: dj_name_lowercase, value: { count, lockedUntil }
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkLockout(name) {
+  const key = name.trim().toLowerCase();
+  const entry = _loginAttempts.get(key);
+  if (!entry) return false;
+  if (entry.lockedUntil && Date.now() < entry.lockedUntil) return true;
+  if (entry.lockedUntil && Date.now() >= entry.lockedUntil) {
+    _loginAttempts.delete(key);
+    return false;
+  }
+  return false;
+}
+
+function recordFailedAttempt(name) {
+  const key = name.trim().toLowerCase();
+  const entry = _loginAttempts.get(key) || { count: 0, lockedUntil: null };
+  entry.count += 1;
+  if (entry.count >= MAX_LOGIN_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+  }
+  _loginAttempts.set(key, entry);
+}
+
+function clearFailedAttempts(name) {
+  _loginAttempts.delete(name.trim().toLowerCase());
 }
 
 app.use(express.json());
@@ -361,6 +395,9 @@ async function requireDJAuth(req, res, next) {
     console.error('[requireDJAuth] missing name or pin — name:', name, 'pin present:', !!pin, 'path:', req.path);
     return res.status(401).json({ success: false, error: 'Unauthorised' });
   }
+  if (checkLockout(name)) {
+    return res.status(429).json({ success: false, error: 'Account temporarily locked. Please try again later.' });
+  }
   try {
     const { data: pinData } = await supabase
       .from('dj_pins')
@@ -368,10 +405,13 @@ async function requireDJAuth(req, res, next) {
       .ilike('name', name.trim())
       .single();
     const correctPin = pinData ? pinData.pin : null;
-    if (!correctPin || String(correctPin).trim() !== String(pin).trim()) {
-      console.error('[requireDJAuth] pin mismatch for', name, '— expected:', correctPin, 'got:', pin);
+    const pinMatch = correctPin ? await bcrypt.compare(String(pin).trim(), correctPin) : false;
+    if (!pinMatch) {
+      recordFailedAttempt(name);
+      console.error('[requireDJAuth] pin mismatch for', name);
       return res.status(401).json({ success: false, error: 'Unauthorised' });
     }
+    clearFailedAttempts(name);
     next();
   } catch (err) {
     console.error('[requireDJAuth] error:', err.message);
@@ -861,14 +901,20 @@ app.post('/api/dj/login', rateLimiter, async (req, res) => {
   try {
     const { name, pin } = req.body;
     if (!name || !pin) return res.json({ success: false, error: 'Name and PIN required' });
+    if (checkLockout(name)) {
+      return res.status(429).json({ success: false, error: 'Account temporarily locked. Please try again later.' });
+    }
     const { data: pinData } = await supabase
       .from('dj_pins')
       .select('name, pin')
       .ilike('name', name.trim())
       .single();
-    if (!pinData || String(pinData.pin).trim() !== String(pin).trim()) {
+    const pinMatch = pinData ? await bcrypt.compare(String(pin).trim(), pinData.pin) : false;
+    if (!pinMatch) {
+      recordFailedAttempt(name);
       return res.json({ success: false, error: 'Invalid name or PIN' });
     }
+    clearFailedAttempts(name);
     const djName = pinData.name.trim();
     const djData = await fetchDJs();
     const djInfo = (djData.djs || []).find(d => d.name.toLowerCase() === djName.toLowerCase());
@@ -889,12 +935,14 @@ app.post('/api/dj/change-pin', rateLimiter, async (req, res) => {
       .select('name, pin')
       .ilike('name', name.trim())
       .single();
-    if (!pinData || String(pinData.pin).trim() !== String(currentPin).trim()) {
+    const pinMatch = pinData ? await bcrypt.compare(String(currentPin).trim(), pinData.pin) : false;
+    if (!pinMatch) {
       return res.json({ success: false, error: 'Current PIN is incorrect' });
     }
+    const hashedPin = await bcrypt.hash(String(newPin), 10);
     const { error: upsertError } = await supabase
       .from('dj_pins')
-      .upsert({ name: pinData.name, pin: String(newPin) }, { onConflict: 'name' });
+      .upsert({ name: pinData.name, pin: hashedPin }, { onConflict: 'name' });
     if (upsertError) throw new Error(upsertError.message);
     res.json({ success: true });
   } catch (err) {
