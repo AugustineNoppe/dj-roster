@@ -28,7 +28,7 @@ Requirements for production readiness. Each maps to roadmap phases.
 ### Stability
 
 - [x] **STAB-01**: Fix unbounded memory growth in custom rate limiter
-- [ ] **STAB-02**: Fix cache invalidation gaps (DJ rate updates not invalidating dependent caches)
+- [x] **STAB-02**: Fix cache invalidation gaps (DJ rate updates not invalidating dependent caches)
 - [x] **STAB-03**: Replace custom security headers and rate limiter with helmet and express-rate-limit
 
 ### Cleanup
@@ -80,7 +80,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-02 | Phase 3 | Complete |
 | SEC-03 | Phase 3 | Complete |
 | STAB-01 | Phase 4 | Complete |
-| STAB-02 | Phase 4 | Pending |
+| STAB-02 | Phase 4 | Complete |
 | STAB-03 | Phase 4 | Complete |
 | CLN-01 | Phase 5 | Pending |
 | CLN-02 | Phase 5 | Pending |
