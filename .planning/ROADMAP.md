@@ -92,7 +92,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — Remove reset-month endpoint and UI references, audit and remove dead code (CLN-01, CLN-03)
+- [ ] 05-02-PLAN.md — Extract business logic into testable module, add Jest test coverage (CLN-02)
 
 ## Progress
 
@@ -105,4 +106,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Data Integrity | 3/3 | Complete    | 2026-03-17 |
 | 3. Security | 2/2 | Complete   | 2026-03-18 |
 | 4. Stability | 2/2 | Complete   | 2026-03-18 |
-| 5. Cleanup | 0/TBD | Not started | - |
+| 5. Cleanup | 0/2 | Not started | - |
