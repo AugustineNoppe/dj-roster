@@ -542,8 +542,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
     <div class="status-bar-right">
       <button class="btn-sm btn-suggest" onclick="runAutoSuggest()">&#9889; Auto-suggest</button>
       <button class="btn-sm btn-clear" onclick="clearRoster()">Clear Roster</button>
-      <button class="btn-sm btn-clear" id="btnResetMonth" onclick="resetMonthData()">Reset Month Data</button>
-      <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
+<button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:#fff;">Print / PDF</button>
     </div>
   </footer>
@@ -1091,33 +1090,6 @@ async function clearRoster() {
     else loveAssignments = {};
     renderGrid();
     showToast('Cleared locally \u2014 check connection', 'error');
-  }
-}
-
-// === RESET MONTH DATA ===
-async function resetMonthData() {
-  if (currentVenue === 'hours') return;
-  const month = getMonthString();
-  if (!confirm(`Reset ALL data for ${month}? This clears availability, submissions, and roster assignments. This cannot be undone.`)) return;
-  showToast('Resetting month data...', '');
-  try {
-    const res = await fetch('/api/admin/reset-month', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
-      body: JSON.stringify({ month }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      rosterAssignments = {};
-      arkbarAssignments = {};
-      hipAssignments = {};
-      loveAssignments = {};
-      renderGrid();
-      showToast('Month data reset', 'success');
-    } else {
-      showToast(data.error || 'Reset failed', 'error');
-    }
-  } catch(e) {
-    showToast('Reset failed \u2014 check connection', 'error');
   }
 }
 
