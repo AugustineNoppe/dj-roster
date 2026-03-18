@@ -99,25 +99,9 @@ function parseDateKey(dateStr) {
 }
 
 /* == FIXED DJ SCHEDULES =================================================== */
-// Single source of truth for DJs with server-injected recurring weekly schedules.
-// Keys are day-of-week (0=Sun … 6=Sat).
-//
-// Two key types:
-//   arkbar / loveBeach  — actual venue bookings (injected into schedule endpoint + availability defaults)
-//   availability        — availability defaults only (calendar pre-load; never injected as bookings)
-
-const _A12 = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
-              '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
-              '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
-const _SB  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
-              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
-const _AW  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
-              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00']; // Alex Wed (no 14–17)
-const _MT  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
-              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00']; // Mostyx Thu (no 14–17)
-const _MS  = ['18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
-              '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];                   // Mostyx Sat (no 14–18)
-
+// Venue-specific recurring weekly bookings.  Keys: day-of-week (0=Sun … 6=Sat).
+// Used by auto-suggest, fetchAvailability(), and the schedule endpoint.
+// Only DJs with actual venue assignments belong here.
 const FIXED_SCHEDULES = {
   'Davoted': {
     arkbar: {
@@ -131,30 +115,35 @@ const FIXED_SCHEDULES = {
       3: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'],
     },
   },
-  'Alex RedWhite': {
-    availability: { 0:_A12, 1:_A12, 2:_A12, 3:_AW, 4:_A12, 5:_A12, 6:_A12 },
-  },
-  'Raffo DJ': {
-    availability: { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_A12, 5:_A12, 6:_A12 },
-  },
-  'Sound Bogie': {
-    availability: { 1:_SB, 2:_SB, 3:_SB, 4:_SB, 5:_SB, 6:_SB },
-  },
-  'Vozka': {
-    availability: { 1:_A12, 2:_A12, 5:_A12 },
-  },
-  'Tobi': {
-    availability: { 4:_A12 },
-  },
-  'Buba': {
-    availability: { 2:_A12, 3:_A12, 4:_A12, 5:_A12, 6:_A12 },
-  },
-  'Donsine': {
-    availability: { 4:_A12, 5:_A12, 6:_A12, 0:_A12 },
-  },
-  'Mostyx': {
-    availability: { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_MT, 5:_A12, 6:_MS },
-  },
+};
+
+/* == FIXED AVAILABILITY DEFAULTS ========================================== */
+// Recurring weekly availability patterns for the DJ portal calendar.
+// Display-only: pre-populates the calendar UI when a DJ has not yet submitted.
+// Does NOT affect auto-suggest, canAssign(), or any server-side scheduling.
+// Keys: day-of-week (0=Sun … 6=Sat) → array of slot strings.
+
+const _A12 = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+              '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+              '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
+const _SB  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
+              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
+const _AW  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
+              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00']; // Alex Wed (no 14–17)
+const _MT  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
+              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00']; // Mostyx Thu (no 14–17)
+const _MS  = ['18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
+              '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];                   // Mostyx Sat (no 14–18)
+
+const FIXED_AVAILABILITY = {
+  'Alex RedWhite': { 0:_A12, 1:_A12, 2:_A12, 3:_AW, 4:_A12, 5:_A12, 6:_A12 },
+  'Raffo DJ':      { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_A12, 5:_A12, 6:_A12 },
+  'Sound Bogie':   { 1:_SB, 2:_SB, 3:_SB, 4:_SB, 5:_SB, 6:_SB },
+  'Vozka':         { 1:_A12, 2:_A12, 5:_A12 },
+  'Tobi':          { 4:_A12 },
+  'Buba':          { 2:_A12, 3:_A12, 4:_A12, 5:_A12, 6:_A12 },
+  'Donsine':       { 4:_A12, 5:_A12, 6:_A12, 0:_A12 },
+  'Mostyx':        { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_MT, 5:_A12, 6:_MS },
 };
 
 const ALL_ARKBAR_SLOTS = [
@@ -207,6 +196,24 @@ function invalidateAllRosters(month) {
   }
 }
 
+/* == PAGINATED SUPABASE FETCH ============================================= */
+// Supabase caps responses at 1 000 rows by default.  This helper pages through
+// the full result set so callers never silently lose data.
+const PAGE_SIZE = 1000;
+async function fetchAllRows(query) {
+  const all = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;   // last page
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 /* == CACHED FETCHERS ====================================================== */
 
 async function fetchDJs() {
@@ -236,12 +243,12 @@ async function fetchAvailability(month) {
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
   // Include availability from all DJs who have submitted for this month.
-  const [{ data: portalRows }, { data: submittedRows }] = await Promise.all([
-    supabase.from('dj_availability').select('*').eq('month', month),
+  const [portalRows, { data: submittedRows }] = await Promise.all([
+    fetchAllRows(supabase.from('dj_availability').select('*').eq('month', month)),
     supabase.from('dj_submissions').select('name').eq('month', month).eq('status', 'submitted'),
   ]);
   const submittedNames = new Set((submittedRows || []).map(r => r.name.trim().toLowerCase()));
-  const rows = (portalRows || []).filter(r =>
+  const rows = portalRows.filter(r =>
     submittedNames.has(r.name.trim().toLowerCase())
   );
 
@@ -412,14 +419,12 @@ app.get('/api/roster', async (req, res) => {
 app.get('/api/roster/unavailability/:month', requireAdmin, async (req, res) => {
   try {
     const month = decodeURIComponent(req.params.month);
-    const { data: rows, error } = await supabase
-      .from('dj_availability')
-      .select('name, date, slot')
-      .eq('month', month)
-      .eq('status', 'unavailable');
-    if (error) throw new Error(error.message);
+    const rows = await fetchAllRows(
+      supabase.from('dj_availability').select('name, date, slot')
+        .eq('month', month).eq('status', 'unavailable')
+    );
     const map = {};
-    for (const { name, date, slot } of (rows || [])) {
+    for (const { name, date, slot } of rows) {
       const dk = parseDateKey(date);
       if (!dk || !slot) continue;
       const ns = normalizeSlot(slot);
@@ -588,12 +593,10 @@ app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
     if (loveData.error) throw new Error(loveData.error.message);
 
     // Fetch all unavailability records for this month
-    const { data: unavailRows, error: unavailError } = await supabase
-      .from('dj_availability')
-      .select('name, date, slot')
-      .eq('month', month)
-      .eq('status', 'unavailable');
-    if (unavailError) throw new Error(unavailError.message);
+    const unavailRows = await fetchAllRows(
+      supabase.from('dj_availability').select('name, date, slot')
+        .eq('month', month).eq('status', 'unavailable')
+    );
 
     // Build unavailability lookup: djName -> Set of "dateKey|normalizedSlot"
     const unavailSet = {};
@@ -726,10 +729,9 @@ app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
     const submissionMap = {};
     for (const r of (submissionRows || [])) submissionMap[r.name.trim()] = r.status;
 
-    const { data: allAvailRows } = await supabase
-      .from('dj_availability')
-      .select('name, status')
-      .eq('month', month);
+    const allAvailRows = await fetchAllRows(
+      supabase.from('dj_availability').select('name, status').eq('month', month)
+    );
     const availStats = {};
     for (const r of (allAvailRows || [])) {
       const n = r.name.trim();
@@ -911,18 +913,26 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const month = decodeURIComponent(req.params.month);
     const isResident = RESIDENTS.includes(name);
     const fixedSched = FIXED_SCHEDULES[name] || null;
-    // Build combined per-dow slot Set from FIXED_SCHEDULES for DJs with fixed schedules.
+    const fixedAvail = FIXED_AVAILABILITY[name] || null;
+    // Build combined per-dow slot Set for calendar default status.
+    // Sources: venue bookings (FIXED_SCHEDULES) + availability defaults (FIXED_AVAILABILITY).
     const FIXED_PORTAL = {};
     if (fixedSched) {
       for (const [dow, slots] of [
         ...Object.entries(fixedSched.arkbar || {}),
         ...Object.entries(fixedSched.loveBeach || {}),
-        ...Object.entries(fixedSched.availability || {}),
       ]) {
         if (!FIXED_PORTAL[dow]) FIXED_PORTAL[dow] = new Set();
         slots.forEach(s => FIXED_PORTAL[dow].add(normalizeSlot(s)));
       }
     }
+    if (fixedAvail) {
+      for (const [dow, slots] of Object.entries(fixedAvail)) {
+        if (!FIXED_PORTAL[dow]) FIXED_PORTAL[dow] = new Set();
+        slots.forEach(s => FIXED_PORTAL[dow].add(normalizeSlot(s)));
+      }
+    }
+    const hasFixedDefaults = fixedSched || fixedAvail;
 
     const parts = month.split(' ');
     const monthIdx = MONTH_NAMES.indexOf(parts[0]);
@@ -963,7 +973,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
       for (let d = 1; d <= days; d++) {
         const dk = makeDateKey(year, monthIdx + 1, d);
         const dow = new Date(year, monthIdx, d).getDay();
-        const fixedToday = fixedSched ? (FIXED_PORTAL[dow] || new Set()) : null;
+        const fixedToday = hasFixedDefaults ? (FIXED_PORTAL[dow] || new Set()) : null;
         availability[dk] = {};
         for (const slot of ALL_SLOTS) {
           const ns = normalizeSlot(slot);
@@ -1105,7 +1115,7 @@ app.get('/api/dj/schedule/:name/:month', async (req, res) => {
           const dk = makeDateKey(year, monthIdx + 1, d);
           const dow = new Date(year, monthIdx, d).getDay();
           for (const [venueKey, label] of [['arkbar', 'ARKbar'], ['loveBeach', 'Love Beach']]) {
-            const slots = fixedSched[venueKey][dow] || [];
+            const slots = (fixedSched[venueKey] || {})[dow] || [];
             for (const s of slots) {
               const ns = normalizeSlot(s);
               const key = `${dk}|${ns}|${label}`;
