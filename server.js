@@ -104,56 +104,23 @@ function clearFailedAttempts(name) {
 
 app.use(express.json());
 
-const RESIDENTS = ['Alex RedWhite', 'Raffo DJ', 'Sound Bogie'];
-// DJs with server-injected fixed schedules who are not residents.
-const ALL_SLOTS = [
-  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
-  '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
-  '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
-];
-const MONTH_NAMES = ['January','February','March','April','May','June',
-                     'July','August','September','October','November','December'];
-const SHORT_MONTHS = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
-// CANONICAL slot format — always use normalizeSlot() on slot values before DB writes and after DB reads.
-const normalizeSlot = s => s ? s.replace(/[-\u2013\u2014]/g, '\u2013') : s;
-const pad2 = n => String(n).padStart(2, '0');
-const makeDateKey = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
-
-function parseDateKey(dateStr) {
-  if (!dateStr) return null;
-  const s = String(dateStr).trim();
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // D Mon YYYY  e.g. "19 Mar 2026"
-  const mDMY = s.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
-  if (mDMY) return `${mDMY[3]}-${pad2(SHORT_MONTHS[mDMY[2]] || 0)}-${pad2(mDMY[1])}`;
-  // M/D/YYYY or MM/DD/YYYY  (YYYY-MM-DD is Supabase ISO format)
-  const mMDY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (mMDY) return `${mMDY[3]}-${pad2(mMDY[1])}-${pad2(mMDY[2])}`;
-  // YYYY/MM/DD
-  const mYMD = s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
-  if (mYMD) return `${mYMD[1]}-${mYMD[2]}-${mYMD[3]}`;
-  return null;
-}
-
-/* == FIXED DJ SCHEDULES =================================================== */
-// Venue-specific recurring weekly bookings.  Keys: day-of-week (0=Sun … 6=Sat).
-// Used by auto-suggest, fetchAvailability(), and the schedule endpoint.
-// Only DJs with actual venue assignments belong here.
-const FIXED_SCHEDULES = {
-  'Davoted': {
-    arkbar: {
-      1: ['14:00\u201315:00','15:00\u201316:00'],
-      3: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
-      4: ['14:00\u201315:00','15:00\u201316:00','20:00\u201321:00','21:00\u201322:00','22:00\u201323:00'],
-      5: ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00'],
-    },
-    loveBeach: {
-      2: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'],
-      3: ['20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'],
-    },
-  },
-};
+/* == BUSINESS LOGIC (imported from lib/business-logic.js) ================= */
+// Pure functions and constants are extracted for testability.
+// See lib/business-logic.js for implementations and JSDoc.
+const {
+  normalizeSlot,
+  pad2,
+  makeDateKey,
+  parseDateKey,
+  RESIDENTS,
+  ALL_SLOTS,
+  MONTH_NAMES,
+  SHORT_MONTHS,
+  FIXED_SCHEDULES,
+  buildAvailabilityMap,
+  computeFinalizationReport,
+  getDJTemplateBlocks,
+} = require('./lib/business-logic');
 
 /* == FIXED AVAILABILITY DEFAULTS ========================================== */
 // Recurring weekly availability patterns for the DJ portal calendar.
@@ -303,72 +270,14 @@ async function fetchAvailability(month) {
     return cached.data;
   }
 
-  const parts = month.split(' ');
-  const monthIdx = MONTH_NAMES.indexOf(parts[0]);
-  const year = parseInt(parts[1]);
-  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
-
-  // Include availability from all DJs who have submitted for this month.
+  // Fetch availability data from DB, then delegate pure transformation to buildAvailabilityMap().
   const [portalRows, { data: submittedRows }] = await Promise.all([
     fetchAllRows(supabase.from('dj_availability').select('*').eq('month', month)),
     supabase.from('dj_submissions').select('name').eq('month', month).eq('status', 'submitted'),
   ]);
   const submittedNames = new Set((submittedRows || []).map(r => r.name.trim().toLowerCase()));
-  const rows = portalRows.filter(r =>
-    submittedNames.has(r.name.trim().toLowerCase())
-  );
 
-  const map = {};
-
-  // Build per-DJ status lookup from dj_availability: { djName: { dateKey: { slot: status } } }
-  const djStatus = {};
-  for (const { name: dj, date: dateRaw, slot, month: rowMonth, status } of rows) {
-    if (!dj || !dateRaw || !slot || rowMonth !== month) continue;
-    const dk = parseDateKey(dateRaw);
-    if (!dk) continue;
-    const ns = normalizeSlot(slot);
-    ((djStatus[dj] ??= {})[dk] ??= {})[ns] = status || 'available';
-  }
-
-  // Add all DJs (residents and casuals) who are explicitly available.
-  for (const [dj, dates] of Object.entries(djStatus)) {
-    for (const [dk, slots] of Object.entries(dates)) {
-      for (const [ns, status] of Object.entries(slots)) {
-        if (status === 'unavailable') continue;
-        (map[dk] ??= {})[ns] ??= [];
-        if (!map[dk][ns].includes(dj)) map[dk][ns].push(dj);
-      }
-    }
-  }
-
-  // Ensure every date+slot has a Guest DJ option.
-  if (year !== undefined && monthIdx >= 0) {
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dk = makeDateKey(year, monthIdx + 1, d);
-      if (!map[dk]) map[dk] = {};
-      for (const slot of ALL_SLOTS) {
-        const ns = normalizeSlot(slot);
-        if (!map[dk][ns]) map[dk][ns] = [];
-        if (!map[dk][ns].includes('Guest DJ')) map[dk][ns].push('Guest DJ');
-      }
-    }
-  }
-
-  // Auto-populate fixed recurring monthly schedules from FIXED_SCHEDULES.
-  if (year !== undefined && monthIdx >= 0) {
-    for (const [djName, sched] of Object.entries(FIXED_SCHEDULES)) {
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dk = makeDateKey(year, monthIdx + 1, d);
-        const dow = new Date(year, monthIdx, d).getDay();
-        const slots = [...(sched.arkbar[dow] || []), ...(sched.loveBeach[dow] || [])];
-        for (const slot of slots) {
-          const ns = normalizeSlot(slot);
-          (map[dk] ??= {})[ns] ??= [];
-          if (!map[dk][ns].includes(djName)) map[dk][ns].push(djName);
-        }
-      }
-    }
-  }
+  const map = buildAvailabilityMap({ portalRows, submittedNames, month, fixedSchedules: FIXED_SCHEDULES });
 
   const result = { success: true, availability: map };
   cache.availability.set(month, { data: result, time: Date.now() });
@@ -595,62 +504,8 @@ function diagGetUnavailLookupDate(dateStr, _slot) {
   return dateStr;
 }
 
-// Build contiguous block groups from a DJ's template slots on a given day+venue.
-// Returns an array of slot arrays, where each inner array is one contiguous block.
-function getDJTemplateBlocks(venue, dow, djName, satToggle) {
-  const ALL_ARKBAR = [
-    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
-    '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
-    '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00',
-  ];
-  const ALL_LOVE_WEEKDAY = [
-    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
-    '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00',
-  ];
-  const ALL_LOVE_SATURDAY = [
-    '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
-    '17:00\u201318:00','18:00\u201319:00','19:00\u201320:00',
-    '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00',
-  ];
-  const HIP_SLOTS = ['21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'];
-
-  let template = null;
-  let orderedSlots = [];
-
-  if (venue === 'arkbar') {
-    template = DIAG_FIXED_TEMPLATE.arkbar[dow] || {};
-    orderedSlots = ALL_ARKBAR;
-  } else if (venue === 'love') {
-    if (dow === 6) {
-      template = satToggle % 2 === 0 ? DIAG_FIXED_TEMPLATE.love.satA : DIAG_FIXED_TEMPLATE.love.satB;
-      orderedSlots = ALL_LOVE_SATURDAY;
-    } else {
-      template = DIAG_FIXED_TEMPLATE.love.weekday[dow] || {};
-      orderedSlots = ALL_LOVE_WEEKDAY;
-    }
-  } else if (venue === 'hip') {
-    let hipDJ = DIAG_FIXED_TEMPLATE.hip[dow];
-    if (!hipDJ) return [];
-    if (Array.isArray(hipDJ)) hipDJ = hipDJ[satToggle % hipDJ.length];
-    if (hipDJ !== djName) return [];
-    return [HIP_SLOTS];
-  }
-
-  if (!template) return [];
-
-  // Find contiguous runs of this DJ's slots in template order
-  const blocks = [];
-  let current = [];
-  for (const slot of orderedSlots) {
-    if (template[slot] === djName) {
-      current.push(slot);
-    } else {
-      if (current.length > 0) { blocks.push(current); current = []; }
-    }
-  }
-  if (current.length > 0) blocks.push(current);
-  return blocks;
-}
+// getDJTemplateBlocks() is imported from lib/business-logic.js (see top-level import block).
+// server.js retains DIAG_FIXED_TEMPLATE locally for getDiagTemplateWarnings().
 
 app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
   try {
@@ -1367,45 +1222,14 @@ app.post('/api/roster/finalize', async (req, res) => {
     ]);
     if (signoffData.error) throw new Error(signoffData.error.message);
 
-    const djMap = {};
-    (djData.djs || []).forEach(d => { djMap[d.name.trim().toLowerCase()] = d; });
+    const djRateMap = {};
+    (djData.djs || []).forEach(d => { djRateMap[d.name.trim().toLowerCase()] = d; });
 
-    // Last action wins per DJ+date+slot+venue key
-    const latest = {};
-    for (const r of (signoffData.data || [])) {
-      if (!r.name) continue;
-      const key = `${r.name}|${r.date}|${normalizeSlot(r.slot)}|${r.venue}`;
-      latest[key] = { dj: r.name.trim(), venue: (r.venue || '').toLowerCase(), action: r.action || 'sign' };
-    }
-
-    // AUDIT (Phase 2 Plan 03): accounting verified correct.
-    // - last-action-wins: timestamp-ordered, unique key per dj+date+slot+venue
-    // - venue map: 'ARKbar'->'arkbar', 'HIP'->'hip', 'Love Beach'/'love'->'love'
-    // - Guest DJ excluded; rate lookup: djMap[djName.trim().toLowerCase()]
-    // - 1 slot = 1 hour; cost = total * rate (integer from dj_rates)
-    // - no double-count possible: Object.values(latest) has one entry per unique key
-    const hours = {};
-    for (const { dj, venue, action } of Object.values(latest)) {
-      if (action !== 'sign') continue;
-      if (dj === 'Guest DJ') continue;
-      if (!hours[dj]) hours[dj] = { arkbar: 0, hip: 0, love: 0, total: 0 };
-      const vl = venue.toLowerCase();
-      // venue normalization: 'ARKbar'->'arkbar', 'HIP'->'hip', 'Love Beach'->'love'
-      const vk = vl === 'love beach' || vl === 'love' ? 'love'
-               : vl === 'hip' ? 'hip' : 'arkbar';
-      hours[dj][vk]++;
-      hours[dj].total++;
-    }
-
-    const report = [];
-    let grandTotal = 0, grandCost = 0;
-    Object.keys(hours).sort().forEach(djName => {
-      const h = hours[djName];
-      const info = djMap[djName.trim().toLowerCase()];
-      const rate = info ? info.rate : 0;
-      const cost = h.total * rate; // 1 slot = 1 hour; rate is per-hour from dj_rates
-      grandTotal += h.total; grandCost += cost;
-      report.push({ name: djName, arkbar: h.arkbar, hip: h.hip, love: h.love, total: h.total, rate, cost });
+    // Delegate pure accounting transformation to computeFinalizationReport().
+    // signoffData.data is already ordered by timestamp (ascending) — last-action-wins per key.
+    const { report, grandTotal, grandCost } = computeFinalizationReport({
+      signoffRows: signoffData.data || [],
+      djRateMap,
     });
 
     const { error: finalizeError } = await supabase.from('finalized_months').upsert(
