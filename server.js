@@ -265,7 +265,14 @@ async function fetchAvailability(month) {
   ]);
   const submittedNames = new Set((submittedRows || []).map(r => r.name.trim().toLowerCase()));
 
-  const map = buildAvailabilityMap({ portalRows, submittedNames, month, fixedSchedules: FIXED_SCHEDULES });
+  const djData = await fetchDJs();
+  const fixedSchedules = {};
+  for (const dj of (djData.djs || [])) {
+    if (dj.fixedSchedules && Object.keys(dj.fixedSchedules).length > 0) {
+      fixedSchedules[dj.name] = dj.fixedSchedules;
+    }
+  }
+  const map = buildAvailabilityMap({ portalRows, submittedNames, month, fixedSchedules });
 
   const result = { success: true, availability: map };
   cache.availability.set(month, { data: result, time: Date.now() });
@@ -366,12 +373,31 @@ async function requireDJAuth(req, res, next) {
 }
 
 /* == CONFIG ================================================================ */
-app.get('/api/config', (req, res) => {
-  res.json({ success: true, residents: RESIDENTS });
+app.get('/api/config', async (req, res) => {
+  try {
+    const djData = await fetchDJs();
+    const residents = (djData.djs || [])
+      .filter(d => d.type === 'resident')
+      .map(d => d.name);
+    res.json({ success: true, residents });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
-app.get('/api/fixed-schedules', (req, res) => {
-  res.json({ success: true, schedules: FIXED_SCHEDULES });
+app.get('/api/fixed-schedules', async (req, res) => {
+  try {
+    const djData = await fetchDJs();
+    const schedules = {};
+    for (const dj of (djData.djs || [])) {
+      if (dj.fixedSchedules && Object.keys(dj.fixedSchedules).length > 0) {
+        schedules[dj.name] = dj.fixedSchedules;
+      }
+    }
+    res.json({ success: true, schedules });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
 /* == API ROUTES =========================================================== */
@@ -787,9 +813,15 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
   try {
     const name  = decodeURIComponent(req.params.name);
     const month = decodeURIComponent(req.params.month);
-    const isResident = RESIDENTS.includes(name);
-    const fixedSched = FIXED_SCHEDULES[name] || null;
-    const fixedAvail = FIXED_AVAILABILITY[name] || null;
+    const { data: djRow, error: djError } = await supabase
+      .from('djs')
+      .select('type, recurring_availability, fixed_schedules, active')
+      .ilike('name', name.trim())
+      .maybeSingle();
+    if (djError) throw new Error(djError.message);
+    const isResident = djRow ? djRow.type === 'resident' : false;
+    const fixedSched = djRow ? (djRow.fixed_schedules || null) : null;
+    const fixedAvail = djRow ? (djRow.recurring_availability || null) : null;
     // Build combined per-dow slot Set for calendar default status.
     // Sources: venue bookings (FIXED_SCHEDULES) + availability defaults (FIXED_AVAILABILITY).
     const FIXED_PORTAL = {};
@@ -979,7 +1011,13 @@ app.get('/api/dj/schedule/:name/:month', async (req, res) => {
     }
     // Inject fixed schedule entries for DJs with recurring weekly schedules.
     // These display as pre-loaded bookings so residents see their schedule on load.
-    const fixedSched = FIXED_SCHEDULES[name] || null;
+    const { data: djSchedRow, error: djSchedError } = await supabase
+      .from('djs')
+      .select('fixed_schedules')
+      .ilike('name', name.trim())
+      .maybeSingle();
+    if (djSchedError) throw new Error(djSchedError.message);
+    const fixedSched = djSchedRow ? (djSchedRow.fixed_schedules || null) : null;
     if (fixedSched) {
       const parts = month.split(' ');
       const monthIdx = MONTH_NAMES.indexOf(parts[0]);
@@ -1138,13 +1176,21 @@ app.post('/api/djs/update', async (req, res) => {
       return res.json({ success: false, error: 'Unauthorized' });
     }
     if (!oldName || !newName || rate === undefined) return res.json({ success: false, error: 'Missing fields' });
+    let updateError;
     if (oldName.trim().toLowerCase() !== newName.trim().toLowerCase()) {
-      await supabase.from('dj_rates').delete().ilike('name', oldName.trim());
+      const { error } = await supabase
+        .from('djs')
+        .update({ name: newName.trim(), rate })
+        .ilike('name', oldName.trim());
+      updateError = error;
+    } else {
+      const { error } = await supabase
+        .from('djs')
+        .update({ rate })
+        .ilike('name', oldName.trim());
+      updateError = error;
     }
-    const { error: upsertError } = await supabase
-      .from('dj_rates')
-      .upsert({ name: newName, rate }, { onConflict: 'name' });
-    if (upsertError) throw new Error(upsertError.message);
+    if (updateError) throw new Error(updateError.message);
     invalidateCaches('djs');
     res.json({ success: true });
   } catch (err) {
