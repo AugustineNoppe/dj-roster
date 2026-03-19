@@ -23,7 +23,7 @@ Requirements for v2.0 DJ Management & Supabase Consolidation. Each maps to roadm
 - [x] **ADMIN-05**: Admin can reactivate a deactivated DJ — fully restored to all UI and login
 - [x] **ADMIN-06**: Admin can reset a DJ's PIN by inputting a new PIN (server hashes it)
 - [x] **ADMIN-07**: Admin can view lockout status and clear lockout for a DJ
-- [ ] **ADMIN-08**: Rate editing removed from DJ Hours tab — consolidated into Manage DJs tab
+- [x] **ADMIN-08**: Rate editing removed from DJ Hours tab — consolidated into Manage DJs tab
 
 ### Scheduling Config
 
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMIN-05 | Phase 9 | Complete |
 | ADMIN-06 | Phase 9 | Complete |
 | ADMIN-07 | Phase 9 | Complete |
-| ADMIN-08 | Phase 9 | Pending |
+| ADMIN-08 | Phase 9 | Complete |
 | SCHED-01 | Phase 8 | Complete |
 | SCHED-02 | Phase 10 | Pending |
 | SCHED-03 | Phase 8 | Complete |

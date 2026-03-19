@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DJ Management & Supabase Consolidation
 status: executing
-stopped_at: Completed 09-01-PLAN.md — createAdminDJHandlers factory implemented with 33 unit tests; 96/96 tests passing
-last_updated: "2026-03-19T14:56:00.000Z"
+stopped_at: Completed 09-02-PLAN.md — five admin DJ routes wired into server.js; /api/djs/update deprecated with 410 Gone; 96/96 tests passing
+last_updated: "2026-03-19T14:51:00.380Z"
 last_activity: "2026-03-19 — Completed 09-01: admin DJ handler factory lib/admin-dj.js created with listDJs/addDJ/editDJ/resetPin/clearLockout; 33 new tests; full suite 96/96 passing"
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
   percent: 50
 ---
 
@@ -48,6 +48,8 @@ Progress: [████░░░░░░] 50% (v2.0 in progress)
 - [Phase 07-database-schema-migration]: Idempotency via row count check: skip if djs already has rows; --force flag deletes and re-inserts
 - [Phase 07-database-schema-migration]: JSONB seeding passes raw JS objects to Supabase client — never JSON.stringify to avoid double-encoding
 - [Phase 07-database-schema-migration]: Drop script is manual-only — operator must verify all 5 Phase 7 criteria before running
+- [Phase 09-02]: clearLockout aliased to clearDJLockout on destructure to avoid collision with lockout.js clearFailedAttempts
+- [Phase 09-02]: 410 Gone chosen for deprecated /api/djs/update to signal permanent removal and drive Phase 10 UI cleanup
 
 ### Decisions
 
@@ -68,6 +70,6 @@ None — Phase 9 Plan 01 complete. Next: Phase 9 Plan 02 (wire admin DJ routes i
 
 ## Session Continuity
 
-Last session: 2026-03-19T14:56:00.000Z
-Stopped at: Completed 09-01-PLAN.md — createAdminDJHandlers factory implemented with 33 unit tests; 96/96 tests passing
+Last session: 2026-03-19T14:51:00.377Z
+Stopped at: Completed 09-02-PLAN.md — five admin DJ routes wired into server.js; /api/djs/update deprecated with 410 Gone; 96/96 tests passing
 Resume file: None

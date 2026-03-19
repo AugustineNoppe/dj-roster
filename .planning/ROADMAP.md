@@ -25,7 +25,7 @@
 
 - [x] **Phase 7: Database Schema & Migration** — Create `djs` table and migrate all DJ data from legacy tables (completed 2026-03-19)
 - [x] **Phase 8: Backend Server Cutover** — Switch all server code to read from `djs`, persist lockout to DB, remove hardcoded constants (completed 2026-03-19)
-- [ ] **Phase 9: Admin DJ Management API** — New admin CRUD endpoints for DJ lifecycle management
+- [x] **Phase 9: Admin DJ Management API** — New admin CRUD endpoints for DJ lifecycle management (completed 2026-03-19)
 - [ ] **Phase 10: Manage DJs Frontend** — Manage DJs tab in roster.html with full editor UI
 
 ## Phase Details
@@ -71,7 +71,7 @@ Plans:
   3. Admin can reset a DJ's PIN via API by supplying the new PIN; the old PIN stops working and the new one works immediately
   4. Admin can clear a locked-out DJ's lockout via API; the DJ can log in again immediately
   5. Rate editing via the DJ Hours tab endpoint returns an error or is removed; rate changes only succeed through the Manage DJs API
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 09-01-PLAN.md — Create admin DJ handler factory module (lib/admin-dj.js) with unit tests
 - [ ] 09-02-PLAN.md — Wire handlers into server.js routes, disable legacy /api/djs/update
@@ -99,5 +99,5 @@ Plans:
 | 6. Tech Debt | v1.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Database Schema & Migration | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 8. Backend Server Cutover | v2.0 | 2/2 | Complete | 2026-03-19 |
-| 9. Admin DJ Management API | 1/2 | In Progress|  | - |
+| 9. Admin DJ Management API | 2/2 | Complete   | 2026-03-19 | - |
 | 10. Manage DJs Frontend | v2.0 | 0/TBD | Not started | - |
