@@ -127,6 +127,28 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .venue-tab.active{color:#fff;border-bottom-color:var(--teal)}
 .venue-tab.love.active{border-bottom-color:var(--love-pink)}
 .venue-tab.hours.active{border-bottom-color:#4caf50}
+.venue-tab.manage.active{border-bottom-color:#ff9800}
+.manage-djs-wrap{padding:16px;max-width:1200px;margin:0 auto}
+.manage-djs-table{width:100%;border-collapse:collapse;margin-top:12px}
+.manage-djs-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-secondary);font-size:12px;text-transform:uppercase}
+.manage-djs-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.manage-djs-table tr:hover{background:rgba(255,255,255,0.03)}
+.badge-active{background:#4caf50;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px}
+.badge-inactive{background:#666;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px}
+.badge-locked{background:#f44336;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px}
+.manage-btn{padding:4px 10px;border:1px solid var(--border);background:var(--surface);color:var(--text-primary);border-radius:4px;cursor:pointer;font-size:12px;margin:0 2px}
+.manage-btn:hover{background:rgba(255,255,255,0.1)}
+.manage-btn.danger{border-color:#f44336;color:#f44336}
+.manage-btn.danger:hover{background:rgba(244,67,54,0.1)}
+.manage-add-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.manage-add-form input,.manage-add-form select{padding:6px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text-primary);border-radius:4px;font-size:13px}
+.manage-add-form button{padding:6px 14px;background:var(--teal);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px}
+.manage-edit-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+.manage-edit-modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;min-width:320px;max-width:90vw}
+.manage-edit-modal h3{margin:0 0 16px;color:var(--text-primary)}
+.manage-edit-modal label{display:block;margin-bottom:12px;color:var(--text-secondary);font-size:13px}
+.manage-edit-modal input,.manage-edit-modal select{width:100%;padding:8px;border:1px solid var(--border);background:var(--bg);color:var(--text-primary);border-radius:4px;margin-top:4px;box-sizing:border-box}
+.manage-edit-modal .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 
 /* Main content */
 .main-content{flex:1;overflow:auto;padding:20px 24px;-webkit-overflow-scrolling:touch}
@@ -529,6 +551,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
     <button class="venue-tab active" id="tabArkbar" onclick="switchVenue('arkbar')">ARKbar / HIP</button>
     <button class="venue-tab love" id="tabLove" onclick="switchVenue('love')">Love Beach Club</button>
     <button class="venue-tab hours" id="tabHours" onclick="switchVenue('hours')">DJ Hours</button>
+    <button class="venue-tab manage" id="tabManage" onclick="switchVenue('manage')">Manage DJs</button>
   </nav>
 
   <div class="print-header" id="printHeader"></div>
@@ -548,6 +571,8 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
     </div>
   </footer>
 </div>
+
+<div id="manageContent" style="display:none"></div>
 
 <!-- Toast notification -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -753,29 +778,37 @@ function changeMonth(dir) {
 }
 
 function switchVenue(venue) {
+  if (venue === 'manage' && !adminPassword) {
+    showToast('Admin login required', 'error');
+    return;
+  }
   currentVenue = venue;
   $('tabArkbar').classList.toggle('active', venue === 'arkbar');
   $('tabLove').classList.toggle('active', venue === 'love');
   $('tabHours').classList.toggle('active', venue === 'hours');
+  $('tabManage').classList.toggle('active', venue === 'manage');
   $('headerTitle').textContent =
-    venue === 'arkbar' ? 'ARKbar / HIP Roster' :
-    venue === 'love'   ? 'Love Beach Club Roster' : 'DJ Hours';
-  $('statusBarEl').style.display = venue === 'hours' ? 'none' : '';
+    venue === 'arkbar'  ? 'ARKbar / HIP Roster' :
+    venue === 'love'    ? 'Love Beach Club Roster' :
+    venue === 'manage'  ? 'Manage DJs' : 'DJ Hours';
+  $('statusBarEl').style.display = (venue === 'hours' || venue === 'manage') ? 'none' : '';
 
-  // BUG FIX: Toggle hours sidebar visibility
+  // Toggle hours sidebar visibility
   const toggle = $('hoursToggle');
-  if (venue === 'hours') {
+  if (venue === 'hours' || venue === 'manage') {
     toggle.classList.add('hidden');
   } else {
     toggle.classList.remove('hidden');
   }
 
+  if (venue === 'manage') { loadManageDJs(); return; }
   if (venue === 'hours') loadHours();
   else loadAll();
 }
 
 // === DATA LOADING ===
 async function loadAll() {
+  const manageEl = $('manageContent'); if (manageEl) manageEl.style.display = 'none';
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   if (!fixedSchedules) {
     try {
@@ -1442,6 +1475,7 @@ function printRoster() {
 
 // === HOURS TAB ===
 async function loadHours() {
+  const manageEl = $('manageContent'); if (manageEl) manageEl.style.display = 'none';
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading hours...</div>';
   const month = getMonthString();
   try {
