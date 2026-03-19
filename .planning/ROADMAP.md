@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Security** - Hash PINs and passwords, remove sensitive data from logs (completed 2026-03-18)
 - [x] **Phase 4: Stability** - Fix rate limiter memory leak, cache invalidation gaps, adopt helmet/express-rate-limit (completed 2026-03-18)
 - [x] **Phase 5: Cleanup** - Remove reset-month feature, add test coverage, remove dead code (completed 2026-03-18)
-- [ ] **Phase 6: Tech Debt** - Fix cache initialization order, remove dead imports, deduplicate DIAG_FIXED_TEMPLATE
+- [x] **Phase 6: Tech Debt** - Fix cache initialization order, remove dead imports, deduplicate DIAG_FIXED_TEMPLATE (completed 2026-03-19)
 
 ## Phase Details
 
@@ -122,4 +122,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Security | 2/2 | Complete   | 2026-03-18 |
 | 4. Stability | 2/2 | Complete   | 2026-03-18 |
 | 5. Cleanup | 2/2 | Complete   | 2026-03-18 |
-| 6. Tech Debt | 0/1 | Not started | - |
+| 6. Tech Debt | 1/1 | Complete   | 2026-03-19 |
