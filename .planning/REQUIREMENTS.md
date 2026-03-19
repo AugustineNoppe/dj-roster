@@ -16,7 +16,7 @@ Requirements for v2.0 DJ Management & Supabase Consolidation. Each maps to roadm
 
 ### Admin Management
 
-- [ ] **ADMIN-01**: Admin can view all DJs in a Manage DJs tab with name, rate, type, active status, and lockout status
+- [x] **ADMIN-01**: Admin can view all DJs in a Manage DJs tab with name, rate, type, active status, and lockout status
 - [x] **ADMIN-02**: Admin can add a new DJ with name, rate, type, and PIN
 - [x] **ADMIN-03**: Admin can edit a DJ's name, rate, and type
 - [x] **ADMIN-04**: Admin can deactivate a DJ — DJ disappears from all dropdowns, auto-suggest, and login; historical data preserved
@@ -83,7 +83,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DB-02 | Phase 7 | Complete |
 | DB-03 | Phase 7 | Complete |
 | DB-04 | Phase 7 | Complete |
-| ADMIN-01 | Phase 10 | Pending |
+| ADMIN-01 | Phase 10 | Complete |
 | ADMIN-02 | Phase 9 | Complete |
 | ADMIN-03 | Phase 9 | Complete |
 | ADMIN-04 | Phase 9 | Complete |

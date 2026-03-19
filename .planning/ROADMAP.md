@@ -85,7 +85,7 @@ Plans:
   2. Admin can add a new DJ by filling out a form (name, rate, type, PIN) and see the DJ appear in the list immediately
   3. Admin can edit a DJ's recurring availability via a day-of-week checkbox grid and see the change reflected in DJ availability responses
   4. Admin can edit a DJ's fixed schedule via a venue + day + slot grid and see Davoted's pre-populated slots updated accordingly
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 - [ ] 10-01-PLAN.md — TDD: JSONB schedule handlers + routes (updateRecurringAvailability, updateFixedSchedules)
 - [ ] 10-02-PLAN.md — Manage DJs tab with DJ table, Add/Edit/Deactivate/PIN/Lockout UI
@@ -104,4 +104,4 @@ Plans:
 | 7. Database Schema & Migration | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 8. Backend Server Cutover | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 9. Admin DJ Management API | 2/2 | Complete    | 2026-03-19 | - |
-| 10. Manage DJs Frontend | 1/3 | In Progress|  | - |
+| 10. Manage DJs Frontend | 2/3 | In Progress|  | - |
