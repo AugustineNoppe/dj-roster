@@ -24,7 +24,7 @@
 **Milestone Goal:** Consolidate all DJ data into a single Supabase `djs` table, eliminate all hardcoded DJ arrays, and deliver a fully functional Manage DJs admin tab — making DJ configuration database-driven with no code deploys required for routine changes.
 
 - [x] **Phase 7: Database Schema & Migration** — Create `djs` table and migrate all DJ data from legacy tables (completed 2026-03-19)
-- [ ] **Phase 8: Backend Server Cutover** — Switch all server code to read from `djs`, persist lockout to DB, remove hardcoded constants (1/2 plans complete)
+- [x] **Phase 8: Backend Server Cutover** — Switch all server code to read from `djs`, persist lockout to DB, remove hardcoded constants (completed 2026-03-19)
 - [ ] **Phase 9: Admin DJ Management API** — New admin CRUD endpoints for DJ lifecycle management
 - [ ] **Phase 10: Manage DJs Frontend** — Manage DJs tab in roster.html with full editor UI
 
@@ -59,7 +59,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 08-01-PLAN.md — Switch fetchDJs to djs table, convert auth and lockout to DB-backed (completed 2026-03-19)
-- [ ] 08-02-PLAN.md — Migrate remaining endpoints, remove dead constants, try-catch sweep
+- [x] 08-02-PLAN.md — Migrate remaining endpoints, remove dead constants, try-catch sweep (completed 2026-03-19)
 
 ### Phase 9: Admin DJ Management API
 **Goal**: Admin CRUD endpoints exist for the full DJ lifecycle — add, edit, deactivate, reactivate, reset PIN, clear lockout — all gated behind requireAdmin middleware with cache invalidation on every write
@@ -94,7 +94,7 @@ Plans:
 | 4. Stability | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 5. Cleanup | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 6. Tech Debt | v1.0 | 1/1 | Complete | 2026-03-19 |
-| 7. Database Schema & Migration | 2/2 | Complete    | 2026-03-19 | - |
-| 8. Backend Server Cutover | v2.0 | 0/2 | Not started | - |
+| 7. Database Schema & Migration | v2.0 | 2/2 | Complete | 2026-03-19 |
+| 8. Backend Server Cutover | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 9. Admin DJ Management API | v2.0 | 0/TBD | Not started | - |
 | 10. Manage DJs Frontend | v2.0 | 0/TBD | Not started | - |

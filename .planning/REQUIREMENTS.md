@@ -27,17 +27,17 @@ Requirements for v2.0 DJ Management & Supabase Consolidation. Each maps to roadm
 
 ### Scheduling Config
 
-- [ ] **SCHED-01**: Recurring availability (FIXED_AVAILABILITY) read from djs.recurring_availability instead of hardcoded constant
+- [x] **SCHED-01**: Recurring availability (FIXED_AVAILABILITY) read from djs.recurring_availability instead of hardcoded constant
 - [ ] **SCHED-02**: Admin can edit a DJ's recurring availability via day-of-week checkbox grid in Manage DJs tab
-- [ ] **SCHED-03**: Fixed schedules (FIXED_SCHEDULES) read from djs.fixed_schedules instead of hardcoded constant
+- [x] **SCHED-03**: Fixed schedules (FIXED_SCHEDULES) read from djs.fixed_schedules instead of hardcoded constant
 - [ ] **SCHED-04**: Admin can edit a DJ's fixed schedule via venue + day + slot grid in Manage DJs tab
-- [ ] **SCHED-05**: All hardcoded DJ arrays removed from server.js and roster.html — DJ list read dynamically from Supabase
+- [x] **SCHED-05**: All hardcoded DJ arrays removed from server.js and roster.html — DJ list read dynamically from Supabase
 
 ### Stability
 
 - [x] **STAB-01**: Account lockout persisted to djs table (failed_attempts, locked_until) — survives server restarts
 - [x] **STAB-02**: All lockout functions converted to async DB calls in a single atomic commit
-- [ ] **STAB-03**: Try-catch all bare Supabase calls with graceful error responses
+- [x] **STAB-03**: Try-catch all bare Supabase calls with graceful error responses
 
 ## Future Requirements
 
@@ -91,14 +91,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMIN-06 | Phase 9 | Pending |
 | ADMIN-07 | Phase 9 | Pending |
 | ADMIN-08 | Phase 9 | Pending |
-| SCHED-01 | Phase 8 | Partial (fetchDJs enriched; portal endpoint still uses constant — Plan 02) |
+| SCHED-01 | Phase 8 | Complete |
 | SCHED-02 | Phase 10 | Pending |
-| SCHED-03 | Phase 8 | Pending |
+| SCHED-03 | Phase 8 | Complete |
 | SCHED-04 | Phase 10 | Pending |
-| SCHED-05 | Phase 8 | Pending |
+| SCHED-05 | Phase 8 | Complete |
 | STAB-01 | Phase 8 | Complete |
 | STAB-02 | Phase 8 | Complete |
-| STAB-03 | Phase 8 | Pending |
+| STAB-03 | Phase 8 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 20 total
@@ -107,4 +107,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after Phase 08-01 completion*
+*Last updated: 2026-03-19 after Phase 08-02 completion — Phase 8 all requirements satisfied*

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DJ Management & Supabase Consolidation
 status: in_progress
-stopped_at: Completed 08-01-PLAN.md — fetchDJs/requireDJAuth/login migrated to djs table; lockout persisted to DB
-last_updated: "2026-03-19T09:30:00.000Z"
-last_activity: 2026-03-19 — Phase 08 Plan 01 complete; lockout module extracted, auth migrated to djs table
+stopped_at: Completed 08-02-PLAN.md — all endpoints migrated to djs table, constants removed, try-catch coverage complete; Phase 8 done
+last_updated: "2026-03-19T12:00:00.000Z"
+last_activity: 2026-03-19 — Phase 08 Plan 02 complete; all hardcoded constants removed, djs table is sole source of truth
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 25
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
+  percent: 50
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Reliable DJ scheduling across 3 venues — admins can build rosters from DJ availability, managers can sign off attendance, and DJs can view/manage their schedules.
-**Current focus:** Phase 8 — Backend Server Cutover
+**Current focus:** Phase 9 — Admin DJ Management API
 
 ## Current Position
 
-Phase: 8 of 10 (Backend Server Cutover)
-Plan: 1 of 2 in current phase (08-01 complete, 08-02 next)
+Phase: 8 of 10 (Backend Server Cutover) — COMPLETE
+Plan: 2 of 2 in Phase 8 (08-02 complete; Phase 8 done)
 Status: In progress
-Last activity: 2026-03-19 — Completed 08-01: fetchDJs, requireDJAuth, login, lockout migrated to djs table
+Last activity: 2026-03-19 — Completed 08-02: all remaining endpoints migrated from constants to djs table; FIXED_SCHEDULES/FIXED_AVAILABILITY/RESIDENTS deleted; try-catch sweep complete; 63/63 tests passing
 
-Progress: [██░░░░░░░░] 25% (v2.0 in progress)
+Progress: [████░░░░░░] 50% (v2.0 in progress)
 
 ## Accumulated Context
 
@@ -54,14 +54,16 @@ Progress: [██░░░░░░░░] 25% (v2.0 in progress)
 - [Phase 08-01]: Lockout extracted to lib/lockout.js with createLockoutFunctions(supabase, constants) factory — enables unit testing with mocked supabase without coupling to server.js globals
 - [Phase 08-01]: clearFailedAttempts uses ilike (name match); checkLockout uses eq(id) — checkLockout receives already-fetched djRow with id, clearFailedAttempts receives only name string
 - [Phase 08-01]: isResident now derived from djRow.type === 'resident' (not RESIDENTS.includes())
+- [Phase 08-02]: /api/djs/update retargets to djs table using ilike match — UNIQUE constraint on djs.name prevents duplicate-name collisions; old delete+upsert rename pattern removed
+- [Phase 08-02]: fetchAvailability builds fixedSchedules from fetchDJs cache (no extra DB call) — avoids round-trip per availability computation
+- [Phase 08-02]: business-logic.test.js uses inline fixture data instead of importing FIXED_SCHEDULES — decouples tests from deleted constant
 
 ### Blockers/Concerns
 
-- Phase 8: FIXED_SCHEDULES/FIXED_AVAILABILITY constants must stay until ALL call sites confirmed migrated
-- Phase 8: Admin DJ rename/upsert endpoint still writes to dj_rates — Plan 02 must migrate this (logged in deferred-items.md)
+None — Phase 8 complete. Phase 9 (Admin DJ Management API) is next.
 
 ## Session Continuity
 
-Last session: 2026-03-19T09:30:00.000Z
-Stopped at: Completed 08-01-PLAN.md — fetchDJs enriched, auth migrated to djs table, lockout persisted to DB, 63 tests passing
+Last session: 2026-03-19T12:00:00.000Z
+Stopped at: Completed 08-02-PLAN.md — all endpoints migrated to djs table, constants deleted, try-catch coverage verified, Phase 8 done
 Resume file: None
