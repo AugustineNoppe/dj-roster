@@ -115,7 +115,6 @@ const {
   RESIDENTS,
   ALL_SLOTS,
   MONTH_NAMES,
-  SHORT_MONTHS,
   FIXED_SCHEDULES,
   buildAvailabilityMap,
   computeFinalizationReport,
@@ -167,6 +166,7 @@ const cache = {
   djs:          { data: null, time: 0, ttl: 10 * 60 * 1000 },
   availability: new Map(),
   roster:       new Map(),
+  finalized:    { data: null, time: 0, ttl: 5 * 60 * 1000 },
 };
 
 const AVAIL_TTL = 3 * 60 * 1000;
@@ -779,8 +779,6 @@ app.post('/api/roster/clear', requireAdmin, async (req, res) => {
 });
 
 /* == DJ PORTAL ============================================================ */
-
-cache.finalized = { data: null, time: 0, ttl: 5 * 60 * 1000 };
 
 async function fetchFinalized() {
   const c = cache.finalized;
