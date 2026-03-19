@@ -12,78 +12,66 @@ Reliable DJ scheduling across 3 venues — admins can build rosters from DJ avai
 
 ### Validated
 
-<!-- Shipped and confirmed valuable. Inferred from existing codebase. -->
-
-- ✓ DJ login via name + 4-digit PIN — v0
-- ✓ DJ availability submission per month (available/unavailable per slot) — v0
+- ✓ DJ login via name + 4-digit PIN (bcrypt hashed, account lockout) — v1.0
+- ✓ DJ availability submission per month (slot-normalized, upsert-safe) — v1.0
 - ✓ Admin roster grid with drag/assign per venue per month — v0
-- ✓ Auto-suggest algorithm for roster population — v0 (currently broken)
+- ✓ Auto-suggest with block enforcement (.every() checks) and decision logging — v1.0
 - ✓ Fixed recurring schedules for specific DJs (Davoted) — v0
-- ✓ Manager sign-off/unsign-off for DJ attendance — v0
-- ✓ Month finalization with hours/cost accounting report — v0
+- ✓ Manager sign-off/unsign-off with timestamp ordering — v1.0
+- ✓ Month finalization with verified hours/cost accounting — v1.0
 - ✓ Multi-venue support (ARKbar, HIP, Love Beach Club) — v0
 - ✓ Admin DJ management (add/edit name, rates) — v0
-- ✓ Rate limiting on login endpoints — v0
-- ✓ In-memory caching with TTL for performance — v0
-- ✓ CORS whitelisting for production origins — v0
+- ✓ Rate limiting via express-rate-limit (memory-safe) — v1.0
+- ✓ In-memory caching with centralized invalidation — v1.0
+- ✓ Security headers via helmet — v1.0
+- ✓ 49 Jest tests covering business logic — v1.0
 - ✓ Supabase migration (complete and live) — v0
 
 ### Active
 
-<!-- Current scope: v1.0 Production Readiness -->
-
-- [ ] Fix auto-suggest: DJs assigned to slots they marked unavailable (immediate blocker)
-- [ ] Verify data integrity: availability saves, sign-off flow, accounting calculations
-- [ ] Security hardening: PIN hashing, password hashing, webhook signature verification
-- [ ] Stability: Supabase error handling, rate limiter memory leak, cache invalidation gaps
-- [ ] Cleanup: remove reset-month feature, add test coverage on business logic
+- [ ] Webhook signature verification for inbound hooks (SEC-04)
+- [ ] Try-catch all Supabase calls with graceful error handling (STAB-04)
+- [ ] Admin "Manage DJs" page — add/edit/deactivate DJs (ADMIN-01)
 
 ### Out of Scope
 
-- Database migration — Supabase is already live, migration is complete
-- New features or feature changes — this milestone is quality/fix only
-- OAuth/SSO integration — current PIN/password auth is sufficient for this venue
-- CI/CD pipeline setup — out of scope for this pass
+- Database migration — Supabase is already live
 - Mobile native app — web-only, responsive is sufficient
-- UI polish / mobile responsiveness — not in scope for this milestone
+- OAuth/SSO integration — PIN/password auth sufficient for venue
+- CI/CD pipeline — out of scope for now
+- UI polish / mobile responsiveness — not prioritized
 
 ## Context
 
-- Single-file architecture: all server logic in `server.js` (~942 lines, ~11 API endpoints)
-- Static HTML pages with embedded JavaScript in `public/` (dj.html, roster.html, landing.html)
-- Supabase as database (tables: dj_rates, dj_availability, dj_submissions, roster_assignments, dj_pins, dj_signoffs, finalized_months)
-- Custom rate limiter and security headers (helmet/express-rate-limit installed but not used)
-- PINs stored in plain text, passwords compared with string equality
-- No test framework or test files exist
-- Auto-suggest is broken: DJs get assigned to slots they marked unavailable — root cause not confirmed
-- Concerns identified: memory leak in rate limiter, race conditions in batch ops, cache invalidation gaps, sensitive data in logs
+Shipped v1.0 Production Readiness (2026-03-19).
+- server.js: 1,219 LOC (Node.js/Express)
+- public/roster.html: 1,982 LOC (admin roster UI)
+- lib/business-logic.js: 314 LOC (extracted, tested)
+- lib/business-logic.test.js: 450 LOC (49 Jest tests)
+- Supabase tables: dj_rates, dj_availability, dj_submissions, roster_assignments, dj_pins, dj_signoffs, finalized_months
+- PINs and passwords stored as bcrypt hashes
+- helmet + express-rate-limit active
+- Known: existing duplicate DB rows (en-dash + hyphen variants) not cleaned up — may need one-time migration
 
 ## Constraints
 
 - **Database**: Supabase is live — no changes to database structure
-- **Features**: No functional changes — only fixes and quality improvements
-- **Deployment**: App runs as `node server.js` on port 8080 — keep this simple
-- **Users**: DJs (mobile-first), admins/managers (desktop or mobile) — all in Thailand timezone
-- **Priority**: Auto-suggest bug must be investigated and fixed before any other work
+- **Deployment**: App runs as `node server.js` on port 8080
+- **Users**: DJs (mobile-first), admins/managers (desktop or mobile) — Thailand timezone
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Investigate auto-suggest before planning | Bug is an immediate blocker — root cause unknown, can't plan fix without understanding it | — Pending |
-| Remove reset-month feature | Too dangerous for production — deletes all data without safeguards | — Pending |
-| Use bcrypt for PIN hashing | Industry standard, already available in Node.js ecosystem | — Pending |
-
-## Current Milestone: v1.0 Production Readiness
-
-**Goal:** Fix the broken auto-suggest, verify data integrity, harden security, improve stability, and clean up before go-live — without changing any features.
-
-**Target phases (priority order):**
-1. Investigate and fix auto-suggest (unavailability not respected)
-2. Verify data integrity (availability saves, sign-off flow, accounting)
-3. Security hardening (PIN hashing, password hashing, webhook verification)
-4. Stability (Supabase error handling, rate limiter leak, cache gaps)
-5. Cleanup (remove reset-month, add test coverage on business logic)
+| Investigate auto-suggest before planning | Bug was immediate blocker — root cause unknown | ✓ Good — root cause found (slot-by-slot iteration), fix applied |
+| Remove reset-month feature | Too dangerous for production — deletes all data | ✓ Good — endpoint and UI references removed |
+| Use bcrypt for PIN hashing | Industry standard, native bindings fast | ✓ Good — cost factor 10, migration script idempotent |
+| bcrypt hashes in env vars for admin/manager passwords | Avoids plaintext secrets in environment | ✓ Good — timing-safe comparison |
+| In-memory Map for account lockout | Consistent with existing patterns, zero DB overhead | ✓ Good — separate from IP rate limiting |
+| helmet() with explicit CSP directives | Match prior custom headers, preserve unsafe-inline | ✓ Good — express-rate-limit fixed memory leak |
+| Centralize cache invalidation | Document dependency graph in one place | ✓ Good — DJ rate changes cascade correctly |
+| Extract business logic to lib/ | Enable Jest testing without Express overhead | ✓ Good — 49 tests, template drift risk eliminated |
+| DJ change-pin route intentionally removed | PINs are admin-allocated only | ✓ Good — simpler security model |
 
 ---
-*Last updated: 2026-03-13 after v1.0 milestone initialization*
+*Last updated: 2026-03-19 after v1.0 milestone*
