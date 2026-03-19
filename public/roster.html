@@ -149,6 +149,14 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .manage-edit-modal label{display:block;margin-bottom:12px;color:var(--text-secondary);font-size:13px}
 .manage-edit-modal input,.manage-edit-modal select{width:100%;padding:8px;border:1px solid var(--border);background:var(--bg);color:var(--text-primary);border-radius:4px;margin-top:4px;box-sizing:border-box}
 .manage-edit-modal .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.avail-grid{border-collapse:collapse;width:100%;font-size:12px}
+.avail-grid th{padding:4px 6px;text-align:center;color:var(--text-secondary);font-size:11px}
+.avail-grid td{padding:4px 6px;text-align:center}
+.avail-grid input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
+.avail-grid td.disabled-slot input[type="checkbox"]{opacity:0.25;cursor:not-allowed}
+.avail-section-heading{font-size:13px;font-weight:700;margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.avail-section-heading.teal{color:var(--teal)}
+.avail-section-heading.pink{color:var(--love-pink)}
 
 /* Main content */
 .main-content{flex:1;overflow:auto;padding:20px 24px;-webkit-overflow-scrolling:touch}
@@ -2044,8 +2052,8 @@ function renderManageDJs(djs) {
         <button class="manage-btn" onclick="toggleDJActive(${dj.id}, ${dj.active})">${dj.active ? 'Deactivate' : 'Reactivate'}</button>
         <button class="manage-btn" onclick="resetDJPin(${dj.id}, '${dj.name.replace(/'/g, "\\'")}')">Reset PIN</button>
         ${clearLockoutBtn}
-        <button class="manage-btn" disabled onclick="showToast('Coming soon','error')">Availability</button>
-        <button class="manage-btn" disabled onclick="showToast('Coming soon','error')">Fixed Schedule</button>
+        <button class="manage-btn" onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'))">Availability</button>
+        <button class="manage-btn" onclick="openFixedScheduleGrid(manageDJs.find(d => d.id === '${dj.id}'))">Fixed Schedule</button>
       </td>
     </tr>`;
   }).join('');
@@ -2181,6 +2189,182 @@ async function clearDJLockoutUI(id, name) {
     const data = await res.json();
     if (!data.success) { showToast(data.error || 'Error clearing lockout', 'error'); return; }
     showToast(`Lockout cleared for ${name}`, 'success');
+    loadManageDJs();
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
+// === RECURRING AVAILABILITY GRID ===
+
+function openAvailabilityGrid(dj) {
+  if (!dj) { showToast('DJ data not found', 'error'); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'manage-edit-overlay';
+  overlay.id = 'availGridOverlay';
+
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const slots = ARKBAR_SLOTS;
+  const avail = dj.recurring_availability || {};
+
+  let headerCells = '<th style="text-align:left;padding:4px 6px;color:var(--text-secondary);font-size:11px">Slot</th>';
+  DAY_NAMES.forEach(d => { headerCells += `<th>${d}</th>`; });
+
+  let rows = '';
+  slots.forEach((slot, si) => {
+    let cells = `<td style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text-secondary);white-space:nowrap">${slot}</td>`;
+    for (let dow = 0; dow < 7; dow++) {
+      const daySlots = Array.isArray(avail[String(dow)]) ? avail[String(dow)] : [];
+      const checked = daySlots.includes(slot) ? ' checked' : '';
+      cells += `<td><input type="checkbox" id="avail-${dow}-${si}"${checked}></td>`;
+    }
+    rows += `<tr>${cells}</tr>`;
+  });
+
+  overlay.innerHTML = `<div class="manage-edit-modal" style="max-width:700px;width:95vw">
+    <h3>Recurring Availability: ${dj.name.replace(/</g, '&lt;')}</h3>
+    <div style="overflow-x:auto">
+      <table class="avail-grid">
+        <thead><tr>${headerCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="manage-btn" onclick="document.getElementById('availGridOverlay').remove()">Cancel</button>
+      <button class="manage-btn" style="background:var(--teal);border-color:var(--teal);color:#fff" onclick="saveAvailability('${dj.id}')">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function saveAvailability(djId) {
+  const recurring_availability = {};
+  for (let dow = 0; dow < 7; dow++) {
+    recurring_availability[String(dow)] = [];
+    ARKBAR_SLOTS.forEach((slot, si) => {
+      const cb = document.getElementById(`avail-${dow}-${si}`);
+      if (cb && cb.checked) recurring_availability[String(dow)].push(slot);
+    });
+  }
+  try {
+    const res = await fetch(`/api/admin/djs/${djId}/recurring-availability`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify({ recurring_availability })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error saving availability', 'error'); return; }
+    showToast('Availability saved', 'success');
+    const overlay = document.getElementById('availGridOverlay');
+    if (overlay) overlay.remove();
+    loadManageDJs();
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
+// === FIXED SCHEDULE GRID ===
+
+function openFixedScheduleGrid(dj) {
+  if (!dj) { showToast('DJ data not found', 'error'); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'manage-edit-overlay';
+  overlay.id = 'fixedGridOverlay';
+
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const schedules = dj.fixed_schedules || {};
+  const arkData = schedules.arkbar || {};
+  const loveData = schedules.loveBeach || {};
+
+  // ARKbar section
+  let arkHeaderCells = '<th style="text-align:left;padding:4px 6px;color:var(--text-secondary);font-size:11px">Slot</th>';
+  DAY_NAMES.forEach(d => { arkHeaderCells += `<th>${d}</th>`; });
+
+  let arkRows = '';
+  ARKBAR_SLOTS.forEach((slot, si) => {
+    let cells = `<td style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text-secondary);white-space:nowrap">${slot}</td>`;
+    for (let dow = 0; dow < 7; dow++) {
+      const daySlots = Array.isArray(arkData[String(dow)]) ? arkData[String(dow)] : [];
+      const checked = daySlots.includes(slot) ? ' checked' : '';
+      cells += `<td><input type="checkbox" id="fixed-arkbar-${dow}-${si}"${checked}></td>`;
+    }
+    arkRows += `<tr>${cells}</tr>`;
+  });
+
+  // Love Beach section — use LOVE_SAT_SLOTS as rows (superset), disable non-weekday slots for non-Saturday days
+  let loveHeaderCells = '<th style="text-align:left;padding:4px 6px;color:var(--text-secondary);font-size:11px">Slot</th>';
+  DAY_NAMES.forEach(d => { loveHeaderCells += `<th>${d}</th>`; });
+
+  let loveRows = '';
+  LOVE_SAT_SLOTS.forEach((slot, si) => {
+    const isSatOnlySlot = !LOVE_WEEKDAY_SLOTS.includes(slot);
+    let cells = `<td style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text-secondary);white-space:nowrap">${slot}</td>`;
+    for (let dow = 0; dow < 7; dow++) {
+      const isSat = dow === 6;
+      const isDisabled = isSatOnlySlot && !isSat;
+      const daySlots = Array.isArray(loveData[String(dow)]) ? loveData[String(dow)] : [];
+      const checked = (!isDisabled && daySlots.includes(slot)) ? ' checked' : '';
+      const disabledAttr = isDisabled ? ' disabled' : '';
+      const tdClass = isDisabled ? ' class="disabled-slot"' : '';
+      cells += `<td${tdClass}><input type="checkbox" id="fixed-love-${dow}-${si}"${checked}${disabledAttr}></td>`;
+    }
+    loveRows += `<tr>${cells}</tr>`;
+  });
+
+  overlay.innerHTML = `<div class="manage-edit-modal" style="max-width:800px;width:95vw">
+    <h3>Fixed Schedule: ${dj.name.replace(/</g, '&lt;')}</h3>
+    <div class="avail-section-heading teal">ARKbar Beach Club</div>
+    <div style="overflow-x:auto">
+      <table class="avail-grid">
+        <thead><tr>${arkHeaderCells}</tr></thead>
+        <tbody>${arkRows}</tbody>
+      </table>
+    </div>
+    <div class="avail-section-heading pink">Love Beach Club</div>
+    <div style="overflow-x:auto">
+      <table class="avail-grid">
+        <thead><tr>${loveHeaderCells}</tr></thead>
+        <tbody>${loveRows}</tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="manage-btn" onclick="document.getElementById('fixedGridOverlay').remove()">Cancel</button>
+      <button class="manage-btn" style="background:var(--teal);border-color:var(--teal);color:#fff" onclick="saveFixedSchedule('${dj.id}')">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function saveFixedSchedule(djId) {
+  const arkbar = {};
+  for (let dow = 0; dow < 7; dow++) {
+    arkbar[String(dow)] = [];
+    ARKBAR_SLOTS.forEach((slot, si) => {
+      const cb = document.getElementById(`fixed-arkbar-${dow}-${si}`);
+      if (cb && cb.checked) arkbar[String(dow)].push(slot);
+    });
+  }
+
+  const loveBeach = {};
+  for (let dow = 0; dow < 7; dow++) {
+    loveBeach[String(dow)] = [];
+    LOVE_SAT_SLOTS.forEach((slot, si) => {
+      const cb = document.getElementById(`fixed-love-${dow}-${si}`);
+      if (cb && cb.checked && !cb.disabled) loveBeach[String(dow)].push(slot);
+    });
+  }
+
+  try {
+    const res = await fetch(`/api/admin/djs/${djId}/fixed-schedules`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify({ fixed_schedules: { arkbar, loveBeach } })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error saving fixed schedule', 'error'); return; }
+    showToast('Fixed schedule saved', 'success');
+    const overlay = document.getElementById('fixedGridOverlay');
+    if (overlay) overlay.remove();
     loadManageDJs();
   } catch(e) {
     showToast('Connection error', 'error');
