@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DJ Management & Supabase Consolidation
 status: executing
-stopped_at: Completed 08-02-PLAN.md — all endpoints migrated to djs table, constants deleted, try-catch coverage verified, Phase 8 done
-last_updated: "2026-03-19T13:21:50.750Z"
-last_activity: "2026-03-19 — Completed 08-02: all remaining endpoints migrated from constants to djs table; FIXED_SCHEDULES/FIXED_AVAILABILITY/RESIDENTS deleted; try-catch sweep complete; 63/63 tests passing"
+stopped_at: Completed 09-01-PLAN.md — createAdminDJHandlers factory implemented with 33 unit tests; 96/96 tests passing
+last_updated: "2026-03-19T14:56:00.000Z"
+last_activity: "2026-03-19 — Completed 09-01: admin DJ handler factory lib/admin-dj.js created with listDJs/addDJ/editDJ/resetPin/clearLockout; 33 new tests; full suite 96/96 passing"
 progress:
   total_phases: 4
   completed_phases: 2
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 ## Current Position
 
-Phase: 8 of 10 (Backend Server Cutover) — COMPLETE
-Plan: 2 of 2 in Phase 8 (08-02 complete; Phase 8 done)
+Phase: 9 of 10 (Admin DJ Management API) — In Progress
+Plan: 1 of 2 in Phase 9 complete (09-01 done; 09-02 next)
 Status: In progress
-Last activity: 2026-03-19 — Completed 08-02: all remaining endpoints migrated from constants to djs table; FIXED_SCHEDULES/FIXED_AVAILABILITY/RESIDENTS deleted; try-catch sweep complete; 63/63 tests passing
+Last activity: 2026-03-19 — Completed 09-01: admin DJ handler factory lib/admin-dj.js created with listDJs/addDJ/editDJ/resetPin/clearLockout; 33 new tests; full suite 96/96 passing
 
 Progress: [████░░░░░░] 50% (v2.0 in progress)
 
@@ -57,13 +57,17 @@ Progress: [████░░░░░░] 50% (v2.0 in progress)
 - [Phase 08-02]: /api/djs/update retargets to djs table using ilike match — UNIQUE constraint on djs.name prevents duplicate-name collisions; old delete+upsert rename pattern removed
 - [Phase 08-02]: fetchAvailability builds fixedSchedules from fetchDJs cache (no extra DB call) — avoids round-trip per availability computation
 - [Phase 08-02]: business-logic.test.js uses inline fixture data instead of importing FIXED_SCHEDULES — decouples tests from deleted constant
+- [Phase 09-01]: createAdminDJHandlers(supabase, bcrypt, invalidateCaches) factory — injected deps mirror lockout.js pattern for full testability
+- [Phase 09-01]: ALLOWED_TYPES = ['resident', 'guest', 'casual'] — server-side type validation; DB CHECK constraint is backup
+- [Phase 09-01]: Error returns include status field (400) so route wiring in plan 02 can set HTTP status without parsing error text
+- [Phase 09-01]: pin_hash stripped from addDJ response via destructuring — never returned in API responses
 
 ### Blockers/Concerns
 
-None — Phase 8 complete. Phase 9 (Admin DJ Management API) is next.
+None — Phase 9 Plan 01 complete. Next: Phase 9 Plan 02 (wire admin DJ routes into server.js).
 
 ## Session Continuity
 
-Last session: 2026-03-19T12:00:00.000Z
-Stopped at: Completed 08-02-PLAN.md — all endpoints migrated to djs table, constants deleted, try-catch coverage verified, Phase 8 done
+Last session: 2026-03-19T14:56:00.000Z
+Stopped at: Completed 09-01-PLAN.md — createAdminDJHandlers factory implemented with 33 unit tests; 96/96 tests passing
 Resume file: None

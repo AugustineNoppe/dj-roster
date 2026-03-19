@@ -17,12 +17,12 @@ Requirements for v2.0 DJ Management & Supabase Consolidation. Each maps to roadm
 ### Admin Management
 
 - [ ] **ADMIN-01**: Admin can view all DJs in a Manage DJs tab with name, rate, type, active status, and lockout status
-- [ ] **ADMIN-02**: Admin can add a new DJ with name, rate, type, and PIN
-- [ ] **ADMIN-03**: Admin can edit a DJ's name, rate, and type
-- [ ] **ADMIN-04**: Admin can deactivate a DJ — DJ disappears from all dropdowns, auto-suggest, and login; historical data preserved
-- [ ] **ADMIN-05**: Admin can reactivate a deactivated DJ — fully restored to all UI and login
-- [ ] **ADMIN-06**: Admin can reset a DJ's PIN by inputting a new PIN (server hashes it)
-- [ ] **ADMIN-07**: Admin can view lockout status and clear lockout for a DJ
+- [x] **ADMIN-02**: Admin can add a new DJ with name, rate, type, and PIN
+- [x] **ADMIN-03**: Admin can edit a DJ's name, rate, and type
+- [x] **ADMIN-04**: Admin can deactivate a DJ — DJ disappears from all dropdowns, auto-suggest, and login; historical data preserved
+- [x] **ADMIN-05**: Admin can reactivate a deactivated DJ — fully restored to all UI and login
+- [x] **ADMIN-06**: Admin can reset a DJ's PIN by inputting a new PIN (server hashes it)
+- [x] **ADMIN-07**: Admin can view lockout status and clear lockout for a DJ
 - [ ] **ADMIN-08**: Rate editing removed from DJ Hours tab — consolidated into Manage DJs tab
 
 ### Scheduling Config
@@ -84,12 +84,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DB-03 | Phase 7 | Complete |
 | DB-04 | Phase 7 | Complete |
 | ADMIN-01 | Phase 10 | Pending |
-| ADMIN-02 | Phase 9 | Pending |
-| ADMIN-03 | Phase 9 | Pending |
-| ADMIN-04 | Phase 9 | Pending |
-| ADMIN-05 | Phase 9 | Pending |
-| ADMIN-06 | Phase 9 | Pending |
-| ADMIN-07 | Phase 9 | Pending |
+| ADMIN-02 | Phase 9 | Complete |
+| ADMIN-03 | Phase 9 | Complete |
+| ADMIN-04 | Phase 9 | Complete |
+| ADMIN-05 | Phase 9 | Complete |
+| ADMIN-06 | Phase 9 | Complete |
+| ADMIN-07 | Phase 9 | Complete |
 | ADMIN-08 | Phase 9 | Pending |
 | SCHED-01 | Phase 8 | Complete |
 | SCHED-02 | Phase 10 | Pending |
