@@ -93,44 +93,13 @@ const {
   pad2,
   makeDateKey,
   parseDateKey,
-  RESIDENTS,
   ALL_SLOTS,
   MONTH_NAMES,
-  FIXED_SCHEDULES,
   DIAG_FIXED_TEMPLATE,
   buildAvailabilityMap,
   computeFinalizationReport,
   getDJTemplateBlocks,
 } = require('./lib/business-logic');
-
-/* == FIXED AVAILABILITY DEFAULTS ========================================== */
-// Recurring weekly availability patterns for the DJ portal calendar.
-// Display-only: pre-populates the calendar UI when a DJ has not yet submitted.
-// Does NOT affect auto-suggest, canAssign(), or any server-side scheduling.
-// Keys: day-of-week (0=Sun … 6=Sat) → array of slot strings.
-
-const _A12 = ['14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
-              '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
-              '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
-const _SB  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
-              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];
-const _AW  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
-              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00']; // Alex Wed (no 14–17)
-const _MT  = ['17:00\u201318:00','18:00\u201319:00','19:00\u201320:00','20:00\u201321:00',
-              '21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00']; // Mostyx Thu (no 14–17)
-const _MS  = ['18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
-              '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'];                   // Mostyx Sat (no 14–18)
-
-const FIXED_AVAILABILITY = {
-  'Alex RedWhite': { 0:_A12, 1:_A12, 2:_A12, 3:_AW, 4:_A12, 5:_A12, 6:_A12 },
-  'Raffo DJ':      { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_A12, 5:_A12, 6:_A12 },
-  'Sound Bogie':   { 1:_SB, 2:_SB, 3:_SB, 4:_SB, 5:_SB, 6:_SB },
-  'Vozka':         { 1:_A12, 2:_A12, 5:_A12 },
-  'Tobi':          { 4:_A12 },
-  'Buba':          { 2:_A12, 3:_A12, 4:_A12, 5:_A12, 6:_A12 },
-  'Donsine':       { 4:_A12, 5:_A12, 6:_A12, 0:_A12 },
-  'Mostyx':        { 0:_A12, 1:_A12, 2:_A12, 3:_A12, 4:_MT, 5:_A12, 6:_MS },
-};
 
 /* == CACHE LAYER ========================================================== */
 /*
