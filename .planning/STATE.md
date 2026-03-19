@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DJ Management & Supabase Consolidation
 status: planning
-stopped_at: Completed 07-01-PLAN.md — djs schema SQL + data migration script
-last_updated: "2026-03-19T08:06:02.588Z"
+stopped_at: Completed 07-02-PLAN.md — drop-legacy-tables.sql script; awaiting human checkpoint
+last_updated: "2026-03-19T08:09:03.674Z"
 last_activity: 2026-03-19 — Roadmap created; phases 7-10 defined
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -47,6 +47,7 @@ Progress: [░░░░░░░░░░] 0% (v2.0 not started)
 - Deactivated DJs: hidden from UI/auto-suggest/login, historical data preserved
 - [Phase 07-database-schema-migration]: Idempotency via row count check: skip if djs already has rows; --force flag deletes and re-inserts
 - [Phase 07-database-schema-migration]: JSONB seeding passes raw JS objects to Supabase client — never JSON.stringify to avoid double-encoding
+- [Phase 07-database-schema-migration]: Drop script is manual-only — operator must verify all 5 Phase 7 criteria before running
 
 ### Blockers/Concerns
 
@@ -56,6 +57,6 @@ Progress: [░░░░░░░░░░] 0% (v2.0 not started)
 
 ## Session Continuity
 
-Last session: 2026-03-19T08:06:02.585Z
-Stopped at: Completed 07-01-PLAN.md — djs schema SQL + data migration script
+Last session: 2026-03-19T08:08:58.163Z
+Stopped at: Completed 07-02-PLAN.md — drop-legacy-tables.sql script; awaiting human checkpoint
 Resume file: None

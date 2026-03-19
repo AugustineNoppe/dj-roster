@@ -12,7 +12,7 @@ Requirements for v2.0 DJ Management & Supabase Consolidation. Each maps to roadm
 - [x] **DB-01**: Single `djs` table created with columns: id, name, pin_hash, rate, type, active, venues, recurring_availability (JSONB), fixed_schedules (JSONB), failed_attempts, locked_until
 - [x] **DB-02**: Migration script populates `djs` from dj_rates + dj_pins, deduplicating en-dash/hyphen name variants
 - [x] **DB-03**: Migration seeds recurring_availability JSONB from FIXED_AVAILABILITY constants and fixed_schedules JSONB from FIXED_SCHEDULES constants
-- [ ] **DB-04**: Old tables (dj_rates, dj_pins) dropped after verified cutover
+- [x] **DB-04**: Old tables (dj_rates, dj_pins) dropped after verified cutover
 
 ### Admin Management
 
@@ -82,7 +82,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DB-01 | Phase 7 | Complete |
 | DB-02 | Phase 7 | Complete |
 | DB-03 | Phase 7 | Complete |
-| DB-04 | Phase 7 | Pending |
+| DB-04 | Phase 7 | Complete |
 | ADMIN-01 | Phase 10 | Pending |
 | ADMIN-02 | Phase 9 | Pending |
 | ADMIN-03 | Phase 9 | Pending |
