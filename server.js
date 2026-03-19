@@ -1216,6 +1216,14 @@ app.post('/api/roster/finalize', async (req, res) => {
   }
 });
 
+/* == ADMIN — CLEAR DJ LOCKOUT ============================================= */
+app.post('/api/admin/clear-lockout', requireAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ success: false, error: 'Missing DJ name' });
+  clearFailedAttempts(name);
+  res.json({ success: true, cleared: name.trim().toLowerCase() });
+});
+
 /* == ADMIN — RESET MONTH (DEV ONLY) ======================================= */
 app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
   try {
