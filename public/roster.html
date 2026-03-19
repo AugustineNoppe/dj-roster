@@ -544,6 +544,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
       <button class="btn-sm btn-clear" onclick="clearRoster()">Clear Roster</button>
 <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:#fff;">Print / PDF</button>
+      <button class="btn-sm" onclick="resetMonthData()" style="background:rgba(255,0,0,0.15);border:1px solid rgba(255,0,0,0.5);color:#ff5252;margin-left:12px;">&#x26A0; RESET MONTH (DEV ONLY)</button>
     </div>
   </footer>
 </div>
@@ -1060,6 +1061,28 @@ async function assignDJ(sel) {
 }
 
 // === CLEAR ROSTER ===
+async function resetMonthData() {
+  const month = getMonthString();
+  if (!confirm(`⚠️ RESET MONTH: ${month}\n\nThis will DELETE all availability, submissions, and roster assignments for this month.\n\nThis CANNOT be undone. Are you sure?`)) return;
+  if (!confirm(`FINAL WARNING: All data for ${month} will be permanently deleted. Type OK to confirm.`)) return;
+  showToast('Resetting month data...', '');
+  try {
+    const res = await fetch('/api/admin/reset-month', {
+      method: 'POST', headers: {'Content-Type':'application/json','x-admin-password': adminPassword},
+      body: JSON.stringify({ month })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Month ${month} reset`, 'success');
+      loadAll();
+    } else {
+      showToast('Reset failed: ' + (data.error || 'Unknown'), 'error');
+    }
+  } catch(e) {
+    showToast('Reset failed: ' + e.message, 'error');
+  }
+}
+
 async function clearRoster() {
   if (isPublished) { showToast('Unlock roster before clearing', 'error'); return; }
   if (currentVenue === 'hours') return;

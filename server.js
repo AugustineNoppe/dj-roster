@@ -1216,6 +1216,27 @@ app.post('/api/roster/finalize', async (req, res) => {
   }
 });
 
+/* == ADMIN — RESET MONTH (DEV ONLY) ======================================= */
+app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
+  try {
+    const { month } = req.body;
+    if (!month || !/^[A-Za-z]+ \d{4}$/.test(month.trim())) {
+      return res.status(400).json({ success: false, error: 'Invalid or missing month' });
+    }
+    await supabase.from('dj_availability').delete().eq('month', month);
+    const { error: subDelError } = await supabase.from('dj_submissions').delete().eq('month', month);
+    if (subDelError) throw new Error(subDelError.message);
+    invalidateCaches('roster', { month });
+    invalidateCaches('availability', { month });
+    const { error: rosterDelError } = await supabase.from('roster_assignments').delete().eq('month', month);
+    if (rosterDelError) throw new Error(rosterDelError.message);
+    res.json({ success: true, month });
+  } catch (err) {
+    console.error('Reset-month error:', err);
+    res.json({ success: false, error: err.message });
+  }
+});
+
 /* == START ================================================================= */
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
