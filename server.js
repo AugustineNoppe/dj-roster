@@ -83,6 +83,10 @@ const { checkLockout, recordFailedAttempt, clearFailedAttempts } = createLockout
   { MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MS }
 );
 
+const { createAdminDJHandlers } = require('./lib/admin-dj');
+const { listDJs, addDJ, editDJ, resetPin, clearLockout: clearDJLockout } =
+  createAdminDJHandlers(supabase, bcrypt, invalidateCaches);
+
 app.use(express.json());
 
 /* == BUSINESS LOGIC (imported from lib/business-logic.js) ================= */
@@ -1219,6 +1223,33 @@ app.post('/api/roster/finalize', async (req, res) => {
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
+});
+
+/* == ADMIN — DJ MANAGEMENT ================================================ */
+
+app.get('/api/admin/djs', requireAdmin, async (req, res) => {
+  const result = await listDJs();
+  res.status(result.status || 200).json(result);
+});
+
+app.post('/api/admin/djs', requireAdmin, async (req, res) => {
+  const result = await addDJ(req.body);
+  res.status(result.status || 200).json(result);
+});
+
+app.patch('/api/admin/djs/:id', requireAdmin, async (req, res) => {
+  const result = await editDJ({ id: req.params.id, ...req.body });
+  res.status(result.status || 200).json(result);
+});
+
+app.post('/api/admin/djs/:id/pin', requireAdmin, async (req, res) => {
+  const result = await resetPin({ id: req.params.id, ...req.body });
+  res.status(result.status || 200).json(result);
+});
+
+app.delete('/api/admin/djs/:id/lockout', requireAdmin, async (req, res) => {
+  const result = await clearDJLockout({ id: req.params.id });
+  res.status(result.status || 200).json(result);
 });
 
 /* == ADMIN — CLEAR DJ LOCKOUT ============================================= */
