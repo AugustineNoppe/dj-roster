@@ -56,7 +56,10 @@ Plans:
   3. Clearing a lockout via the existing admin endpoint takes effect immediately with no restart required
   4. Every Supabase call in server.js returns a graceful error response on failure — no unhandled promise rejections crash the server
   5. No hardcoded DJ name arrays remain anywhere in server.js or lib/business-logic.js; grep for FIXED_AVAILABILITY, FIXED_SCHEDULES, RESIDENTS returns no hits
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 08-01-PLAN.md — Switch fetchDJs to djs table, convert auth and lockout to DB-backed
+- [ ] 08-02-PLAN.md — Migrate remaining endpoints, remove dead constants, try-catch sweep
 
 ### Phase 9: Admin DJ Management API
 **Goal**: Admin CRUD endpoints exist for the full DJ lifecycle — add, edit, deactivate, reactivate, reset PIN, clear lockout — all gated behind requireAdmin middleware with cache invalidation on every write
@@ -92,6 +95,6 @@ Plans:
 | 5. Cleanup | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 6. Tech Debt | v1.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Database Schema & Migration | 2/2 | Complete    | 2026-03-19 | - |
-| 8. Backend Server Cutover | v2.0 | 0/TBD | Not started | - |
+| 8. Backend Server Cutover | v2.0 | 0/2 | Not started | - |
 | 9. Admin DJ Management API | v2.0 | 0/TBD | Not started | - |
 | 10. Manage DJs Frontend | v2.0 | 0/TBD | Not started | - |
