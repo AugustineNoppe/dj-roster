@@ -43,8 +43,8 @@
   6. Old tables (dj_rates, dj_pins) are dropped only after criteria 1-5 are manually verified — this is a separate, manually-triggered step, not part of the migration script
 **Plans:** 2/2 plans complete
 Plans:
-- [ ] 07-01-PLAN.md — Create djs table schema SQL and data migration script
-- [ ] 07-02-PLAN.md — Drop legacy tables script and human verification checkpoint
+- [x] 07-01-PLAN.md — Create djs table schema SQL and data migration script
+- [x] 07-02-PLAN.md — Drop legacy tables script and human verification checkpoint
 
 ### Phase 8: Backend Server Cutover
 **Goal**: All server routes read DJ data exclusively from the `djs` table — no hardcoded DJ arrays remain in server.js or business-logic.js, account lockout survives server restarts, all Supabase calls have error handling

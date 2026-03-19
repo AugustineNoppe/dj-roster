@@ -39,16 +39,16 @@ duration: 5min
 completed: 2026-03-19
 ---
 
-# Phase 7 Plan 02: Drop Legacy Tables Script Summary
+# Phase 7 Plan 02: Drop Legacy Tables & Human Verification Summary
 
-**Standalone SQL drop script for dj_rates and dj_pins with 5-point safety checklist header, gated on human verification of all Phase 7 migration criteria**
+**Standalone SQL drop script for dj_rates and dj_pins created; human verified all 5 Phase 7 success criteria in live Supabase (17 DJs, correct PINs, correct JSONB) and legacy tables dropped**
 
 ## Performance
 
-- **Duration:** 5 min
+- **Duration:** ~10 min (script creation + human verification checkpoint)
 - **Started:** 2026-03-19T08:07:10Z
-- **Completed:** 2026-03-19T08:12:00Z
-- **Tasks:** 1 of 2 (Task 2 is a human-verify checkpoint — awaiting human sign-off)
+- **Completed:** 2026-03-19
+- **Tasks:** 2 of 2 (COMPLETE)
 - **Files created:** 1
 
 ## Accomplishments
@@ -57,13 +57,18 @@ completed: 2026-03-19
 - 5-point pre-flight checklist covering all Phase 7 success criteria embedded as comments
 - DROP TABLE IF EXISTS for both dj_rates and dj_pins (idempotent)
 - Verification SELECT after drop to confirm 0 rows remain
-- Existing 49-test suite passes with zero regressions
+- Human verified all 5 Phase 7 success criteria in live Supabase:
+  - djs table has 17 DJs with no duplicates
+  - DJ logins work with existing PINs
+  - recurring_availability and fixed_schedules JSONB data is correct
+  - Legacy tables (dj_rates, dj_pins) have been dropped
 
 ## Task Commits
 
 1. **Task 1: Create drop legacy tables script** - `f726c22` (feat)
+2. **Task 2: Execute migration and verify in live Supabase** - human-verify checkpoint approved; destructive DROP TABLE executed by operator after verification
 
-**Task 2 (human-verify checkpoint):** Awaiting human execution and verification in live Supabase
+**Plan metadata:** `c4b0af0` (docs: complete drop-legacy-tables plan)
 
 ## Files Created/Modified
 
@@ -73,6 +78,7 @@ completed: 2026-03-19
 
 - DROP TABLE IF EXISTS used so the script is safe to re-run without error if tables were already dropped
 - Script is never called by migrate-djs-data.js or any other automation — strictly manual paste-and-execute in Supabase SQL Editor
+- Human checkpoint (checkpoint:human-verify) used as blocking gate before destructive DROP TABLE operation
 
 ## Deviations from Plan
 
@@ -84,24 +90,15 @@ None.
 
 ## User Setup Required
 
-**To complete DB-04, the operator must:**
-
-1. Run `scripts/migrate-djs-schema.sql` in Supabase Dashboard > SQL Editor (if not already done)
-2. Run `node scripts/migrate-djs-data.js` to populate the djs table
-3. Verify ALL 5 Phase 7 success criteria:
-   - `SELECT COUNT(*) FROM djs;` — expected DJ count, no duplicates
-   - `SELECT name, pin_hash FROM djs;` — all have bcrypt hashes ($2b$ prefix)
-   - `SELECT name, recurring_availability FROM djs WHERE name = 'Mostyx';` — day-of-week keys present
-   - `SELECT name, fixed_schedules FROM djs WHERE name = 'Davoted';` — arkbar and loveBeach keys present
-   - Test at least 2 DJ logins with existing PINs via the app
-4. Only after ALL pass: paste `scripts/drop-legacy-tables.sql` into Supabase SQL Editor and execute
-5. Verify confirmation query returns 0 rows
+None - all operator steps completed. DB-04 is done.
 
 ## Next Phase Readiness
 
-- Drop script ready and committed
-- Phase 8 (server code migration) can begin once human verifies migration results and drops legacy tables
-- Blocker from STATE.md (en-dash/hyphen duplicates) addressed by migrate-djs-data.js from Plan 01
+- Phase 7 is fully complete: djs table created, all DJ data migrated, legacy tables dropped, all 5 success criteria verified in live Supabase
+- Phase 8 (Backend Server Cutover) can begin: switch server.js and lib/business-logic.js to read from djs table, persist lockout to DB, remove FIXED_AVAILABILITY/FIXED_SCHEDULES constants
+- Key blockers for Phase 8:
+  - All three lockout functions must convert to async DB in a single commit (split-brain risk)
+  - FIXED_SCHEDULES/FIXED_AVAILABILITY constants must stay until ALL call sites confirmed migrated
 
 ---
 *Phase: 07-database-schema-migration*
@@ -112,3 +109,4 @@ None.
 - scripts/drop-legacy-tables.sql: FOUND
 - .planning/phases/07-database-schema-migration/07-02-SUMMARY.md: FOUND
 - Commit f726c22: FOUND
+- Commit c4b0af0: FOUND
