@@ -1140,35 +1140,10 @@ app.get('/api/signoffs/:month', async (req, res) => {
 });
 
 /* -- POST /api/djs/update ------------------------------------------------- */
-app.post('/api/djs/update', async (req, res) => {
-  try {
-    const { oldName, newName, rate, password } = req.body;
-    const isAdmin = password ? await bcrypt.compare(password, process.env.ADMIN_PASSWORD).catch(() => false) : false;
-    const isManager = password ? await bcrypt.compare(password, process.env.MANAGER_PASSWORD).catch(() => false) : false;
-    if (!isAdmin && !isManager) {
-      return res.json({ success: false, error: 'Unauthorized' });
-    }
-    if (!oldName || !newName || rate === undefined) return res.json({ success: false, error: 'Missing fields' });
-    let updateError;
-    if (oldName.trim().toLowerCase() !== newName.trim().toLowerCase()) {
-      const { error } = await supabase
-        .from('djs')
-        .update({ name: newName.trim(), rate })
-        .ilike('name', oldName.trim());
-      updateError = error;
-    } else {
-      const { error } = await supabase
-        .from('djs')
-        .update({ rate })
-        .ilike('name', oldName.trim());
-      updateError = error;
-    }
-    if (updateError) throw new Error(updateError.message);
-    invalidateCaches('djs');
-    res.json({ success: true });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
+/* DISABLED (Phase 9, ADMIN-08): Rate editing consolidated into Manage DJs tab.
+   Use PATCH /api/admin/djs/:id instead. */
+app.post('/api/djs/update', (req, res) => {
+  res.status(410).json({ success: false, error: 'Rate editing moved to Manage DJs tab. Use PATCH /api/admin/djs/:id.' });
 });
 
 /* -- GET /api/finalized --------------------------------------------------- */
