@@ -40,8 +40,11 @@
   3. Availability reads for each DJ return the same results as before migration
   4. `djs.recurring_availability` JSONB contains the same data as the former FIXED_AVAILABILITY constant
   5. `djs.fixed_schedules` JSONB contains the same data as the former FIXED_SCHEDULES constant
-  6. Old tables (dj_rates, dj_pins) are dropped only after criteria 1–5 are manually verified — this is a separate, manually-triggered step, not part of the migration script
-**Plans**: TBD
+  6. Old tables (dj_rates, dj_pins) are dropped only after criteria 1-5 are manually verified — this is a separate, manually-triggered step, not part of the migration script
+**Plans:** 2 plans
+Plans:
+- [ ] 07-01-PLAN.md — Create djs table schema SQL and data migration script
+- [ ] 07-02-PLAN.md — Drop legacy tables script and human verification checkpoint
 
 ### Phase 8: Backend Server Cutover
 **Goal**: All server routes read DJ data exclusively from the `djs` table — no hardcoded DJ arrays remain in server.js or business-logic.js, account lockout survives server restarts, all Supabase calls have error handling
@@ -88,7 +91,7 @@
 | 4. Stability | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 5. Cleanup | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 6. Tech Debt | v1.0 | 1/1 | Complete | 2026-03-19 |
-| 7. Database Schema & Migration | v2.0 | 0/TBD | Not started | - |
+| 7. Database Schema & Migration | v2.0 | 0/2 | Planned | - |
 | 8. Backend Server Cutover | v2.0 | 0/TBD | Not started | - |
 | 9. Admin DJ Management API | v2.0 | 0/TBD | Not started | - |
 | 10. Manage DJs Frontend | v2.0 | 0/TBD | Not started | - |

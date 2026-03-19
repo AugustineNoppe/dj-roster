@@ -20,7 +20,20 @@
       "Bash(node -e \"\nprocess.env.SUPABASE_URL = 'https://fake.supabase.co';\nprocess.env.SUPABASE_SERVICE_KEY = 'fake-key';\nprocess.env.ADMIN_PASSWORD = 'test';\nprocess.env.PORT = '19999';\nrequire\\('./server.js'\\);\nsetTimeout\\(\\(\\) => { console.log\\('Startup OK'\\); process.exit\\(0\\); }, 2000\\);\n\" 2>&1)",
       "Bash(grep -h \"fetch.*'/api\" /c/Users/gusno/dj-roster/public/*.html | grep -oE \"/api/[a-zA-Z0-9/_-]*\" | sort -u)",
       "Read(//api/**)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(git commit:*)",
+      "Bash(git fetch:*)",
+      "Bash(node -c server.js)",
+      "Bash(fly deploy:*)",
+      "Skill(gsd:new-milestone)",
+      "Skill(gsd:map-codebase)",
+      "Bash(wc -l .planning/codebase/*.md)",
+      "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" commit \"docs: map existing codebase\" --files .planning/codebase/*.md)",
+      "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" config-set workflow.research false)",
+      "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" commit \"docs: define milestone v1.0 requirements\" --files .planning/REQUIREMENTS.md)",
+      "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" state record-session --stopped-at \"Phase 1 context gathered\" --resume-file \".planning/phases/01-auto-suggest/01-CONTEXT.md\")",
+      "Bash(cd C:/Users/gusno/dj-roster && node scripts/check-availability.js)",
+      "Bash(cd C:/Users/gusno/dj-roster && node scripts/check-availability.js 2>&1 | head -30)"
     ]
   }
 }
