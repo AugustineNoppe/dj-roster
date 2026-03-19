@@ -29,17 +29,34 @@ Reliable DJ scheduling across 3 venues — admins can build rosters from DJ avai
 
 ### Active
 
+- [ ] Single `djs` table consolidating dj_rates + dj_pins (name, PIN hash, rate, type, active status, venues, recurring availability defaults, fixed schedule slots)
+- [ ] Manage DJs admin tab — add DJ, edit rate, edit recurring availability, reset PIN, deactivate/reactivate
+- [ ] Remove all hardcoded DJ arrays from server.js and roster.html — dynamic from Supabase
+- [ ] Recurring availability (FIXED_AVAILABILITY) moved to Supabase, editable per DJ via admin UI
+- [ ] Fixed schedules (FIXED_SCHEDULES) moved to Supabase, editable per DJ via admin UI
+- [ ] Rate editing removed from DJ Hours tab, consolidated into Manage DJs tab
+- [ ] Account lockout moved from in-memory Map to Supabase — persists across restarts, clearable from admin UI
 - [ ] Webhook signature verification for inbound hooks (SEC-04)
 - [ ] Try-catch all Supabase calls with graceful error handling (STAB-04)
-- [ ] Admin "Manage DJs" page — add/edit/deactivate DJs (ADMIN-01)
 
 ### Out of Scope
 
-- Database migration — Supabase is already live
 - Mobile native app — web-only, responsive is sufficient
 - OAuth/SSO integration — PIN/password auth sufficient for venue
 - CI/CD pipeline — out of scope for now
 - UI polish / mobile responsiveness — not prioritized
+
+## Current Milestone: v2.0 DJ Management & Supabase Consolidation
+
+**Goal:** Consolidate all DJ data into a single Supabase table, build an admin management UI, and eliminate hardcoded DJ arrays — making DJ configuration fully dynamic and database-driven.
+
+**Target features:**
+- Single `djs` table replacing dj_rates + dj_pins
+- Manage DJs admin tab (add/edit/deactivate, rates, recurring availability, fixed schedules, PIN reset)
+- Remove all hardcoded DJ arrays — dynamic from Supabase
+- Recurring availability defaults and fixed schedules in Supabase
+- Account lockout persisted to Supabase
+- Webhook signature verification and Supabase error handling (secondary)
 
 ## Context
 
@@ -52,10 +69,12 @@ Shipped v1.0 Production Readiness (2026-03-19).
 - PINs and passwords stored as bcrypt hashes
 - helmet + express-rate-limit active
 - Known: existing duplicate DB rows (en-dash + hyphen variants) not cleaned up — may need one-time migration
+- v2.0: dj_rates and dj_pins will be replaced by consolidated `djs` table — clean cutover, no dual-write
+- Deactivated DJs: hidden from all UI/auto-suggest/login, historical data preserved, reactivatable
 
 ## Constraints
 
-- **Database**: Supabase is live — no changes to database structure
+- **Database**: Supabase — new `djs` table replaces dj_rates + dj_pins (clean cutover with migration)
 - **Deployment**: App runs as `node server.js` on port 8080
 - **Users**: DJs (mobile-first), admins/managers (desktop or mobile) — Thailand timezone
 
@@ -74,4 +93,4 @@ Shipped v1.0 Production Readiness (2026-03-19).
 | DJ change-pin route intentionally removed | PINs are admin-allocated only | ✓ Good — simpler security model |
 
 ---
-*Last updated: 2026-03-19 after v1.0 milestone*
+*Last updated: 2026-03-19 after v2.0 milestone start*
