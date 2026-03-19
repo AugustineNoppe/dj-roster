@@ -71,7 +71,10 @@ Plans:
   3. Admin can reset a DJ's PIN via API by supplying the new PIN; the old PIN stops working and the new one works immediately
   4. Admin can clear a locked-out DJ's lockout via API; the DJ can log in again immediately
   5. Rate editing via the DJ Hours tab endpoint returns an error or is removed; rate changes only succeed through the Manage DJs API
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 09-01-PLAN.md — Create admin DJ handler factory module (lib/admin-dj.js) with unit tests
+- [ ] 09-02-PLAN.md — Wire handlers into server.js routes, disable legacy /api/djs/update
 
 ### Phase 10: Manage DJs Frontend
 **Goal**: The Manage DJs tab in roster.html is fully functional — admins can view all DJs, add/edit/deactivate/reactivate, edit recurring availability and fixed schedules, reset PINs, and clear lockouts, all without touching code or the database directly
@@ -95,6 +98,6 @@ Plans:
 | 5. Cleanup | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 6. Tech Debt | v1.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Database Schema & Migration | v2.0 | 2/2 | Complete | 2026-03-19 |
-| 8. Backend Server Cutover | v2.0 | Complete    | 2026-03-19 | 2026-03-19 |
-| 9. Admin DJ Management API | v2.0 | 0/TBD | Not started | - |
+| 8. Backend Server Cutover | v2.0 | 2/2 | Complete | 2026-03-19 |
+| 9. Admin DJ Management API | v2.0 | 0/2 | Not started | - |
 | 10. Manage DJs Frontend | v2.0 | 0/TBD | Not started | - |
