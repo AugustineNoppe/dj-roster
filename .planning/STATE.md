@@ -5,9 +5,9 @@ milestone_name: DJ Management & Supabase Consolidation
 status: active
 stopped_at: null
 last_updated: "2026-03-19"
-last_activity: 2026-03-19 — Milestone v2.0 started
+last_activity: 2026-03-19 — Roadmap created; phases 7-10 defined
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,25 +20,40 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-19)
 
-**Core value:** Reliable DJ scheduling across 3 venues
-**Current focus:** v2.0 DJ Management & Supabase Consolidation
+**Core value:** Reliable DJ scheduling across 3 venues — admins can build rosters from DJ availability, managers can sign off attendance, and DJs can view/manage their schedules.
+**Current focus:** Phase 7 — Database Schema & Migration
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-19 — Milestone v2.0 started
+Phase: 7 of 10 (Database Schema & Migration)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-03-19 — Roadmap created; phases 7-10 defined
+
+Progress: [░░░░░░░░░░] 0% (v2.0 not started)
+
+## Accumulated Context
+
+### Decisions
+
+- locked_until lives directly on the djs table (no separate lockout table)
+- PIN reset: admin inputs the new PIN, server hashes it (no auto-generate)
+- HIP_ROTATION, LOVE_DJS, RESIDENTS_80HR frontend constants are OUT OF SCOPE for v2.0
+- DIAG_FIXED_TEMPLATE stays in code for v2.0 (defer to v3+)
+- Webhook signature verification (SEC-04) deferred to v3
+- Clean cutover: migrate fully into djs, swap server code, drop old tables — no dual-write
+- v1.0 shipped 2026-03-19: 6 phases, 15/15 requirements, 49 tests
+- DJ change-pin route intentionally removed — PINs are admin-allocated only
+- Deactivated DJs: hidden from UI/auto-suggest/login, historical data preserved
+
+### Blockers/Concerns
+
+- Phase 7: En-dash/hyphen duplicate names in dj_rates must be audited before migration
+- Phase 8: All three lockout functions must convert to async DB in a single commit (split-brain risk)
+- Phase 8: FIXED_SCHEDULES/FIXED_AVAILABILITY constants must stay until ALL call sites confirmed migrated
 
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Milestone v2.0 initialization
+Stopped at: Roadmap created — phases 7-10 written to ROADMAP.md
 Resume file: None
-
-## Accumulated Context
-
-- v1.0 shipped 2026-03-19: 6 phases, 15/15 requirements, 49 tests
-- Known duplicate DB rows (en-dash + hyphen variants) — address during djs table migration
-- DJ change-pin route intentionally removed — PINs are admin-allocated only
-- Deactivated DJs: hidden from UI/auto-suggest/login, historical data preserved
