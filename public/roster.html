@@ -809,6 +809,7 @@ function switchVenue(venue) {
 // === DATA LOADING ===
 async function loadAll() {
   const manageEl = $('manageContent'); if (manageEl) manageEl.style.display = 'none';
+  $('mainContent').style.display = '';
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading roster...</div>';
   if (!fixedSchedules) {
     try {
@@ -1476,6 +1477,7 @@ function printRoster() {
 // === HOURS TAB ===
 async function loadHours() {
   const manageEl = $('manageContent'); if (manageEl) manageEl.style.display = 'none';
+  $('mainContent').style.display = '';
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading hours...</div>';
   const month = getMonthString();
   try {
@@ -1991,6 +1993,198 @@ function printDJDetail() {
   </head><body>${content.innerHTML}</body></html>`);
   w.document.close();
   setTimeout(() => w.print(), 300);
+}
+
+// === MANAGE DJs ===
+let manageDJs = [];
+
+async function loadManageDJs() {
+  if (!adminPassword) { showToast('Admin login required', 'error'); return; }
+  const manageEl = $('manageContent');
+  manageEl.style.display = 'block';
+  $('mainContent').style.display = 'none';
+  manageEl.innerHTML = '<div class="loading"><div class="spinner"></div>Loading DJs...</div>';
+  try {
+    const res = await fetch('/api/admin/djs', { headers: { 'x-admin-password': adminPassword } });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error loading DJs', 'error'); return; }
+    manageDJs = data.djs || [];
+    renderManageDJs(manageDJs);
+  } catch(e) {
+    manageEl.innerHTML = `<div class="loading">Error: ${e.message}</div>`;
+  }
+}
+
+function isLocked(dj) {
+  return dj.locked_until && new Date(dj.locked_until) > new Date();
+}
+
+function renderManageDJs(djs) {
+  const manageEl = $('manageContent');
+  const rows = djs.map(dj => {
+    const typeCap = dj.type ? dj.type.charAt(0).toUpperCase() + dj.type.slice(1) : '';
+    const statusBadge = dj.active
+      ? '<span class="badge-active">Active</span>'
+      : '<span class="badge-inactive">Inactive</span>';
+    const lockoutBadge = isLocked(dj)
+      ? `<span class="badge-locked">Locked (${dj.failed_attempts || 0} attempts)</span>`
+      : '';
+    const clearLockoutBtn = isLocked(dj)
+      ? `<button class="manage-btn danger" onclick="clearDJLockoutUI(${dj.id}, '${dj.name.replace(/'/g, "\\'")}')">Clear Lockout</button>`
+      : '';
+    const djJson = JSON.stringify({ id: dj.id, name: dj.name, rate: dj.rate, type: dj.type, active: dj.active }).replace(/'/g, '&#39;');
+    return `<tr>
+      <td>${dj.name}</td>
+      <td>${dj.rate !== null && dj.rate !== undefined ? Math.round(dj.rate) : ''}</td>
+      <td>${typeCap}</td>
+      <td>${statusBadge}</td>
+      <td>${lockoutBadge}</td>
+      <td>
+        <button class="manage-btn" onclick='openEditDJModal(${djJson})'>Edit</button>
+        <button class="manage-btn" onclick="toggleDJActive(${dj.id}, ${dj.active})">${dj.active ? 'Deactivate' : 'Reactivate'}</button>
+        <button class="manage-btn" onclick="resetDJPin(${dj.id}, '${dj.name.replace(/'/g, "\\'")}')">Reset PIN</button>
+        ${clearLockoutBtn}
+        <button class="manage-btn" disabled onclick="showToast('Coming soon','error')">Availability</button>
+        <button class="manage-btn" disabled onclick="showToast('Coming soon','error')">Fixed Schedule</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  manageEl.innerHTML = `<div class="manage-djs-wrap">
+    <form class="manage-add-form" onsubmit="addNewDJ(event)">
+      <input id="addDJName" type="text" placeholder="DJ Name" required>
+      <input id="addDJRate" type="number" placeholder="Rate" min="0" required>
+      <select id="addDJType">
+        <option value="resident">Resident</option>
+        <option value="guest">Guest</option>
+        <option value="casual">Casual</option>
+      </select>
+      <input id="addDJPin" type="text" placeholder="PIN" required>
+      <button type="submit">Add DJ</button>
+    </form>
+    <table class="manage-djs-table">
+      <thead><tr>
+        <th>Name</th><th>Rate</th><th>Type</th><th>Status</th><th>Lockout</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+async function addNewDJ(e) {
+  e.preventDefault();
+  const name = $('addDJName').value.trim();
+  const rate = parseInt($('addDJRate').value, 10);
+  const type = $('addDJType').value;
+  const pin  = $('addDJPin').value.trim();
+  if (!name || !pin || isNaN(rate)) { showToast('Please fill in all fields', 'error'); return; }
+  try {
+    const res = await fetch('/api/admin/djs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify({ name, rate, type, pin })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error adding DJ', 'error'); return; }
+    showToast(`${name} added`, 'success');
+    $('addDJName').value = '';
+    $('addDJRate').value = '';
+    $('addDJPin').value = '';
+    loadManageDJs();
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
+function openEditDJModal(dj) {
+  const overlay = document.createElement('div');
+  overlay.className = 'manage-edit-overlay';
+  overlay.id = 'editDJOverlay';
+  overlay.innerHTML = `<div class="manage-edit-modal">
+    <h3>Edit DJ: ${dj.name}</h3>
+    <label>Name<input id="editDJName" type="text" value="${dj.name.replace(/"/g, '&quot;')}"></label>
+    <label>Rate<input id="editDJRate" type="number" value="${dj.rate !== null && dj.rate !== undefined ? Math.round(dj.rate) : ''}"></label>
+    <label>Type<select id="editDJType">
+      <option value="resident"${dj.type === 'resident' ? ' selected' : ''}>Resident</option>
+      <option value="guest"${dj.type === 'guest' ? ' selected' : ''}>Guest</option>
+      <option value="casual"${dj.type === 'casual' ? ' selected' : ''}>Casual</option>
+    </select></label>
+    <div class="modal-actions">
+      <button class="manage-btn" onclick="document.getElementById('editDJOverlay').remove()">Cancel</button>
+      <button class="manage-btn" style="background:var(--teal);border-color:var(--teal);color:#fff" onclick="saveEditDJ(${dj.id})">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function saveEditDJ(id) {
+  const name = $('editDJName').value.trim();
+  const rate = parseInt($('editDJRate').value, 10);
+  const type = $('editDJType').value;
+  if (!name || isNaN(rate)) { showToast('Name and rate are required', 'error'); return; }
+  try {
+    const res = await fetch(`/api/admin/djs/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify({ name, rate, type })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error saving DJ', 'error'); return; }
+    showToast('DJ updated', 'success');
+    const overlay = $('editDJOverlay');
+    if (overlay) overlay.remove();
+    loadManageDJs();
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
+async function toggleDJActive(id, currentActive) {
+  try {
+    const res = await fetch(`/api/admin/djs/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify({ active: !currentActive })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error updating DJ', 'error'); return; }
+    showToast(currentActive ? 'DJ deactivated' : 'DJ reactivated', 'success');
+    loadManageDJs();
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
+async function resetDJPin(id, name) {
+  const pin = prompt('Enter new PIN for ' + name + ':');
+  if (pin === null || pin.trim() === '') return;
+  try {
+    const res = await fetch(`/api/admin/djs/${id}/pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify({ pin: pin.trim() })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error resetting PIN', 'error'); return; }
+    showToast(`PIN reset for ${name}`, 'success');
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
+async function clearDJLockoutUI(id, name) {
+  try {
+    const res = await fetch(`/api/admin/djs/${id}/lockout`, {
+      method: 'DELETE',
+      headers: { 'x-admin-password': adminPassword }
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error clearing lockout', 'error'); return; }
+    showToast(`Lockout cleared for ${name}`, 'success');
+    loadManageDJs();
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
 }
 
 // === HOURS PANEL (sidebar) ===
