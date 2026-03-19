@@ -254,12 +254,18 @@ async function fetchAllRows(query) {
 
 async function fetchDJs() {
   if (isFresh(cache.djs)) return cache.djs.data;
-  const { data: ratesData, error: ratesError } = await supabase
-    .from('dj_rates')
-    .select('name, rate');
-  if (ratesError) throw new Error(ratesError.message);
-  const djs = (ratesData || []).map(({ name, rate }) => ({
-    name, rate: parseInt(rate) || 0
+  const { data: djsData, error: djsError } = await supabase
+    .from('djs')
+    .select('name, rate, type, active, venues, recurring_availability, fixed_schedules')
+    .eq('active', true);
+  if (djsError) throw new Error(djsError.message);
+  const djs = (djsData || []).map(d => ({
+    name: d.name,
+    rate: parseInt(d.rate) || 0,
+    type: d.type,
+    venues: d.venues || [],
+    recurringAvailability: d.recurring_availability || {},
+    fixedSchedules: d.fixed_schedules || {},
   }));
   const result = { success: true, djs };
   cache.djs.data = result;
@@ -645,7 +651,7 @@ app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
       availStats[n][r.status === 'unavailable' ? 'unavailable' : 'available']++;
     }
 
-    const { data: djRows } = await supabase.from('dj_rates').select('name');
+    const { data: djRows } = await supabase.from('djs').select('name').eq('active', true);
     const djStatus = (djRows || []).map(d => {
       const n = d.name.trim();
       const stats = availStats[n] || { available: 0, unavailable: 0 };
