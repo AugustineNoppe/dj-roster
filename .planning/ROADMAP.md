@@ -24,7 +24,7 @@
 **Milestone Goal:** Consolidate all DJ data into a single Supabase `djs` table, eliminate all hardcoded DJ arrays, and deliver a fully functional Manage DJs admin tab — making DJ configuration database-driven with no code deploys required for routine changes.
 
 - [x] **Phase 7: Database Schema & Migration** — Create `djs` table and migrate all DJ data from legacy tables (completed 2026-03-19)
-- [ ] **Phase 8: Backend Server Cutover** — Switch all server code to read from `djs`, persist lockout to DB, remove hardcoded constants
+- [ ] **Phase 8: Backend Server Cutover** — Switch all server code to read from `djs`, persist lockout to DB, remove hardcoded constants (1/2 plans complete)
 - [ ] **Phase 9: Admin DJ Management API** — New admin CRUD endpoints for DJ lifecycle management
 - [ ] **Phase 10: Manage DJs Frontend** — Manage DJs tab in roster.html with full editor UI
 
@@ -58,7 +58,7 @@ Plans:
   5. No hardcoded DJ name arrays remain anywhere in server.js or lib/business-logic.js; grep for FIXED_AVAILABILITY, FIXED_SCHEDULES, RESIDENTS returns no hits
 **Plans:** 2 plans
 Plans:
-- [ ] 08-01-PLAN.md — Switch fetchDJs to djs table, convert auth and lockout to DB-backed
+- [x] 08-01-PLAN.md — Switch fetchDJs to djs table, convert auth and lockout to DB-backed (completed 2026-03-19)
 - [ ] 08-02-PLAN.md — Migrate remaining endpoints, remove dead constants, try-catch sweep
 
 ### Phase 9: Admin DJ Management API

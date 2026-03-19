@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DJ Management & Supabase Consolidation
-status: planning
-stopped_at: Completed 07-02-PLAN.md — all Phase 7 success criteria verified by human; legacy tables dropped; DB-04 complete
-last_updated: "2026-03-19T08:40:00.772Z"
-last_activity: 2026-03-19 — Roadmap created; phases 7-10 defined
+status: in_progress
+stopped_at: Completed 08-01-PLAN.md — fetchDJs/requireDJAuth/login migrated to djs table; lockout persisted to DB
+last_updated: "2026-03-19T09:30:00.000Z"
+last_activity: 2026-03-19 — Phase 08 Plan 01 complete; lockout module extracted, auth migrated to djs table
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 0
+  total_plans: 3
+  completed_plans: 3
+  percent: 25
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Reliable DJ scheduling across 3 venues — admins can build rosters from DJ availability, managers can sign off attendance, and DJs can view/manage their schedules.
-**Current focus:** Phase 7 — Database Schema & Migration
+**Current focus:** Phase 8 — Backend Server Cutover
 
 ## Current Position
 
-Phase: 7 of 10 (Database Schema & Migration)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-19 — Roadmap created; phases 7-10 defined
+Phase: 8 of 10 (Backend Server Cutover)
+Plan: 1 of 2 in current phase (08-01 complete, 08-02 next)
+Status: In progress
+Last activity: 2026-03-19 — Completed 08-01: fetchDJs, requireDJAuth, login, lockout migrated to djs table
 
-Progress: [░░░░░░░░░░] 0% (v2.0 not started)
+Progress: [██░░░░░░░░] 25% (v2.0 in progress)
 
 ## Accumulated Context
 
@@ -49,14 +49,19 @@ Progress: [░░░░░░░░░░] 0% (v2.0 not started)
 - [Phase 07-database-schema-migration]: JSONB seeding passes raw JS objects to Supabase client — never JSON.stringify to avoid double-encoding
 - [Phase 07-database-schema-migration]: Drop script is manual-only — operator must verify all 5 Phase 7 criteria before running
 
+### Decisions
+
+- [Phase 08-01]: Lockout extracted to lib/lockout.js with createLockoutFunctions(supabase, constants) factory — enables unit testing with mocked supabase without coupling to server.js globals
+- [Phase 08-01]: clearFailedAttempts uses ilike (name match); checkLockout uses eq(id) — checkLockout receives already-fetched djRow with id, clearFailedAttempts receives only name string
+- [Phase 08-01]: isResident now derived from djRow.type === 'resident' (not RESIDENTS.includes())
+
 ### Blockers/Concerns
 
-- Phase 7: En-dash/hyphen duplicate names in dj_rates must be audited before migration
-- Phase 8: All three lockout functions must convert to async DB in a single commit (split-brain risk)
 - Phase 8: FIXED_SCHEDULES/FIXED_AVAILABILITY constants must stay until ALL call sites confirmed migrated
+- Phase 8: Admin DJ rename/upsert endpoint still writes to dj_rates — Plan 02 must migrate this (logged in deferred-items.md)
 
 ## Session Continuity
 
-Last session: 2026-03-19T08:22:20.528Z
-Stopped at: Completed 07-02-PLAN.md — all Phase 7 success criteria verified by human; legacy tables dropped; DB-04 complete
+Last session: 2026-03-19T09:30:00.000Z
+Stopped at: Completed 08-01-PLAN.md — fetchDJs enriched, auth migrated to djs table, lockout persisted to DB, 63 tests passing
 Resume file: None
