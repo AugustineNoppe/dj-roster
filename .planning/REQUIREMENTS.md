@@ -28,9 +28,9 @@ Requirements for v2.0 DJ Management & Supabase Consolidation. Each maps to roadm
 ### Scheduling Config
 
 - [x] **SCHED-01**: Recurring availability (FIXED_AVAILABILITY) read from djs.recurring_availability instead of hardcoded constant
-- [ ] **SCHED-02**: Admin can edit a DJ's recurring availability via day-of-week checkbox grid in Manage DJs tab
+- [x] **SCHED-02**: Admin can edit a DJ's recurring availability via day-of-week checkbox grid in Manage DJs tab
 - [x] **SCHED-03**: Fixed schedules (FIXED_SCHEDULES) read from djs.fixed_schedules instead of hardcoded constant
-- [ ] **SCHED-04**: Admin can edit a DJ's fixed schedule via venue + day + slot grid in Manage DJs tab
+- [x] **SCHED-04**: Admin can edit a DJ's fixed schedule via venue + day + slot grid in Manage DJs tab
 - [x] **SCHED-05**: All hardcoded DJ arrays removed from server.js and roster.html — DJ list read dynamically from Supabase
 
 ### Stability
@@ -92,9 +92,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMIN-07 | Phase 9 | Complete |
 | ADMIN-08 | Phase 9 | Complete |
 | SCHED-01 | Phase 8 | Complete |
-| SCHED-02 | Phase 10 | Pending |
+| SCHED-02 | Phase 10 | Complete |
 | SCHED-03 | Phase 8 | Complete |
-| SCHED-04 | Phase 10 | Pending |
+| SCHED-04 | Phase 10 | Complete |
 | SCHED-05 | Phase 8 | Complete |
 | STAB-01 | Phase 8 | Complete |
 | STAB-02 | Phase 8 | Complete |

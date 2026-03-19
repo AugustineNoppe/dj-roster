@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DJ Management & Supabase Consolidation
 status: executing
-stopped_at: Completed 09-02-PLAN.md — five admin DJ routes wired into server.js; /api/djs/update deprecated with 410 Gone; 96/96 tests passing
-last_updated: "2026-03-19T14:54:12.205Z"
-last_activity: "2026-03-19 — Completed 09-01: admin DJ handler factory lib/admin-dj.js created with listDJs/addDJ/editDJ/resetPin/clearLockout; 33 new tests; full suite 96/96 passing"
+stopped_at: Completed 10-01-PLAN.md — two JSONB schedule handlers added; two PATCH routes wired; 111/111 tests passing
+last_updated: "2026-03-19T15:42:42.079Z"
+last_activity: "2026-03-19 — Completed 10-01: updateRecurringAvailability and updateFixedSchedules JSONB handlers; 15 new unit tests; two PATCH admin routes wired; 111/111 tests passing"
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
-  percent: 50
+  total_plans: 9
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Reliable DJ scheduling across 3 venues — admins can build rosters from DJ availability, managers can sign off attendance, and DJs can view/manage their schedules.
-**Current focus:** Phase 9 — Admin DJ Management API
+**Current focus:** Phase 10 — Manage DJs Frontend
 
 ## Current Position
 
-Phase: 9 of 10 (Admin DJ Management API) — In Progress
-Plan: 1 of 2 in Phase 9 complete (09-01 done; 09-02 next)
+Phase: 10 of 10 (Manage DJs Frontend) — In Progress
+Plan: 1 of 3 in Phase 10 complete (10-01 done; 10-02 next)
 Status: In progress
-Last activity: 2026-03-19 — Completed 09-01: admin DJ handler factory lib/admin-dj.js created with listDJs/addDJ/editDJ/resetPin/clearLockout; 33 new tests; full suite 96/96 passing
+Last activity: 2026-03-19 — Completed 10-01: updateRecurringAvailability and updateFixedSchedules handlers added; 15 new tests; two PATCH routes wired; 111/111 passing
 
-Progress: [████░░░░░░] 50% (v2.0 in progress)
+Progress: [████████░░] 78% (v2.0 in progress)
 
 ## Accumulated Context
 
@@ -50,6 +50,8 @@ Progress: [████░░░░░░] 50% (v2.0 in progress)
 - [Phase 07-database-schema-migration]: Drop script is manual-only — operator must verify all 5 Phase 7 criteria before running
 - [Phase 09-02]: clearLockout aliased to clearDJLockout on destructure to avoid collision with lockout.js clearFailedAttempts
 - [Phase 09-02]: 410 Gone chosen for deprecated /api/djs/update to signal permanent removal and drive Phase 10 UI cleanup
+- [Phase 10-01]: updateRecurringAvailability and updateFixedSchedules are separate handlers — JSONB fields require dedicated validation distinct from scalar editDJ
+- [Phase 10-01]: Empty object {} accepted for fixed_schedules (clears all fixed schedules)
 
 ### Decisions
 
@@ -66,10 +68,10 @@ Progress: [████░░░░░░] 50% (v2.0 in progress)
 
 ### Blockers/Concerns
 
-None — Phase 9 Plan 01 complete. Next: Phase 9 Plan 02 (wire admin DJ routes into server.js).
+None — Phase 10 Plan 01 complete. Next: Phase 10 Plan 02 (Manage DJs Frontend).
 
 ## Session Continuity
 
-Last session: 2026-03-19T14:51:00.377Z
-Stopped at: Completed 09-02-PLAN.md — five admin DJ routes wired into server.js; /api/djs/update deprecated with 410 Gone; 96/96 tests passing
+Last session: 2026-03-19T15:42:42.076Z
+Stopped at: Completed 10-01-PLAN.md — two JSONB schedule handlers added; two PATCH routes wired; 111/111 tests passing
 Resume file: None
