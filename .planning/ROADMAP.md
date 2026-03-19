@@ -108,7 +108,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — Fix cache init order, remove dead import, deduplicate DIAG_FIXED_TEMPLATE
 
 ## Progress
 
@@ -122,4 +122,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Security | 2/2 | Complete   | 2026-03-18 |
 | 4. Stability | 2/2 | Complete   | 2026-03-18 |
 | 5. Cleanup | 2/2 | Complete   | 2026-03-18 |
-| 6. Tech Debt | 0/TBD | Not started | - |
+| 6. Tech Debt | 0/1 | Not started | - |
