@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DJ Management & Supabase Consolidation
-status: active
-stopped_at: null
-last_updated: "2026-03-19"
+status: planning
+stopped_at: Completed 07-01-PLAN.md — djs schema SQL + data migration script
+last_updated: "2026-03-19T08:06:02.588Z"
 last_activity: 2026-03-19 — Roadmap created; phases 7-10 defined
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -45,6 +45,8 @@ Progress: [░░░░░░░░░░] 0% (v2.0 not started)
 - v1.0 shipped 2026-03-19: 6 phases, 15/15 requirements, 49 tests
 - DJ change-pin route intentionally removed — PINs are admin-allocated only
 - Deactivated DJs: hidden from UI/auto-suggest/login, historical data preserved
+- [Phase 07-database-schema-migration]: Idempotency via row count check: skip if djs already has rows; --force flag deletes and re-inserts
+- [Phase 07-database-schema-migration]: JSONB seeding passes raw JS objects to Supabase client — never JSON.stringify to avoid double-encoding
 
 ### Blockers/Concerns
 
@@ -54,6 +56,6 @@ Progress: [░░░░░░░░░░] 0% (v2.0 not started)
 
 ## Session Continuity
 
-Last session: 2026-03-19
-Stopped at: Roadmap created — phases 7-10 written to ROADMAP.md
+Last session: 2026-03-19T08:06:02.585Z
+Stopped at: Completed 07-01-PLAN.md — djs schema SQL + data migration script
 Resume file: None

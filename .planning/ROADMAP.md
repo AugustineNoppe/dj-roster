@@ -41,7 +41,7 @@
   4. `djs.recurring_availability` JSONB contains the same data as the former FIXED_AVAILABILITY constant
   5. `djs.fixed_schedules` JSONB contains the same data as the former FIXED_SCHEDULES constant
   6. Old tables (dj_rates, dj_pins) are dropped only after criteria 1-5 are manually verified — this is a separate, manually-triggered step, not part of the migration script
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 07-01-PLAN.md — Create djs table schema SQL and data migration script
 - [ ] 07-02-PLAN.md — Drop legacy tables script and human verification checkpoint
@@ -91,7 +91,7 @@ Plans:
 | 4. Stability | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 5. Cleanup | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 6. Tech Debt | v1.0 | 1/1 | Complete | 2026-03-19 |
-| 7. Database Schema & Migration | v2.0 | 0/2 | Planned | - |
+| 7. Database Schema & Migration | 1/2 | In Progress|  | - |
 | 8. Backend Server Cutover | v2.0 | 0/TBD | Not started | - |
 | 9. Admin DJ Management API | v2.0 | 0/TBD | Not started | - |
 | 10. Manage DJs Frontend | v2.0 | 0/TBD | Not started | - |
