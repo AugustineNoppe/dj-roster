@@ -72,37 +72,16 @@ const loginLimiter = rateLimit({
 });
 
 /* == ACCOUNT LOCKOUT ======================================================= */
-// In-memory lockout tracker for DJ login attempts.
-// After MAX_LOGIN_ATTEMPTS consecutive failures, the account is locked for LOCKOUT_DURATION_MS.
-const _loginAttempts = new Map(); // key: dj_name_lowercase, value: { count, lockedUntil }
+// Persistent DB-backed lockout: reads/writes djs.failed_attempts and djs.locked_until.
+// Survives server restarts. All three functions are async.
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
-function checkLockout(name) {
-  const key = name.trim().toLowerCase();
-  const entry = _loginAttempts.get(key);
-  if (!entry) return false;
-  if (entry.lockedUntil && Date.now() < entry.lockedUntil) return true;
-  if (entry.lockedUntil && Date.now() >= entry.lockedUntil) {
-    _loginAttempts.delete(key);
-    return false;
-  }
-  return false;
-}
-
-function recordFailedAttempt(name) {
-  const key = name.trim().toLowerCase();
-  const entry = _loginAttempts.get(key) || { count: 0, lockedUntil: null };
-  entry.count += 1;
-  if (entry.count >= MAX_LOGIN_ATTEMPTS) {
-    entry.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-  }
-  _loginAttempts.set(key, entry);
-}
-
-function clearFailedAttempts(name) {
-  _loginAttempts.delete(name.trim().toLowerCase());
-}
+const { createLockoutFunctions } = require('./lib/lockout');
+const { checkLockout, recordFailedAttempt, clearFailedAttempts } = createLockoutFunctions(
+  supabase,
+  { MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MS }
+);
 
 app.use(express.json());
 
@@ -360,23 +339,25 @@ async function requireDJAuth(req, res, next) {
     console.error('[requireDJAuth] missing name or pin — name:', name, 'pin present:', !!pin, 'path:', req.path);
     return res.status(401).json({ success: false, error: 'Unauthorised' });
   }
-  if (checkLockout(name)) {
-    return res.status(429).json({ success: false, error: 'Account temporarily locked. Please try again later.' });
-  }
   try {
-    const { data: pinData } = await supabase
-      .from('dj_pins')
-      .select('pin')
+    const { data: djRow } = await supabase
+      .from('djs')
+      .select('name, pin_hash, failed_attempts, locked_until, active')
       .ilike('name', name.trim())
-      .single();
-    const correctPin = pinData ? pinData.pin : null;
-    const pinMatch = correctPin ? await bcrypt.compare(String(pin).trim(), correctPin) : false;
+      .maybeSingle();
+    if (!djRow || !djRow.active) {
+      return res.status(401).json({ success: false, error: 'Unauthorised' });
+    }
+    if (await checkLockout(djRow)) {
+      return res.status(429).json({ success: false, error: 'Account temporarily locked. Please try again later.' });
+    }
+    const pinMatch = await bcrypt.compare(String(pin).trim(), djRow.pin_hash);
     if (!pinMatch) {
-      recordFailedAttempt(name);
+      await recordFailedAttempt(name);
       console.error('[requireDJAuth] pin mismatch for', name);
       return res.status(401).json({ success: false, error: 'Unauthorised' });
     }
-    clearFailedAttempts(name);
+    await clearFailedAttempts(name);
     next();
   } catch (err) {
     console.error('[requireDJAuth] error:', err.message);
@@ -775,24 +756,27 @@ app.post('/api/dj/login', loginLimiter, async (req, res) => {
   try {
     const { name, pin } = req.body;
     if (!name || !pin) return res.json({ success: false, error: 'Name and PIN required' });
-    if (checkLockout(name)) {
-      return res.status(429).json({ success: false, error: 'Account temporarily locked. Please try again later.' });
-    }
-    const { data: pinData } = await supabase
-      .from('dj_pins')
-      .select('name, pin')
+    const { data: djRow } = await supabase
+      .from('djs')
+      .select('name, pin_hash, type, failed_attempts, locked_until, active')
       .ilike('name', name.trim())
-      .single();
-    const pinMatch = pinData ? await bcrypt.compare(String(pin).trim(), pinData.pin) : false;
-    if (!pinMatch) {
-      recordFailedAttempt(name);
+      .maybeSingle();
+    if (!djRow || !djRow.active) {
       return res.json({ success: false, error: 'Invalid name or PIN' });
     }
-    clearFailedAttempts(name);
-    const djName = pinData.name.trim();
+    if (await checkLockout(djRow)) {
+      return res.status(429).json({ success: false, error: 'Account temporarily locked. Please try again later.' });
+    }
+    const pinMatch = await bcrypt.compare(String(pin).trim(), djRow.pin_hash);
+    if (!pinMatch) {
+      await recordFailedAttempt(name);
+      return res.json({ success: false, error: 'Invalid name or PIN' });
+    }
+    await clearFailedAttempts(name);
+    const djName = djRow.name.trim();
     const djData = await fetchDJs();
     const djInfo = (djData.djs || []).find(d => d.name.toLowerCase() === djName.toLowerCase());
-    res.json({ success: true, name: djName, isResident: RESIDENTS.includes(djName), rate: djInfo ? djInfo.rate : 0 });
+    res.json({ success: true, name: djName, isResident: djRow.type === 'resident', rate: djInfo ? djInfo.rate : 0 });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -1224,10 +1208,14 @@ app.post('/api/roster/finalize', async (req, res) => {
 
 /* == ADMIN — CLEAR DJ LOCKOUT ============================================= */
 app.post('/api/admin/clear-lockout', requireAdmin, async (req, res) => {
-  const { name } = req.body;
-  if (!name) return res.status(400).json({ success: false, error: 'Missing DJ name' });
-  clearFailedAttempts(name);
-  res.json({ success: true, cleared: name.trim().toLowerCase() });
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ success: false, error: 'Missing DJ name' });
+    await clearFailedAttempts(name);
+    res.json({ success: true, cleared: name.trim().toLowerCase() });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
 /* == ADMIN — RESET MONTH (DEV ONLY) ======================================= */
