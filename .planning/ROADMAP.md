@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Production Readiness** — Phases 1-6 (shipped 2026-03-19)
-- 📋 **v2.0 DJ Management & Supabase Consolidation** — Phases 7-10 (planned)
+- 📋 **v2.0 DJ Management & Supabase Consolidation** — Phases 7-11 (planned)
 
 ## Phases
 
@@ -27,6 +27,7 @@
 - [x] **Phase 8: Backend Server Cutover** — Switch all server code to read from `djs`, persist lockout to DB, remove hardcoded constants (completed 2026-03-19)
 - [x] **Phase 9: Admin DJ Management API** — New admin CRUD endpoints for DJ lifecycle management (completed 2026-03-19)
 - [x] **Phase 10: Manage DJs Frontend** — Manage DJs tab in roster.html with full editor UI (completed 2026-03-20)
+- [ ] **Phase 11: Server Hardening & Cleanup** — Fix integration bugs and clean up tech debt from audit
 
 ## Phase Details
 
@@ -91,6 +92,21 @@ Plans:
 - [ ] 10-02-PLAN.md — Manage DJs tab with DJ table, Add/Edit/Deactivate/PIN/Lockout UI
 - [ ] 10-03-PLAN.md — Recurring availability grid + fixed schedule grid modals + human verification
 
+### Phase 11: Server Hardening & Cleanup
+**Goal**: Fix two integration bugs found by milestone audit (missing `id` in auth selects, CORS Allow-Methods) and clean up stale comments — ensuring expired lockouts auto-clear correctly and the server is ready for any future cross-origin deployment
+**Depends on**: Phase 10
+**Requirements**: None (all 20 requirements already satisfied — this phase fixes integration bugs and tech debt)
+**Gap Closure**: Closes INT-01, INT-02 from v2.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. `requireDJAuth` and `/api/dj/login` select strings include `id` — `checkLockout(djRow)` can auto-clear expired locks via `.eq('id', djRow.id)`
+  2. `Access-Control-Allow-Methods` header includes `GET, POST, PATCH, DELETE, OPTIONS`
+  3. No stale comment references to FIXED_SCHEDULES or FIXED_AVAILABILITY remain in server.js or business-logic.js
+  4. `server.js:1243` dj_availability delete checks its error return
+  5. All 111+ tests still pass
+**Plans:** 0/1 plans
+Plans:
+- [ ] 11-01-PLAN.md — Fix auth select id, CORS methods, stale comments, unchecked error
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -105,3 +121,4 @@ Plans:
 | 8. Backend Server Cutover | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 9. Admin DJ Management API | 2/2 | Complete    | 2026-03-19 | - |
 | 10. Manage DJs Frontend | 3/3 | Complete    | 2026-03-20 | - |
+| 11. Server Hardening & Cleanup | v2.0 | 0/1 | Not started | - |
