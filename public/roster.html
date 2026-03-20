@@ -143,8 +143,8 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .manage-add-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
 .manage-add-form input,.manage-add-form select{padding:6px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text-primary);border-radius:4px;font-size:13px}
 .manage-add-form button{padding:6px 14px;background:var(--teal);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px}
-.manage-edit-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000}
-.manage-edit-modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;min-width:320px;max-width:90vw}
+.manage-edit-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:1000}
+.manage-edit-modal{background:#1a1f2e;border:1px solid var(--border);border-radius:12px;padding:24px;min-width:320px;max-width:90vw}
 .manage-edit-modal h3{margin:0 0 16px;color:var(--text-primary)}
 .manage-edit-modal label{display:block;margin-bottom:12px;color:var(--text-secondary);font-size:13px}
 .manage-edit-modal input,.manage-edit-modal select{width:100%;padding:8px;border:1px solid var(--border);background:var(--bg);color:var(--text-primary);border-radius:4px;margin-top:4px;box-sizing:border-box}
@@ -318,13 +318,13 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 
 /* === FINALIZE MODAL === */
 .fin-modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:400;
   display:flex;align-items:center;justify-content:center;padding:16px;
   animation:fadeIn .2s ease;
 }
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .fin-modal{
-  background:rgba(15,22,50,0.97);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  background:#1a1f2e;
   border:1px solid rgba(255,255,255,0.12);border-radius:20px;
   width:min(700px,100%);max-height:90vh;overflow-y:auto;
   box-shadow:0 40px 100px rgba(0,0,0,0.6);animation:slideUp .3s ease;
@@ -432,8 +432,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .dj-detail-table{width:100%;border-collapse:collapse;min-width:500px}
 .dj-slot-cell{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
 .dj-slot-tag{background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:10px;white-space:nowrap}
-.dj-edit-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.3);font-size:16px;min-width:44px;min-height:44px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;transition:color .15s;flex-shrink:0;padding:0;vertical-align:middle}
-.dj-edit-btn:hover{color:#fff;background:rgba(255,255,255,0.1)}
 @media(max-width:600px){
   .dj-detail-stat-grid{grid-template-columns:1fr 1fr;padding:10px 16px;gap:8px}
 }
@@ -578,9 +576,8 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
       <button class="btn-sm" onclick="resetMonthData()" style="background:rgba(255,0,0,0.15);border:1px solid rgba(255,0,0,0.5);color:#ff5252;margin-left:12px;">&#x26A0; RESET MONTH (DEV ONLY)</button>
     </div>
   </footer>
+  <div id="manageContent" style="display:none"></div>
 </div>
-
-<div id="manageContent" style="display:none"></div>
 
 <!-- Toast notification -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1552,12 +1549,11 @@ function renderHours(djs, scheduledHours, signedOffHours) {
         ? `<span class="badge badge-ok">${sched}/${djTargetLabel}h \u2713</span>`
         : `<span class="badge badge-low">${sched}/${djTargetLabel}h</span><span class="badge-needed">${djTarget - sched}h needed</span>`;
     }
-    const editBtn = `<button class="dj-edit-btn" title="Edit name/rate" onclick="event.stopPropagation();editDJ('${dj.name.replace(/'/g,"\\'")}',${dj.rate})">&#9998;</button>`;
     return `<tr>
       <td><div class="dj-name-cell" style="cursor:pointer" onclick="showDJDetail('${dj.name.replace(/'/g,"\\'")}')">
         <div class="dj-dot" style="background:${getDJColor(dj.name)||'#aaa'}"></div>
         <div>
-          <div class="dj-name" style="text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;display:flex;align-items:center;gap:4px">${dj.name}${editBtn}</div>
+          <div class="dj-name" style="text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">${dj.name}</div>
           ${isResident ? '<div style="font-size:9px;color:var(--teal);font-weight:800;text-transform:uppercase;letter-spacing:.06em">Resident</div>' : ''}
         </div>
       </div></td>
@@ -1741,49 +1737,6 @@ async function showDJDetail(djName) {
 function closeDJDetail() { const m = $('djDetailModal'); if (m) m.remove(); }
 
 // === EDIT DJ RATE / NAME ===
-let _editingDJOrig = '';
-function editDJ(djName, currentRate) {
-  _editingDJOrig = djName;
-  const existing = $('djEditModal');
-  if (existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.id = 'djEditModal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);animation:fadeUp .2s ease';
-  modal.innerHTML = `<div style="background:rgba(15,20,45,0.98);border:1px solid rgba(93,184,192,0.3);border-radius:18px;padding:28px 26px;width:min(360px,calc(100vw - 32px));box-shadow:0 32px 80px rgba(0,0,0,0.6)">
-    <div style="font-size:17px;font-weight:900;margin-bottom:18px">Edit DJ — ${djName}</div>
-    <label style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:6px">Display Name</label>
-    <input id="djEditName" type="text" value="${djName.replace(/"/g,'&quot;')}" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.07);color:#fff;font-family:inherit;font-size:14px;font-weight:600;outline:none;margin-bottom:14px;box-sizing:border-box">
-    <label style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:6px">Hourly Rate (&#3647;)</label>
-    <input id="djEditRate" type="number" min="0" value="${currentRate}" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.07);color:#fff;font-family:inherit;font-size:14px;font-weight:600;outline:none;margin-bottom:22px;box-sizing:border-box">
-    <div style="display:flex;gap:10px">
-      <button onclick="closeDJEdit()" style="flex:1;padding:12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:var(--text-secondary)">Cancel</button>
-      <button onclick="saveDJEdit()" style="flex:1;padding:12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;background:var(--teal);border:none;color:#0b1020">Save</button>
-    </div>
-    <div id="djEditErr" style="font-size:11px;color:var(--orange);margin-top:10px;display:none"></div>
-  </div>`;
-  modal.addEventListener('click', e => { if (e.target === modal) closeDJEdit(); });
-  document.body.appendChild(modal);
-  setTimeout(() => { const n = $('djEditName'); if (n) { n.focus(); n.select(); } }, 50);
-}
-function closeDJEdit() { const m = $('djEditModal'); if (m) m.remove(); }
-async function saveDJEdit() {
-  const newName = ($('djEditName').value || '').trim();
-  const rate = parseInt($('djEditRate').value);
-  const errEl = $('djEditErr');
-  if (!newName) { errEl.textContent = 'Name cannot be empty.'; errEl.style.display = 'block'; return; }
-  if (isNaN(rate) || rate < 0) { errEl.textContent = 'Enter a valid rate.'; errEl.style.display = 'block'; return; }
-  errEl.style.display = 'none';
-  try {
-    const data = await fetch('/api/djs/update', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldName: _editingDJOrig, newName, rate, password: adminPassword }),
-    }).then(r => r.json());
-    if (data.success) { closeDJEdit(); showToast(`${newName} updated`, 'success'); loadHours(); }
-    else { errEl.textContent = data.error || 'Save failed.'; errEl.style.display = 'block'; }
-  } catch(e) {
-    errEl.textContent = 'Connection error.'; errEl.style.display = 'block';
-  }
-}
 
 // === FINALIZE MONTH ===
 async function checkFinalized() {
@@ -2038,7 +1991,7 @@ function renderManageDJs(djs) {
       ? `<span class="badge-locked">Locked (${dj.failed_attempts || 0} attempts)</span>`
       : '';
     const clearLockoutBtn = isLocked(dj)
-      ? `<button class="manage-btn danger" onclick="clearDJLockoutUI(${dj.id}, '${dj.name.replace(/'/g, "\\'")}')">Clear Lockout</button>`
+      ? `<button class="manage-btn danger" onclick="clearDJLockoutUI('${dj.id}', '${dj.name.replace(/'/g, "\\'")}')">Clear Lockout</button>`
       : '';
     const djJson = JSON.stringify({ id: dj.id, name: dj.name, rate: dj.rate, type: dj.type, active: dj.active }).replace(/'/g, '&#39;');
     return `<tr>
@@ -2049,8 +2002,8 @@ function renderManageDJs(djs) {
       <td>${lockoutBadge}</td>
       <td>
         <button class="manage-btn" onclick='openEditDJModal(${djJson})'>Edit</button>
-        <button class="manage-btn" onclick="toggleDJActive(${dj.id}, ${dj.active})">${dj.active ? 'Deactivate' : 'Reactivate'}</button>
-        <button class="manage-btn" onclick="resetDJPin(${dj.id}, '${dj.name.replace(/'/g, "\\'")}')">Reset PIN</button>
+        <button class="manage-btn" onclick="toggleDJActive('${dj.id}', ${dj.active})">${dj.active ? 'Deactivate' : 'Reactivate'}</button>
+        <button class="manage-btn" onclick="resetDJPin('${dj.id}', '${dj.name.replace(/'/g, "\\'")}')">Reset PIN</button>
         ${clearLockoutBtn}
         <button class="manage-btn" onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'))">Availability</button>
         <button class="manage-btn" onclick="openFixedScheduleGrid(manageDJs.find(d => d.id === '${dj.id}'))">Fixed Schedule</button>
@@ -2119,7 +2072,7 @@ function openEditDJModal(dj) {
     </select></label>
     <div class="modal-actions">
       <button class="manage-btn" onclick="document.getElementById('editDJOverlay').remove()">Cancel</button>
-      <button class="manage-btn" style="background:var(--teal);border-color:var(--teal);color:#fff" onclick="saveEditDJ(${dj.id})">Save</button>
+      <button class="manage-btn" style="background:var(--teal);border-color:var(--teal);color:#fff" onclick="saveEditDJ('${dj.id}')">Save</button>
     </div>
   </div>`;
   document.body.appendChild(overlay);
@@ -2223,6 +2176,7 @@ function openAvailabilityGrid(dj) {
 
   overlay.innerHTML = `<div class="manage-edit-modal" style="max-width:700px;width:95vw">
     <h3>Recurring Availability: ${dj.name.replace(/</g, '&lt;')}</h3>
+    <div style="margin-bottom:8px"><button class="manage-btn" onclick="toggleAllCheckboxes('avail',${slots.length},7,this)">Select All</button></div>
     <div style="overflow-x:auto">
       <table class="avail-grid">
         <thead><tr>${headerCells}</tr></thead>
@@ -2263,6 +2217,19 @@ async function saveAvailability(djId) {
   }
 }
 
+function toggleAllCheckboxes(prefix, totalSlots, totalDays, btn) {
+  const allChecked = [];
+  for (let d = 0; d < totalDays; d++) {
+    for (let s = 0; s < totalSlots; s++) {
+      const cb = document.getElementById(`${prefix}-${d}-${s}`);
+      if (cb && !cb.disabled) allChecked.push(cb);
+    }
+  }
+  const selectAll = allChecked.some(cb => !cb.checked);
+  allChecked.forEach(cb => { cb.checked = selectAll; });
+  btn.textContent = selectAll ? 'Deselect All' : 'Select All';
+}
+
 // === FIXED SCHEDULE GRID ===
 
 function openFixedScheduleGrid(dj) {
@@ -2297,11 +2264,11 @@ function openFixedScheduleGrid(dj) {
 
   let loveRows = '';
   LOVE_SAT_SLOTS.forEach((slot, si) => {
-    const isSatOnlySlot = !LOVE_WEEKDAY_SLOTS.includes(slot);
     let cells = `<td style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text-secondary);white-space:nowrap">${slot}</td>`;
+    const isSatOnlySlot = !LOVE_WEEKDAY_SLOTS.includes(slot);
     for (let dow = 0; dow < 7; dow++) {
-      const isSat = dow === 6;
-      const isDisabled = isSatOnlySlot && !isSat;
+      const isSatCol = (dow === 6);
+      const isDisabled = isSatOnlySlot && !isSatCol;
       const daySlots = Array.isArray(loveData[String(dow)]) ? loveData[String(dow)] : [];
       const checked = (!isDisabled && daySlots.includes(slot)) ? ' checked' : '';
       const disabledAttr = isDisabled ? ' disabled' : '';
@@ -2313,14 +2280,14 @@ function openFixedScheduleGrid(dj) {
 
   overlay.innerHTML = `<div class="manage-edit-modal" style="max-width:800px;width:95vw">
     <h3>Fixed Schedule: ${dj.name.replace(/</g, '&lt;')}</h3>
-    <div class="avail-section-heading teal">ARKbar Beach Club</div>
+    <div style="display:flex;align-items:center;justify-content:space-between"><div class="avail-section-heading teal" style="margin:0">ARKbar Beach Club</div><button class="manage-btn" onclick="toggleAllCheckboxes('fixed-arkbar',${ARKBAR_SLOTS.length},7,this)">Select All</button></div>
     <div style="overflow-x:auto">
       <table class="avail-grid">
         <thead><tr>${arkHeaderCells}</tr></thead>
         <tbody>${arkRows}</tbody>
       </table>
     </div>
-    <div class="avail-section-heading pink">Love Beach Club</div>
+    <div style="display:flex;align-items:center;justify-content:space-between"><div class="avail-section-heading pink" style="margin:0">Love Beach Club</div><button class="manage-btn" onclick="toggleAllCheckboxes('fixed-love',${LOVE_SAT_SLOTS.length},7,this)">Select All</button></div>
     <div style="overflow-x:auto">
       <table class="avail-grid">
         <thead><tr>${loveHeaderCells}</tr></thead>
