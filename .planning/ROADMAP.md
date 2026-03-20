@@ -103,7 +103,7 @@ Plans:
   3. No stale comment references to FIXED_SCHEDULES or FIXED_AVAILABILITY remain in server.js or business-logic.js
   4. `server.js:1243` dj_availability delete checks its error return
   5. All 111+ tests still pass
-**Plans:** 0/1 plans
+**Plans:** 1/1 plans
 Plans:
 - [ ] 11-01-PLAN.md — Fix auth select id, CORS methods, stale comments, unchecked error
 
