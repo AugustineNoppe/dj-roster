@@ -47,7 +47,7 @@ app.use((req, res, next) => {
   if (origin) {
     if (ALLOWED_ORIGINS.has(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password, x-dj-pin');
       res.setHeader('Vary', 'Origin');
     } else {
@@ -323,7 +323,7 @@ async function requireDJAuth(req, res, next) {
   try {
     const { data: djRow } = await supabase
       .from('djs')
-      .select('name, pin_hash, failed_attempts, locked_until, active')
+      .select('id, name, pin_hash, failed_attempts, locked_until, active')
       .ilike('name', name.trim())
       .maybeSingle();
     if (!djRow || !djRow.active) {
@@ -758,7 +758,7 @@ app.post('/api/dj/login', loginLimiter, async (req, res) => {
     if (!name || !pin) return res.json({ success: false, error: 'Name and PIN required' });
     const { data: djRow } = await supabase
       .from('djs')
-      .select('name, pin_hash, type, failed_attempts, locked_until, active')
+      .select('id, name, pin_hash, type, failed_attempts, locked_until, active')
       .ilike('name', name.trim())
       .maybeSingle();
     if (!djRow || !djRow.active) {
@@ -797,7 +797,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
     const fixedSched = djRow ? (djRow.fixed_schedules || null) : null;
     const fixedAvail = djRow ? (djRow.recurring_availability || null) : null;
     // Build combined per-dow slot Set for calendar default status.
-    // Sources: venue bookings (FIXED_SCHEDULES) + availability defaults (FIXED_AVAILABILITY).
+    // Sources: venue bookings (djs.fixed_schedules) + availability defaults (djs.recurring_availability).
     const FIXED_PORTAL = {};
     if (fixedSched) {
       for (const [dow, slots] of [
@@ -1257,7 +1257,8 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     if (!month || !/^[A-Za-z]+ \d{4}$/.test(month.trim())) {
       return res.status(400).json({ success: false, error: 'Invalid or missing month' });
     }
-    await supabase.from('dj_availability').delete().eq('month', month);
+    const { error: availDelError } = await supabase.from('dj_availability').delete().eq('month', month);
+    if (availDelError) throw new Error(availDelError.message);
     const { error: subDelError } = await supabase.from('dj_submissions').delete().eq('month', month);
     if (subDelError) throw new Error(subDelError.message);
     invalidateCaches('roster', { month });
