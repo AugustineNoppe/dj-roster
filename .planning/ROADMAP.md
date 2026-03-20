@@ -27,7 +27,7 @@
 - [x] **Phase 8: Backend Server Cutover** — Switch all server code to read from `djs`, persist lockout to DB, remove hardcoded constants (completed 2026-03-19)
 - [x] **Phase 9: Admin DJ Management API** — New admin CRUD endpoints for DJ lifecycle management (completed 2026-03-19)
 - [x] **Phase 10: Manage DJs Frontend** — Manage DJs tab in roster.html with full editor UI (completed 2026-03-20)
-- [ ] **Phase 11: Server Hardening & Cleanup** — Fix integration bugs and clean up tech debt from audit
+- [x] **Phase 11: Server Hardening & Cleanup** — Fix integration bugs and clean up tech debt from audit (completed 2026-03-20)
 
 ## Phase Details
 
@@ -103,7 +103,7 @@ Plans:
   3. No stale comment references to FIXED_SCHEDULES or FIXED_AVAILABILITY remain in server.js or business-logic.js
   4. `server.js:1243` dj_availability delete checks its error return
   5. All 111+ tests still pass
-**Plans:** 1/1 plans
+**Plans:** 1/1 plans complete
 Plans:
 - [ ] 11-01-PLAN.md — Fix auth select id, CORS methods, stale comments, unchecked error
 
@@ -121,4 +121,4 @@ Plans:
 | 8. Backend Server Cutover | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 9. Admin DJ Management API | 2/2 | Complete    | 2026-03-19 | - |
 | 10. Manage DJs Frontend | 3/3 | Complete    | 2026-03-20 | - |
-| 11. Server Hardening & Cleanup | v2.0 | 0/1 | Not started | - |
+| 11. Server Hardening & Cleanup | 1/1 | Complete   | 2026-03-20 | - |

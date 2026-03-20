@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DJ Management & Supabase Consolidation
-status: executing
-stopped_at: Completed 10-03-PLAN.md — recurring availability and fixed schedule grid modals, human verification approved
-last_updated: "2026-03-20T07:30:20.177Z"
-last_activity: "2026-03-19 — Completed 10-02: Manage DJs tab with DJ table, add form, edit modal, and full CRUD actions; 111/111 passing"
+status: completed
+stopped_at: Completed 11-01-PLAN.md — server hardening and cleanup, INT-01 and INT-02 closed
+last_updated: "2026-03-20T12:49:06.233Z"
+last_activity: "2026-03-20 — Completed 11-01: add id to auth selects, CORS PATCH/DELETE, error check dj_availability delete, remove stale FIXED_SCHEDULES refs; 111/111 passing"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
-  percent: 89
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 10
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Reliable DJ scheduling across 3 venues — admins can build rosters from DJ availability, managers can sign off attendance, and DJs can view/manage their schedules.
-**Current focus:** Phase 10 — Manage DJs Frontend
+**Current focus:** Phase 11 — Server Hardening and Cleanup (COMPLETE)
 
 ## Current Position
 
-Phase: 10 of 10 (Manage DJs Frontend) — In Progress
-Plan: 2 of 3 in Phase 10 complete (10-01, 10-02 done; 10-03 next)
-Status: In progress
-Last activity: 2026-03-19 — Completed 10-02: Manage DJs tab with DJ table, add form, edit modal, and full CRUD actions; 111/111 passing
+Phase: 11 of 11 (Server Hardening and Cleanup) — Complete
+Plan: 1 of 1 in Phase 11 complete (11-01 done)
+Status: Complete
+Last activity: 2026-03-20 — Completed 11-01: add id to auth selects, CORS PATCH/DELETE, error check dj_availability delete, remove stale FIXED_SCHEDULES refs; 111/111 passing
 
-Progress: [█████████░] 89% (v2.0 in progress)
+Progress: [██████████] 100% (v2.0 complete)
 
 ## Accumulated Context
 
@@ -57,6 +57,7 @@ Progress: [█████████░] 89% (v2.0 in progress)
 - [Phase 10-03]: Love Beach grid uses LOVE_SAT_SLOTS as row superset; Saturday-only slots disabled for non-Saturday columns
 - [Phase 10-03]: saveFixedSchedule guards !cb.disabled to prevent saving Saturday-only slots for weekday columns
 - [Phase 10-manage-djs-frontend]: PIN reset modal shows new PIN once with Copy button after saving — one-time display avoids persisting plain PIN in DOM
+- [Phase 11-01]: Auth select strings must include id field so checkLockout can auto-clear expired locks via .eq('id', djRow.id)
 
 ### Decisions
 
@@ -73,10 +74,10 @@ Progress: [█████████░] 89% (v2.0 in progress)
 
 ### Blockers/Concerns
 
-None — Phase 10 Plan 01 complete. Next: Phase 10 Plan 02 (Manage DJs Frontend).
+None — v2.0 milestone complete.
 
 ## Session Continuity
 
-Last session: 2026-03-20T07:23:11.659Z
-Stopped at: Completed 10-03-PLAN.md — recurring availability and fixed schedule grid modals, human verification approved
+Last session: 2026-03-20T12:51:00Z
+Stopped at: Completed 11-01-PLAN.md — server hardening and cleanup, INT-01 and INT-02 closed
 Resume file: None
