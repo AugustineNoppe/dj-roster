@@ -121,4 +121,4 @@ Plans:
 | 8. Backend Server Cutover | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 9. Admin DJ Management API | 2/2 | Complete    | 2026-03-19 | - |
 | 10. Manage DJs Frontend | 3/3 | Complete    | 2026-03-20 | - |
-| 11. Server Hardening & Cleanup | 1/1 | Complete   | 2026-03-20 | - |
+| 11. Server Hardening & Cleanup | 1/1 | Complete    | 2026-03-20 | - |
