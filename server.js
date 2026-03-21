@@ -799,7 +799,7 @@ app.post('/api/dj/forgot-pin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), 
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     await resend.emails.send({
-      from: process.env.EMAIL_USER,
+      from: 'onboarding@resend.dev',
       to: 'entertainment@ark-bar.com',
       subject: `PIN Reset Request — ${djName}`,
       text: `DJ ${djName} has requested a PIN reset on ${date} at ${time} (Thailand time, UTC+7).\n\nLog in to the admin panel and use the Manage DJs tab to reset their PIN.`
