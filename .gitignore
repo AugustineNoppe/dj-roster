@@ -1,1 +1,5 @@
+node_modules/
 .env
+DJ_PINS.md
+*.log
+.DS_Store
