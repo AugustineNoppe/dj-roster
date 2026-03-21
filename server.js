@@ -786,7 +786,7 @@ app.post('/api/dj/login', loginLimiter, async (req, res) => {
 });
 
 /* -- POST /api/dj/forgot-pin ----------------------------------------------- */
-app.post('/api/dj/forgot-pin', rateLimit({ windowMs: 60 * 1000, max: 20 }), async (req, res) => { // TODO: tighten to 15min/5 before production
+app.post('/api/dj/forgot-pin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), async (req, res) => {
   try {
     const { name } = req.body;
     if (!name || !name.trim()) return res.json({ success: false, error: 'Name is required' });
