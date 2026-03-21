@@ -439,11 +439,12 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 
     <div class="field-wrap">
       <div class="field-label">Your Name</div>
-      <input id="fpName" type="text" placeholder="Enter your name" autocomplete="name"
-             onkeydown="if(event.key==='Enter')submitForgotPin()">
+      <select id="fpName" onchange="$('fpSubmitBtn').disabled = !this.value">
+        <option value="">Select your name…</option>
+      </select>
     </div>
 
-    <button class="login-btn" onclick="submitForgotPin()">Submit</button>
+    <button class="login-btn" id="fpSubmitBtn" onclick="submitForgotPin()" disabled>Submit</button>
 
     <div id="fpMessage" style="display:none;margin-top:16px;padding:12px 14px;border-radius:8px;background:rgba(93,184,192,0.12);border:1px solid rgba(93,184,192,0.35);color:var(--teal);font-size:13px;font-weight:600;text-align:center">
       Management has been notified. Your PIN will be reset shortly.
@@ -659,12 +660,25 @@ async function doLogin() {
   btn.disabled = false;
 }
 
-function showForgotPin() {
+async function showForgotPin() {
   $('loginWrap').style.display = 'none';
   $('forgotPinWrap').style.display = '';
   $('fpName').value = '';
+  $('fpSubmitBtn').disabled = true;
   $('fpMessage').style.display = 'none';
-  setTimeout(() => $('fpName').focus(), 50);
+  try {
+    const data = await fetch('/api/djs').then(r => r.json());
+    const sel = $('fpName');
+    sel.innerHTML = '<option value="">Select your name\u2026</option>';
+    (data.djs || []).sort((a, b) => a.name.localeCompare(b.name)).forEach(dj => {
+      const opt = document.createElement('option');
+      opt.value = dj.name;
+      opt.textContent = dj.name;
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    $('fpName').innerHTML = '<option value="">Could not load DJ list</option>';
+  }
 }
 function hideForgotPin() {
   $('forgotPinWrap').style.display = 'none';
