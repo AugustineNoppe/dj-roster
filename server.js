@@ -14,8 +14,10 @@ const supabase = createClient(
 );
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const app = express();
+
+app.set('trust proxy', 1);
 
 /* == SECURITY HEADERS ==================================================== */
 app.use(helmet({
@@ -794,12 +796,9 @@ app.post('/api/dj/forgot-pin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), 
     const date = now.toISOString().slice(0, 10);
     const time = now.toTimeString().slice(0, 5);
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_APP_PASSWORD }
-    });
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
-    await transporter.sendMail({
+    await resend.emails.send({
       from: process.env.EMAIL_USER,
       to: 'entertainment@ark-bar.com',
       subject: `PIN Reset Request — ${djName}`,
