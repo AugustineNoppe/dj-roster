@@ -618,7 +618,7 @@ const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 const ARKBAR_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
-  '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
+  '18:00\u201319:00','19:00\u201320:00','20:00\u201321:00','21:00\u201322:00',
   '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
 ];
 const HIP_SLOTS = ['21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'];
@@ -1564,7 +1564,7 @@ function renderHours(djs, scheduledHours, signedOffHours) {
         <div class="hours-val">${sched}h</div>${badge}
       </div></td>
       <td class="right" style="color:var(--text-secondary)">\u0E3F${dj.rate.toLocaleString()}/h</td>
-      <td class="right" style="font-weight:800;color:var(--navy)">${cost > 0 ? '\u0E3F' + cost.toLocaleString() : '\u2014'}</td>
+      <td class="right" style="font-weight:800;color:#F5A623">${cost > 0 ? '\u0E3F' + cost.toLocaleString() : '\u2014'}</td>
     </tr>`;
   }).join('');
 
@@ -1593,7 +1593,7 @@ function renderHours(djs, scheduledHours, signedOffHours) {
           <tr class="totals-row">
             <td>Total</td><td class="right">${totalScheduled}h</td><td class="right">${totalSignedOff}h</td>
             <td></td>
-            <td></td><td class="right" style="font-size:14px;color:var(--navy)">\u0E3F${totalCost.toLocaleString()}</td>
+            <td></td><td class="right" style="font-size:14px;color:#F5A623">\u0E3F${totalCost.toLocaleString()}</td>
           </tr>
         </tbody>
       </table>
@@ -1889,7 +1889,6 @@ function showFinalizeReport(data, isPreview = false) {
         <div class="fin-card"><div class="fin-card-label">Total Hours</div><div class="fin-card-val">${grandTotal}h</div></div>
         <div class="fin-card"><div class="fin-card-label">Total Cost</div><div class="fin-card-val" style="color:var(--teal);font-size:18px">${BAHT}${grandCost.toLocaleString()}</div></div>
         <div class="fin-card"><div class="fin-card-label">Signed Off</div><div class="fin-card-val" style="color:${soCol(grandSignedOff,grandTotal)};font-size:16px">${grandSignedOff}/${grandTotal}h</div></div>
-        <div class="fin-card"><div class="fin-card-label">DJs Paid</div><div class="fin-card-val">${report.length}</div></div>
         <div class="fin-card"><div class="fin-card-label">Period</div><div class="fin-card-val" style="font-size:13px">${month}</div></div>
       </div>
       <table class="fin-table">
@@ -1935,7 +1934,7 @@ function printFinalizeReport(isPreview = false) {
   table{width:100%;border-collapse:collapse}
   th{padding:8px 10px;text-align:left;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid #2B3990;color:#2B3990}
   th.r,td.r{text-align:right}
-  td{padding:9px 10px;font-size:11px;font-weight:600;border-bottom:1px solid #eee}
+  td{padding:9px 10px;font-size:11px;font-weight:600;border-bottom:1px solid #eee;color:#000}
   tfoot td{font-weight:800;border-top:2px solid #2B3990;color:#1c2340}
   ${previewCss}
   @media print{button{display:none!important}}</style>
