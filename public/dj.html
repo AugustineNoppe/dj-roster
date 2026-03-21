@@ -446,7 +446,7 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
     <button class="login-btn" onclick="submitForgotPin()">Submit</button>
 
     <div id="fpMessage" style="display:none;margin-top:16px;padding:12px 14px;border-radius:8px;background:rgba(93,184,192,0.12);border:1px solid rgba(93,184,192,0.35);color:var(--teal);font-size:13px;font-weight:600;text-align:center">
-      Please contact your manager to reset your PIN.
+      Management has been notified. Your PIN will be reset shortly.
     </div>
 
     <div style="margin-top:18px;text-align:center">
@@ -670,9 +670,16 @@ function hideForgotPin() {
   $('forgotPinWrap').style.display = 'none';
   $('loginWrap').style.display = '';
 }
-function submitForgotPin() {
+async function submitForgotPin() {
   const name = $('fpName').value.trim();
   if (!name) { $('fpName').focus(); return; }
+  try {
+    await fetch('/api/dj/forgot-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+  } catch (e) { /* show confirmation regardless */ }
   $('fpMessage').style.display = 'block';
 }
 

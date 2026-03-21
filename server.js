@@ -14,6 +14,7 @@ const supabase = createClient(
 );
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const nodemailer = require('nodemailer');
 const app = express();
 
 /* == SECURITY HEADERS ==================================================== */
@@ -779,6 +780,36 @@ app.post('/api/dj/login', loginLimiter, async (req, res) => {
     res.json({ success: true, name: djName, isResident: djRow.type === 'resident', rate: djInfo ? djInfo.rate : 0 });
   } catch (err) {
     res.json({ success: false, error: err.message });
+  }
+});
+
+/* -- POST /api/dj/forgot-pin ----------------------------------------------- */
+app.post('/api/dj/forgot-pin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.json({ success: false, error: 'Name is required' });
+
+    const djName = name.trim();
+    const now = new Date(Date.now() + 7 * 60 * 60 * 1000); // UTC+7 Thailand
+    const date = now.toISOString().slice(0, 10);
+    const time = now.toTimeString().slice(0, 5);
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_APP_PASSWORD }
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: 'entertainment@ark-bar.com',
+      subject: `PIN Reset Request — ${djName}`,
+      text: `DJ ${djName} has requested a PIN reset on ${date} at ${time} (Thailand time, UTC+7).\n\nLog in to the admin panel and use the Manage DJs tab to reset their PIN.`
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Forgot PIN email error:', err.message);
+    res.json({ success: true }); // Don't reveal email failures to client
   }
 });
 
