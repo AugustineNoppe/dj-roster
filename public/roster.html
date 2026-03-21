@@ -623,8 +623,9 @@ const ARKBAR_SLOTS = [
 ];
 const HIP_SLOTS = ['21:00\u201322:00','22:00\u201323:00','23:00\u201300:00','00:00\u201301:00'];
 const LOVE_WEEKDAY_SLOTS = [
-  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
-  '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'
+  '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
+  '18:00\u201319:00','20:00\u201321:00','21:00\u201322:00',
+  '22:00\u201323:00','23:00\u201300:00'
 ];
 const LOVE_SAT_SLOTS = [
   '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00','17:00\u201318:00',
@@ -888,7 +889,7 @@ function renderGrid() {
   } else {
     venueHeaderRow = `<tr>
       <th class="th-date" style="border-bottom:none;background:var(--love-dark)!important"></th>
-      <th colspan="${LOVE_SAT_SLOTS.length}" class="th-section-label" style="background:var(--love-pink);color:#fff">Love Beach Club &middot; Weekdays 14:00\u201317:00 &amp; 20:00\u201300:00 | Saturdays 14:00\u201300:00</th>
+      <th colspan="${LOVE_SAT_SLOTS.length}" class="th-section-label" style="background:var(--love-pink);color:#fff">Love Beach Club &middot; Daily 14:00\u201300:00</th>
     </tr>`;
     LOVE_SAT_SLOTS.forEach(s => slotHeaderRow += `<th class="th-love">${s}</th>`);
   }
@@ -908,8 +909,7 @@ function renderGrid() {
       HIP_SLOTS.forEach(slot => { cells += buildCell(dateStr, slot, 'hip'); });
     } else {
       LOVE_SAT_SLOTS.forEach(slot => {
-        const isActive = isSat || LOVE_WEEKDAY_SLOTS.includes(slot);
-        cells += isActive ? buildCell(dateStr, slot, 'love') : '<td class="td-slot empty-slot"></td>';
+        cells += buildCell(dateStr, slot, 'love');
       });
     }
 
@@ -1022,7 +1022,7 @@ async function assignDJ(sel) {
       '22:00\u201323:00','23:00\u201300:00','00:00\u201301:00','01:00\u201302:00'
     ];
     const isSat = new Date(date).getDay() === 6;
-    const allSlots = type === 'love' ? (isSat ? [...LOVE_SAT_SLOTS] : [...LOVE_WEEKDAY_SLOTS]) : combinedTimeline;
+    const allSlots = type === 'love' ? [...LOVE_SAT_SLOTS] : combinedTimeline;
     const slotIdx = allSlots.indexOf(slot);
 
     if (slotIdx >= 0) {
@@ -1197,6 +1197,7 @@ async function runAutoSuggest() {
 
   const ALL_LOVE_SLOTS_WEEKDAY = [
     '14:00\u201315:00','15:00\u201316:00','16:00\u201317:00',
+    '17:00\u201318:00','18:00\u201319:00',
     '20:00\u201321:00','21:00\u201322:00','22:00\u201323:00','23:00\u201300:00'
   ];
 
@@ -2286,22 +2287,17 @@ function openFixedScheduleGrid(dj) {
     arkRows += `<tr>${cells}</tr>`;
   });
 
-  // Love Beach section — use LOVE_SAT_SLOTS as rows (superset), disable non-weekday slots for non-Saturday days
+  // Love Beach section — all slots active every day
   let loveHeaderCells = '<th style="text-align:left;padding:4px 6px;color:var(--text-secondary);font-size:11px">Slot</th>';
   DAY_NAMES.forEach(d => { loveHeaderCells += `<th>${d}</th>`; });
 
   let loveRows = '';
   LOVE_SAT_SLOTS.forEach((slot, si) => {
     let cells = `<td style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text-secondary);white-space:nowrap">${slot}</td>`;
-    const isSatOnlySlot = !LOVE_WEEKDAY_SLOTS.includes(slot);
     for (let dow = 0; dow < 7; dow++) {
-      const isSatCol = (dow === 6);
-      const isDisabled = isSatOnlySlot && !isSatCol;
       const daySlots = Array.isArray(loveData[String(dow)]) ? loveData[String(dow)] : [];
-      const checked = (!isDisabled && daySlots.includes(slot)) ? ' checked' : '';
-      const disabledAttr = isDisabled ? ' disabled' : '';
-      const tdClass = isDisabled ? ' class="disabled-slot"' : '';
-      cells += `<td${tdClass}><input type="checkbox" id="fixed-love-${dow}-${si}"${checked}${disabledAttr}></td>`;
+      const checked = daySlots.includes(slot) ? ' checked' : '';
+      cells += `<td><input type="checkbox" id="fixed-love-${dow}-${si}"${checked}></td>`;
     }
     loveRows += `<tr>${cells}</tr>`;
   });
@@ -2345,7 +2341,7 @@ async function saveFixedSchedule(djId) {
     loveBeach[String(dow)] = [];
     LOVE_SAT_SLOTS.forEach((slot, si) => {
       const cb = document.getElementById(`fixed-love-${dow}-${si}`);
-      if (cb && cb.checked && !cb.disabled) loveBeach[String(dow)].push(slot);
+      if (cb && cb.checked) loveBeach[String(dow)].push(slot);
     });
   }
 
