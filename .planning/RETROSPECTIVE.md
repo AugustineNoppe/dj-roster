@@ -45,6 +45,49 @@
 
 ---
 
+## Milestone: v2.0 — DJ Management & Supabase Consolidation
+
+**Shipped:** 2026-03-21
+**Phases:** 5 | **Plans:** 10
+
+### What Was Built
+- Single `djs` table with JSONB fields replacing dj_rates + dj_pins — full data migration with en-dash deduplication
+- All server routes cut over to `djs` table — hardcoded DJ arrays eliminated, lockout persisted to DB
+- Admin DJ management API: 7 endpoints (add/edit/deactivate/reactivate/PIN reset/lockout clear/schedules) with factory pattern
+- Manage DJs frontend tab: DJ table, CRUD forms, recurring availability checkbox grid, fixed schedule venue/day/slot grids
+- Integration gap closure: auth select `id`, CORS methods, stale comment cleanup, unchecked error fix
+
+### What Worked
+- Factory pattern (lockout.js, admin-dj.js) with injected dependencies enabled 62 new unit tests without Express overhead
+- Milestone audit after Phase 10 caught two real integration issues (INT-01, INT-02) — Phase 11 closed both cleanly
+- TDD approach for JSONB schedule handlers (Phase 10-01) prevented bugs in complex validation logic
+- Clean cutover strategy (no dual-write) kept migration simple — migrate, verify, drop old tables
+
+### What Was Inefficient
+- Milestone audit was run before Phase 11 existed — the `tech_debt` status caused a re-check cycle that could have been avoided if audit ran after all planned work
+- ROADMAP.md plan checkboxes for Phases 9-10 were not updated to `[x]` during execution — cosmetic but caused confusion during audit
+- Nyquist validation tracking was partial across all phases — formal wave coverage not tracked despite 111 tests existing
+
+### Patterns Established
+- `createXHandlers(supabase, bcrypt, invalidateCaches)` factory pattern for testable server modules
+- JSONB field handlers as separate endpoints from scalar field handlers (different validation needs)
+- 410 Gone for permanently deprecated endpoints (clear signal vs 404)
+- Milestone audit → gap closure phase → re-verify pattern for quality assurance
+- PIN reset: admin inputs new PIN, server hashes — one-time display with Copy button in UI
+
+### Key Lessons
+1. Run milestone audit after all planned work completes, not before — avoids false-positive gap reports
+2. Factory pattern with injected deps is the right abstraction for Supabase-dependent modules — test without mocking the HTTP layer
+3. JSONB is excellent for flexible per-DJ configuration (availability, schedules) — no schema changes needed for new fields
+4. Dedicated gap-closure phases (Phase 11) are low-cost and high-value — small scope, big impact on quality confidence
+
+### Cost Observations
+- Model mix: ~25% opus (orchestration/audit), ~75% sonnet (execution/verification)
+- Sessions: ~8 sessions across 2 days
+- Notable: Phase 11 (single plan, 4 targeted fixes) completed in one session — very efficient for gap closure
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -52,14 +95,18 @@
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
 | v1.0 | 6 | 13 | First milestone — established GSD workflow patterns |
+| v2.0 | 5 | 10 | Factory pattern for testable modules, milestone audit → gap closure cycle |
 
 ### Cumulative Quality
 
 | Milestone | Tests | Key Metric |
 |-----------|-------|------------|
 | v1.0 | 49 | 15/15 requirements satisfied |
+| v2.0 | 111 | 20/20 requirements satisfied, 2 integration gaps closed |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Investigation-first phases save time when root cause is unknown
 2. Code verification trumps documentation — always check the actual codebase
+3. Factory pattern with injected deps enables high test coverage without mocking HTTP — validated across lockout.js and admin-dj.js
+4. Milestone audits catch real integration issues — but run them after all planned work completes
