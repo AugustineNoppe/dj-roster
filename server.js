@@ -1013,40 +1013,6 @@ app.get('/api/dj/schedule/:name/:month', async (req, res) => {
         }
       }
     }
-    // Inject fixed schedule entries for DJs with recurring weekly schedules.
-    // These display as pre-loaded bookings so residents see their schedule on load.
-    const { data: djSchedRow, error: djSchedError } = await supabase
-      .from('djs')
-      .select('fixed_schedules')
-      .ilike('name', name.trim())
-      .maybeSingle();
-    if (djSchedError) throw new Error(djSchedError.message);
-    const fixedSched = djSchedRow ? (djSchedRow.fixed_schedules || null) : null;
-    if (fixedSched) {
-      const parts = month.split(' ');
-      const monthIdx = MONTH_NAMES.indexOf(parts[0]);
-      const year = parseInt(parts[1]);
-      if (monthIdx >= 0 && !isNaN(year)) {
-        const existing = new Set(schedule.map(s => `${s.date}|${s.slot}|${s.venue}`));
-        const days = new Date(year, monthIdx + 1, 0).getDate();
-        for (let d = 1; d <= days; d++) {
-          const dk = makeDateKey(year, monthIdx + 1, d);
-          const dow = new Date(year, monthIdx, d).getDay();
-          for (const [venueKey, label] of [['arkbar', 'ARKbar'], ['loveBeach', 'Love Beach']]) {
-            const slots = (fixedSched[venueKey] || {})[dow] || [];
-            for (const s of slots) {
-              const ns = normalizeSlot(s);
-              const key = `${dk}|${ns}|${label}`;
-              if (!existing.has(key)) {
-                schedule.push({ venue: label, date: dk, slot: ns });
-                existing.add(key);
-              }
-            }
-          }
-        }
-      }
-    }
-
     schedule.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.slot < b.slot ? -1 : 1);
     res.json({ success: true, schedule });
   } catch (err) {
