@@ -308,12 +308,35 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 .toast.error{background:rgba(180,30,20,0.9);border-color:rgba(241,90,41,0.5)}
 .toast.success{background:rgba(20,100,60,0.9);border-color:rgba(76,175,80,0.5)}
 
-/* === RESPONSIVE === */
-@media(max-width:400px){
+/* === RESPONSIVE: <= 768px === */
+@media(max-width:768px){
+  /* Touch targets */
+  .tab{min-height:44px}
+  .portal-btn,.logout-btn{min-height:44px;display:inline-flex;align-items:center}
+  .pill{padding:12px 8px;min-height:44px}
+  .submit-btn{min-height:44px;padding:14px 28px}
+  .signoff-btn{min-height:44px;padding:8px 16px;font-size:11px}
+  .day-signoff-btn{min-height:44px;padding:8px 16px;font-size:11px}
+  .select-all-btn{min-height:44px;padding:8px 16px}
+  .print-btn{min-height:44px}
+  /* Schedule items */
+  .schedule-item{padding:12px;gap:10px;flex-wrap:wrap}
+  .venue-badge{font-size:8px}
+  .schedule-slot{font-size:12px}
+  .schedule-date{font-size:10px}
+  /* Hours */
   .hours-cards{grid-template-columns:1fr 1fr}
   .hours-card:last-child{grid-column:1/-1}
   .hours-card-value{font-size:22px}
+  .breakdown-row{font-size:12px;padding:10px 0}
+}
+
+/* === RESPONSIVE: <= 400px === */
+@media(max-width:400px){
+  .hours-card-value{font-size:20px}
   .slot-pills{grid-template-columns:1fr}
+  .cal-cell{min-height:46px;padding:6px 2px 4px}
+  .cal-date-num{font-size:12px}
 }
 
 @media print{

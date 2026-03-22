@@ -129,6 +129,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .venue-tab.hours.active{border-bottom-color:#4caf50}
 .venue-tab.manage.active{border-bottom-color:#ff9800}
 .manage-djs-wrap{padding:16px;max-width:1200px;margin:0 auto}
+.manage-djs-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .manage-djs-table{width:100%;border-collapse:collapse;margin-top:12px}
 .manage-djs-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-secondary);font-size:12px;text-transform:uppercase}
 .manage-djs-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
@@ -136,13 +137,30 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .badge-active{background:#4caf50;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px}
 .badge-inactive{background:#666;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px}
 .badge-locked{background:#f44336;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px}
-.manage-btn{padding:4px 10px;border:1px solid var(--border);background:var(--surface);color:var(--text-primary);border-radius:4px;cursor:pointer;font-size:12px;margin:0 2px}
+.manage-btn{padding:6px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text-primary);border-radius:6px;cursor:pointer;font-size:12px;margin:2px;min-height:36px;display:inline-flex;align-items:center}
 .manage-btn:hover{background:rgba(255,255,255,0.1)}
 .manage-btn.danger{border-color:#f44336;color:#f44336}
 .manage-btn.danger:hover{background:rgba(244,67,54,0.1)}
+/* Actions dropdown for mobile */
+.manage-actions-wrap{position:relative;display:inline-block}
+.manage-actions-toggle{display:none}
+.manage-actions-menu{
+  display:none;position:absolute;right:0;top:100%;z-index:100;
+  background:rgba(20,25,50,0.98);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:6px 0;
+  min-width:170px;box-shadow:0 12px 40px rgba(0,0,0,0.5);
+}
+.manage-actions-menu.open{display:block}
+.manage-actions-menu button{
+  display:block;width:100%;text-align:left;padding:10px 16px;border:none;
+  background:none;color:var(--text-primary);font-family:inherit;font-size:13px;
+  font-weight:600;cursor:pointer;transition:background .15s;white-space:nowrap;
+}
+.manage-actions-menu button:hover{background:rgba(255,255,255,0.08)}
+.manage-actions-menu button.danger{color:#f44336}
 .manage-add-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
-.manage-add-form input,.manage-add-form select{padding:6px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text-primary);border-radius:4px;font-size:13px}
-.manage-add-form button{padding:6px 14px;background:var(--teal);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px}
+.manage-add-form input,.manage-add-form select{padding:10px 12px;border:1px solid var(--border);background:var(--bg);color:var(--text-primary);border-radius:6px;font-size:14px;min-height:44px}
+.manage-add-form button{padding:10px 16px;background:var(--teal);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700;min-height:44px}
 .manage-edit-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:1000}
 .manage-edit-modal{background:#1a1f2e;border:1px solid var(--border);border-radius:12px;padding:24px;min-width:320px;max-width:90vw}
 .manage-edit-modal h3{margin:0 0 16px;color:var(--text-primary)}
@@ -448,32 +466,65 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 /* === MOBILE FIRST: <= 768px === */
 @media(max-width:768px){
   .bg-orb{animation:none;opacity:.3}
+  /* Header */
   .app-header{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
   .app-header-left{flex:1;min-width:0}
   .app-header h1{font-size:13px}
   .header-badge{font-size:9px;padding:2px 7px}
+  .portal-btn{min-height:44px;display:inline-flex;align-items:center}
+  /* Month nav */
   .month-nav{width:100%;justify-content:center}
   .month-label{font-size:12px;min-width:110px}
-  .month-nav button{width:36px;height:36px;font-size:16px;min-height:44px}
-  .venue-bar{padding:0 8px;gap:0}
-  .venue-tab{padding:10px 12px;font-size:11px;min-height:var(--tab-h)}
+  .month-nav button{width:44px;height:44px;font-size:16px;min-height:44px}
+  /* Venue tabs */
+  .venue-bar{padding:0 4px;gap:0}
+  .venue-tab{padding:10px 10px;font-size:11px;min-height:44px}
+  /* Main content */
   .main-content{padding:8px}
+  /* Roster grid */
   .td-date{min-width:66px;padding:4px 6px;font-size:10px}
   .td-date .dow{font-size:8px}
   .td-slot{min-width:88px;padding:2px}
-  .slot-select{min-height:32px;padding:4px 2px;font-size:11px}
+  .slot-select{min-height:36px;padding:4px 2px;font-size:11px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
   .dj-name{font-size:11px}
   .roster-table thead th{font-size:8px;padding:6px 2px}
   .th-section-label{font-size:8px;padding:4px}
+  /* Status bar */
   .status-bar{padding:8px 10px;flex-wrap:wrap;gap:8px}
   .status-bar>span{display:none}
   .status-bar-right{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .btn-sm{padding:8px 10px;font-size:10px;min-height:40px;text-align:center;justify-content:center;display:flex;align-items:center}
+  .btn-sm{padding:8px 10px;font-size:11px;min-height:44px;text-align:center;justify-content:center;display:flex;align-items:center}
   .status-pill{font-size:10px}
+  /* Hours page */
   .summary-row{grid-template-columns:1fr 1fr}
   .hours-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .hours-table{min-width:520px}
   .hours-table thead th,.hours-table tbody td{padding:8px 8px;font-size:11px}
+  /* Manage DJs tab — actions dropdown */
+  .manage-djs-wrap{padding:10px 8px}
+  .manage-actions-toggle{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:8px 14px;min-height:44px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-primary);border-radius:6px;
+    cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;
+  }
+  .manage-actions-toggle:hover{background:rgba(255,255,255,0.1)}
+  .manage-btn-desktop{display:none}
+  .manage-djs-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .manage-djs-table{min-width:auto}
+  .manage-djs-table th,.manage-djs-table td{padding:8px 8px;font-size:12px}
+  .manage-djs-table th:nth-child(3),.manage-djs-table td:nth-child(3),
+  .manage-djs-table th:nth-child(5),.manage-djs-table td:nth-child(5){display:none}
+  .manage-add-form{flex-direction:column;align-items:stretch;gap:10px}
+  .manage-add-form input,.manage-add-form select{width:100%}
+  /* Manage edit modals */
+  .manage-edit-modal{min-width:unset;width:calc(100vw - 32px);max-width:400px;padding:20px 16px}
+  /* DJ detail modal */
+  .dj-detail-stat-grid{grid-template-columns:1fr 1fr;padding:10px 16px;gap:8px}
+  /* Availability grid */
+  .avail-grid th{padding:3px 3px;font-size:9px}
+  .avail-grid td{padding:3px 3px}
+  .avail-grid input[type="checkbox"]{width:20px;height:20px}
 }
 
 /* === PRINT === */
@@ -1980,6 +2031,17 @@ function isLocked(dj) {
   return dj.locked_until && new Date(dj.locked_until) > new Date();
 }
 
+function toggleActionsMenu(e) {
+  e.stopPropagation();
+  const menu = e.currentTarget.nextElementSibling;
+  // Close all other open menus
+  document.querySelectorAll('.manage-actions-menu.open').forEach(m => { if (m !== menu) m.classList.remove('open'); });
+  menu.classList.toggle('open');
+}
+document.addEventListener('click', function() {
+  document.querySelectorAll('.manage-actions-menu.open').forEach(m => m.classList.remove('open'));
+});
+
 function renderManageDJs(djs) {
   const manageEl = $('manageContent');
   const rows = djs.map(dj => {
@@ -1994,6 +2056,10 @@ function renderManageDJs(djs) {
       ? `<button class="manage-btn danger" onclick="clearDJLockoutUI('${dj.id}', '${dj.name.replace(/'/g, "\\'")}')">Clear Lockout</button>`
       : '';
     const djJson = JSON.stringify({ id: dj.id, name: dj.name, rate: dj.rate, type: dj.type, active: dj.active }).replace(/'/g, '&#39;');
+    const escapedName = dj.name.replace(/'/g, "\\'");
+    const clearLockoutMenu = isLocked(dj)
+      ? `<button class="danger" onclick="clearDJLockoutUI('${dj.id}', '${escapedName}');this.closest('.manage-actions-menu').classList.remove('open')">Clear Lockout</button>`
+      : '';
     return `<tr>
       <td>${dj.name}</td>
       <td>${dj.rate !== null && dj.rate !== undefined ? Math.round(dj.rate) : ''}</td>
@@ -2001,12 +2067,25 @@ function renderManageDJs(djs) {
       <td>${statusBadge}</td>
       <td>${lockoutBadge}</td>
       <td>
-        <button class="manage-btn" onclick='openEditDJModal(${djJson})'>Edit</button>
-        <button class="manage-btn" onclick="toggleDJActive('${dj.id}', ${dj.active})">${dj.active ? 'Deactivate' : 'Reactivate'}</button>
-        <button class="manage-btn" onclick="resetDJPin('${dj.id}', '${dj.name.replace(/'/g, "\\'")}')">Reset PIN</button>
-        ${clearLockoutBtn}
-        <button class="manage-btn" onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'))">Availability</button>
-        <button class="manage-btn" onclick="openFixedScheduleGrid(manageDJs.find(d => d.id === '${dj.id}'))">Fixed Schedule</button>
+        <span class="manage-btn-desktop">
+          <button class="manage-btn" onclick='openEditDJModal(${djJson})'>Edit</button>
+          <button class="manage-btn" onclick="toggleDJActive('${dj.id}', ${dj.active})">${dj.active ? 'Deactivate' : 'Reactivate'}</button>
+          <button class="manage-btn" onclick="resetDJPin('${dj.id}', '${escapedName}')">Reset PIN</button>
+          ${clearLockoutBtn}
+          <button class="manage-btn" onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'))">Availability</button>
+          <button class="manage-btn" onclick="openFixedScheduleGrid(manageDJs.find(d => d.id === '${dj.id}'))">Fixed Schedule</button>
+        </span>
+        <div class="manage-actions-wrap">
+          <button class="manage-actions-toggle" onclick="toggleActionsMenu(event)">Actions &#9662;</button>
+          <div class="manage-actions-menu">
+            <button onclick='openEditDJModal(${djJson});this.closest(".manage-actions-menu").classList.remove("open")'>Edit</button>
+            <button onclick="toggleDJActive('${dj.id}', ${dj.active});this.closest('.manage-actions-menu').classList.remove('open')">${dj.active ? 'Deactivate' : 'Reactivate'}</button>
+            <button onclick="resetDJPin('${dj.id}', '${escapedName}');this.closest('.manage-actions-menu').classList.remove('open')">Reset PIN</button>
+            ${clearLockoutMenu}
+            <button onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'));this.closest('.manage-actions-menu').classList.remove('open')">Availability</button>
+            <button onclick="openFixedScheduleGrid(manageDJs.find(d => d.id === '${dj.id}'));this.closest('.manage-actions-menu').classList.remove('open')">Fixed Schedule</button>
+          </div>
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -2023,12 +2102,14 @@ function renderManageDJs(djs) {
       <input id="addDJPin" type="text" placeholder="PIN" required>
       <button type="submit">Add DJ</button>
     </form>
+    <div class="manage-djs-table-wrap">
     <table class="manage-djs-table">
       <thead><tr>
         <th>Name</th><th>Rate</th><th>Type</th><th>Status</th><th>Lockout</th><th>Actions</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
+    </div>
   </div>`;
 }
 
