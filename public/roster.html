@@ -1577,6 +1577,7 @@ function renderHours(djs, scheduledHours, signedOffHours) {
 
   const totalScheduled = Object.values(scheduled).reduce((a,b) => a + b, 0);
   const totalSignedOff = Object.values(signedOff).reduce((a,b) => a + b, 0);
+  const totalEstCost = djs.reduce((sum,d) => sum + (scheduled[d.name] || 0) * d.rate, 0);
   const totalCost = djs.reduce((sum,d) => sum + (signedOff[d.name] || 0) * d.rate, 0);
   const maxHours = Math.max(...Object.values(scheduled), RESIDENT_TARGET);
 
@@ -1593,6 +1594,7 @@ function renderHours(djs, scheduledHours, signedOffHours) {
     const isResident = RESIDENTS.includes(dj.name);
     const has80Target = RESIDENTS_80HR.includes(dj.name);
     const pct = maxHours > 0 ? Math.min(sched / maxHours * 100, 100) : 0;
+    const estCost = dj.name === 'Guest DJ' ? 0 : sched * dj.rate;
     const cost = dj.name === 'Guest DJ' ? 0 : signed * dj.rate;
     const barClass = `hours-bar-fill${isResident ? ' resident' : sched === 0 ? ' zero' : ''}`;
     const isSoundBogie = dj.name === 'Sound Bogie';
@@ -1619,6 +1621,7 @@ function renderHours(djs, scheduledHours, signedOffHours) {
         <div class="hours-val">${sched}h</div>${badge}
       </div></td>
       <td class="right" style="color:var(--text-secondary)">\u0E3F${dj.rate.toLocaleString()}/h</td>
+      <td class="right" style="color:var(--text-secondary)">${estCost > 0 ? '\u0E3F' + estCost.toLocaleString() : '\u2014'}</td>
       <td class="right" style="font-weight:800;color:#F5A623">${cost > 0 ? '\u0E3F' + cost.toLocaleString() : '\u2014'}</td>
     </tr>`;
   }).join('');
@@ -1643,12 +1646,12 @@ function renderHours(djs, scheduledHours, signedOffHours) {
         </div>
       </div>
       <table class="hours-table">
-        <thead><tr><th>DJ</th><th class="right">Scheduled</th><th class="right">Signed Off</th><th>Hours Bar</th><th class="right">Rate</th><th class="right">Cost (signed)</th></tr></thead>
+        <thead><tr><th>DJ</th><th class="right">Scheduled</th><th class="right">Signed Off</th><th>Hours Bar</th><th class="right">Rate</th><th class="right">Est. Cost</th><th class="right">Cost (signed)</th></tr></thead>
         <tbody>${rows}
           <tr class="totals-row">
             <td>Total</td><td class="right">${totalScheduled}h</td><td class="right">${totalSignedOff}h</td>
             <td></td>
-            <td></td><td class="right" style="font-size:14px;color:#F5A623">\u0E3F${totalCost.toLocaleString()}</td>
+            <td></td><td class="right" style="font-size:14px;color:var(--text-secondary)">\u0E3F${totalEstCost.toLocaleString()}</td><td class="right" style="font-size:14px;color:#F5A623">\u0E3F${totalCost.toLocaleString()}</td>
           </tr>
         </tbody>
       </table>
