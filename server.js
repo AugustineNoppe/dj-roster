@@ -1261,6 +1261,8 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     invalidateCaches('availability', { month });
     const { error: rosterDelError } = await supabase.from('roster_assignments').delete().eq('month', month);
     if (rosterDelError) throw new Error(rosterDelError.message);
+    const { error: signoffDelError } = await supabase.from('dj_signoffs').delete().eq('month', month);
+    if (signoffDelError) throw new Error(signoffDelError.message);
     res.json({ success: true, month });
   } catch (err) {
     console.error('Reset-month error:', err);
