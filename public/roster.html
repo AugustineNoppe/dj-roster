@@ -2061,7 +2061,7 @@ function renderManageDJs(djs) {
           <button class="manage-btn" onclick="resetDJPin('${dj.id}', '${escapedName}')">Reset PIN</button>
           ${clearLockoutBtn}
           <button class="manage-btn" onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'))">Availability</button>
-          <button class="manage-btn" onclick="openFixedScheduleGrid(manageDJs.find(d => d.id === '${dj.id}'))">Fixed Schedule</button>
+
         </span>
         <div class="manage-actions-wrap">
           <button class="manage-actions-toggle" onclick="toggleActionsMenu(event)">Actions &#9662;</button>
@@ -2071,7 +2071,7 @@ function renderManageDJs(djs) {
             <button onclick="resetDJPin('${dj.id}', '${escapedName}');this.closest('.manage-actions-menu').classList.remove('open')">Reset PIN</button>
             ${clearLockoutMenu}
             <button onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'));this.closest('.manage-actions-menu').classList.remove('open')">Availability</button>
-            <button onclick="openFixedScheduleGrid(manageDJs.find(d => d.id === '${dj.id}'));this.closest('.manage-actions-menu').classList.remove('open')">Fixed Schedule</button>
+
           </div>
         </div>
       </td>
@@ -2326,111 +2326,6 @@ function toggleAllCheckboxes(prefix, totalSlots, totalDays, btn) {
   const selectAll = allChecked.some(cb => !cb.checked);
   allChecked.forEach(cb => { cb.checked = selectAll; });
   btn.textContent = selectAll ? 'Deselect All' : 'Select All';
-}
-
-// === FIXED SCHEDULE GRID ===
-
-function openFixedScheduleGrid(dj) {
-  if (!dj) { showToast('DJ data not found', 'error'); return; }
-  const overlay = document.createElement('div');
-  overlay.className = 'manage-edit-overlay';
-  overlay.id = 'fixedGridOverlay';
-
-  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const schedules = dj.fixed_schedules || {};
-  const arkData = schedules.arkbar || {};
-  const loveData = schedules.loveBeach || {};
-
-  // ARKbar section
-  let arkHeaderCells = '<th style="text-align:left;padding:4px 6px;color:var(--text-secondary);font-size:11px">Slot</th>';
-  DAY_NAMES.forEach(d => { arkHeaderCells += `<th>${d}</th>`; });
-
-  let arkRows = '';
-  ARKBAR_SLOTS.forEach((slot, si) => {
-    let cells = `<td style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text-secondary);white-space:nowrap">${slot}</td>`;
-    for (let dow = 0; dow < 7; dow++) {
-      const daySlots = Array.isArray(arkData[String(dow)]) ? arkData[String(dow)] : [];
-      const checked = daySlots.includes(slot) ? ' checked' : '';
-      cells += `<td><input type="checkbox" id="fixed-arkbar-${dow}-${si}"${checked}></td>`;
-    }
-    arkRows += `<tr>${cells}</tr>`;
-  });
-
-  // Love Beach section — all slots active every day
-  let loveHeaderCells = '<th style="text-align:left;padding:4px 6px;color:var(--text-secondary);font-size:11px">Slot</th>';
-  DAY_NAMES.forEach(d => { loveHeaderCells += `<th>${d}</th>`; });
-
-  let loveRows = '';
-  LOVE_SAT_SLOTS.forEach((slot, si) => {
-    let cells = `<td style="text-align:left;padding:4px 8px;font-size:11px;color:var(--text-secondary);white-space:nowrap">${slot}</td>`;
-    for (let dow = 0; dow < 7; dow++) {
-      const daySlots = Array.isArray(loveData[String(dow)]) ? loveData[String(dow)] : [];
-      const checked = daySlots.includes(slot) ? ' checked' : '';
-      cells += `<td><input type="checkbox" id="fixed-love-${dow}-${si}"${checked}></td>`;
-    }
-    loveRows += `<tr>${cells}</tr>`;
-  });
-
-  overlay.innerHTML = `<div class="manage-edit-modal" style="max-width:800px;width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
-    <h3 style="flex-shrink:0">Fixed Schedule: ${dj.name.replace(/</g, '&lt;')}</h3>
-    <div style="flex:1;overflow-y:auto;min-height:0">
-      <div style="display:flex;align-items:center;justify-content:space-between"><div class="avail-section-heading teal" style="margin:0">ARKbar Beach Club</div><button class="manage-btn" onclick="toggleAllCheckboxes('fixed-arkbar',${ARKBAR_SLOTS.length},7,this)">Select All</button></div>
-      <div style="overflow-x:auto">
-        <table class="avail-grid">
-          <thead><tr>${arkHeaderCells}</tr></thead>
-          <tbody>${arkRows}</tbody>
-        </table>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between"><div class="avail-section-heading pink" style="margin:0">Love Beach Club</div><button class="manage-btn" onclick="toggleAllCheckboxes('fixed-love',${LOVE_SAT_SLOTS.length},7,this)">Select All</button></div>
-      <div style="overflow-x:auto">
-        <table class="avail-grid">
-          <thead><tr>${loveHeaderCells}</tr></thead>
-          <tbody>${loveRows}</tbody>
-        </table>
-      </div>
-    </div>
-    <div class="modal-actions" style="flex-shrink:0;position:sticky;bottom:0;background:#1a1f2e;padding:12px 16px;border-top:1px solid rgba(255,255,255,0.1)">
-      <button class="manage-btn" onclick="document.getElementById('fixedGridOverlay').remove()">Cancel</button>
-      <button class="manage-btn" style="background:var(--teal);border-color:var(--teal);color:#fff" onclick="saveFixedSchedule('${dj.id}')">Save</button>
-    </div>
-  </div>`;
-  document.body.appendChild(overlay);
-}
-
-async function saveFixedSchedule(djId) {
-  const arkbar = {};
-  for (let dow = 0; dow < 7; dow++) {
-    arkbar[String(dow)] = [];
-    ARKBAR_SLOTS.forEach((slot, si) => {
-      const cb = document.getElementById(`fixed-arkbar-${dow}-${si}`);
-      if (cb && cb.checked) arkbar[String(dow)].push(slot);
-    });
-  }
-
-  const loveBeach = {};
-  for (let dow = 0; dow < 7; dow++) {
-    loveBeach[String(dow)] = [];
-    LOVE_SAT_SLOTS.forEach((slot, si) => {
-      const cb = document.getElementById(`fixed-love-${dow}-${si}`);
-      if (cb && cb.checked) loveBeach[String(dow)].push(slot);
-    });
-  }
-
-  try {
-    const res = await fetch(`/api/admin/djs/${djId}/fixed-schedules`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
-      body: JSON.stringify({ fixed_schedules: { arkbar, loveBeach } })
-    });
-    const data = await res.json();
-    if (!data.success) { showToast(data.error || 'Error saving fixed schedule', 'error'); return; }
-    showToast('Fixed schedule saved', 'success');
-    const overlay = document.getElementById('fixedGridOverlay');
-    if (overlay) overlay.remove();
-    loadManageDJs();
-  } catch(e) {
-    showToast('Connection error', 'error');
-  }
 }
 
 // === HOURS PANEL (sidebar) ===

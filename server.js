@@ -96,7 +96,7 @@ const { checkLockout, recordFailedAttempt, clearFailedAttempts } = createLockout
 
 const { createAdminDJHandlers } = require('./lib/admin-dj');
 const { listDJs, addDJ, editDJ, resetPin, clearLockout: clearDJLockout,
-        updateRecurringAvailability, updateFixedSchedules } =
+        updateRecurringAvailability } =
   createAdminDJHandlers(supabase, bcrypt, invalidateCaches);
 
 app.use(express.json());
@@ -1234,11 +1234,6 @@ app.delete('/api/admin/djs/:id/lockout', requireAdmin, async (req, res) => {
 
 app.patch('/api/admin/djs/:id/recurring-availability', requireAdmin, async (req, res) => {
   const result = await updateRecurringAvailability({ id: req.params.id, ...req.body });
-  res.status(result.status || 200).json(result);
-});
-
-app.patch('/api/admin/djs/:id/fixed-schedules', requireAdmin, async (req, res) => {
-  const result = await updateFixedSchedules({ id: req.params.id, ...req.body });
   res.status(result.status || 200).json(result);
 });
 
