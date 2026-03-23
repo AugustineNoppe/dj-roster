@@ -1540,15 +1540,17 @@ async function loadHours() {
   const month = getMonthString();
   try {
     const enc = encodeURIComponent;
-    const [arkRes, loveRes, djRes, signoffRes] = await Promise.all([
+    const [arkRes, hipRes, loveRes, djRes, signoffRes] = await Promise.all([
       fetch(`/api/roster?venue=arkbar&month=${enc(month)}`),
+      fetch(`/api/roster?venue=hip&month=${enc(month)}`),
       fetch(`/api/roster?venue=love&month=${enc(month)}`),
       fetch('/api/djs'),
       fetch(`/api/signoffs/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
     ]);
-    const [arkData, loveData, djData, signoffData] = await Promise.all([arkRes.json(), loveRes.json(), djRes.json(), signoffRes.json()]);
+    const [arkData, hipData, loveData, djData, signoffData] = await Promise.all([arkRes.json(), hipRes.json(), loveRes.json(), djRes.json(), signoffRes.json()]);
     const scheduledHours = {};
     (arkData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') scheduledHours[r[2]] = (scheduledHours[r[2]] || 0) + 1; });
+    (hipData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') scheduledHours[r[2]] = (scheduledHours[r[2]] || 0) + 1; });
     (loveData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') scheduledHours[r[2]] = (scheduledHours[r[2]] || 0) + 1; });
     const signedOffHours = signoffData.signedOff || {};
 
