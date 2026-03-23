@@ -1254,30 +1254,6 @@ app.post('/api/admin/clear-lockout', requireAdmin, async (req, res) => {
   }
 });
 
-/* == ADMIN — RESET MONTH (DEV ONLY) ======================================= */
-app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
-  try {
-    const { month } = req.body;
-    if (!month || !/^[A-Za-z]+ \d{4}$/.test(month.trim())) {
-      return res.status(400).json({ success: false, error: 'Invalid or missing month' });
-    }
-    const { error: availDelError } = await supabase.from('dj_availability').delete().eq('month', month);
-    if (availDelError) throw new Error(availDelError.message);
-    const { error: subDelError } = await supabase.from('dj_submissions').delete().eq('month', month);
-    if (subDelError) throw new Error(subDelError.message);
-    invalidateCaches('roster', { month });
-    invalidateCaches('availability', { month });
-    const { error: rosterDelError } = await supabase.from('roster_assignments').delete().eq('month', month);
-    if (rosterDelError) throw new Error(rosterDelError.message);
-    const { error: signoffDelError } = await supabase.from('dj_signoffs').delete().eq('month', month);
-    if (signoffDelError) throw new Error(signoffDelError.message);
-    res.json({ success: true, month });
-  } catch (err) {
-    console.error('Reset-month error:', err);
-    console.error(err); res.json({ success: false, error: 'An error occurred' });
-  }
-});
-
 /* == START ================================================================= */
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));

@@ -228,6 +228,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .slot-select.assigned{color:#fff!important;font-weight:800!important}
 .slot-select.unassigned{color:#9aa0b8}
 .slot-select.no-avail{background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:10px}
+.slot-select option{background:#1a1f2e;color:#fff}
 
 /* Locked state */
 .roster-locked .slot-select:not(.no-avail){pointer-events:none;opacity:.95}
@@ -625,7 +626,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
       <button class="btn-sm btn-clear" onclick="clearRoster()">Clear Roster</button>
 <button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
       <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:#fff;">Print / PDF</button>
-      <button class="btn-sm" onclick="resetMonthData()" style="background:rgba(255,0,0,0.15);border:1px solid rgba(255,0,0,0.5);color:#ff5252;margin-left:12px;">&#x26A0; RESET MONTH (DEV ONLY)</button>
+
     </div>
   </footer>
   <div id="manageContent" style="display:none"></div>
@@ -1148,29 +1149,6 @@ async function assignDJ(sel) {
     }
   } catch(e) {
     showToast('Connection error', 'error');
-  }
-}
-
-// === CLEAR ROSTER ===
-async function resetMonthData() {
-  const month = getMonthString();
-  if (!confirm(`⚠️ RESET MONTH: ${month}\n\nThis will DELETE all availability, submissions, and roster assignments for this month.\n\nThis CANNOT be undone. Are you sure?`)) return;
-  if (!confirm(`FINAL WARNING: All data for ${month} will be permanently deleted. Type OK to confirm.`)) return;
-  showToast('Resetting month data...', '');
-  try {
-    const res = await fetch('/api/admin/reset-month', {
-      method: 'POST', headers: {'Content-Type':'application/json','x-admin-password': adminPassword},
-      body: JSON.stringify({ month })
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast(`Month ${month} reset`, 'success');
-      loadAll();
-    } else {
-      showToast('Reset failed: ' + (data.error || 'Unknown'), 'error');
-    }
-  } catch(e) {
-    showToast('Reset failed: ' + e.message, 'error');
   }
 }
 
@@ -1902,9 +1880,10 @@ function showFinalizeReport(data, isPreview = false) {
     dj.total > 0 && dj.name !== 'Guest DJ' && submittedDJs.get(dj.name) === 'submitted'
   );
   // Normalise cost to signedOff × rate so both preview and finalise paths agree
-  const reportWithCost = report.map(dj => ({ ...dj, cost: (dj.signedOff || 0) * (dj.rate || 0) }));
+  const reportWithCost = report.map(dj => ({ ...dj, cost: (dj.signedOff || 0) * (dj.rate || 0), estCost: dj.total * (dj.rate || 0) }));
   const grandTotal     = reportWithCost.reduce((s, d) => s + d.total, 0);
   const grandCost      = reportWithCost.reduce((s, d) => s + d.cost,  0);
+  const grandEstCost   = reportWithCost.reduce((s, d) => s + d.estCost, 0);
   const grandSignedOff = reportWithCost.reduce((s, d) => s + (d.signedOff || 0), 0);
   const soCol = (so, tot) => so >= tot ? '#69f0ae' : so > 0 ? '#ffb74d' : 'rgba(255,255,255,0.3)';
 
@@ -1916,6 +1895,7 @@ function showFinalizeReport(data, isPreview = false) {
     <td class="r"><strong>${dj.total}h</strong></td>
     <td class="r" style="color:${soCol(dj.signedOff||0,dj.total)};font-weight:700">${dj.signedOff||0}/${dj.total}h</td>
     <td class="fin-col-rate r">${BAHT}${dj.rate.toLocaleString()}/h</td>
+    <td class="r" style="color:var(--text-secondary)">${dj.estCost > 0 ? BAHT + dj.estCost.toLocaleString() : '\u2014'}</td>
     <td class="fin-col-cost r" style="color:var(--teal);font-weight:800">${BAHT}${dj.cost.toLocaleString()}</td>
     <td class="fin-col-combined r"><span style="font-size:10px;opacity:.65">${BAHT}${dj.rate.toLocaleString()}/h &times; ${dj.signedOff||0}h</span><br><strong style="color:var(--teal)">${BAHT}${dj.cost.toLocaleString()}</strong></td>
   </tr>`).join('');
@@ -1945,6 +1925,7 @@ function showFinalizeReport(data, isPreview = false) {
       ${previewBanner}
       <div class="fin-summary">
         <div class="fin-card"><div class="fin-card-label">Total Hours</div><div class="fin-card-val">${grandTotal}h</div></div>
+        <div class="fin-card"><div class="fin-card-label">Est. Cost</div><div class="fin-card-val" style="color:var(--text-secondary);font-size:16px">${BAHT}${grandEstCost.toLocaleString()}</div></div>
         <div class="fin-card"><div class="fin-card-label">Total Cost</div><div class="fin-card-val" style="color:var(--teal);font-size:18px">${BAHT}${grandCost.toLocaleString()}</div></div>
         <div class="fin-card"><div class="fin-card-label">Signed Off</div><div class="fin-card-val" style="color:${soCol(grandSignedOff,grandTotal)};font-size:16px">${grandSignedOff}/${grandTotal}h</div></div>
         <div class="fin-card"><div class="fin-card-label">Period</div><div class="fin-card-val" style="font-size:13px">${month}</div></div>
@@ -1952,7 +1933,7 @@ function showFinalizeReport(data, isPreview = false) {
       <table class="fin-table">
         <thead><tr>
           <th>DJ</th><th class="r">ARKbar</th><th class="r">HIP</th><th class="r">Love Beach</th>
-          <th class="r">Total</th><th class="r">Signed Off</th><th class="fin-col-rate r">Rate</th><th class="fin-col-cost r">Cost</th><th class="fin-col-combined r">Rate &amp; Cost</th>
+          <th class="r">Total</th><th class="r">Signed Off</th><th class="fin-col-rate r">Rate</th><th class="r">Est. Cost</th><th class="fin-col-cost r">Cost</th><th class="fin-col-combined r">Rate &amp; Cost</th>
         </tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr>
@@ -1960,6 +1941,7 @@ function showFinalizeReport(data, isPreview = false) {
           <td class="r">${grandTotal}h</td>
           <td class="r" style="color:${soCol(grandSignedOff,grandTotal)};font-weight:800">${grandSignedOff}/${grandTotal}h</td>
           <td class="fin-col-rate"></td>
+          <td class="r">${BAHT}${grandEstCost.toLocaleString()}</td>
           <td class="fin-col-cost r">${BAHT}${grandCost.toLocaleString()}</td>
           <td class="fin-col-combined r">${BAHT}${grandCost.toLocaleString()}</td>
         </tr></tfoot>
@@ -1985,7 +1967,7 @@ function printFinalizeReport(isPreview = false) {
   <style>*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
   body{padding:24px;background:#fff;color:#1c2340}
   h2{font-size:18px;font-weight:900;margin-bottom:20px}
-  .fin-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  .fin-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
   .fin-card{border:1px solid #ddd;border-radius:8px;padding:10px;text-align:center}
   .fin-card-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:4px}
   .fin-card-val{font-size:18px;font-weight:900;color:#1c2340}
