@@ -73,6 +73,14 @@ const loginLimiter = rateLimit({
   message: { success: false, error: 'Too many attempts, please try again later.' },
   keyGenerator: (req) => req.ip || req.socket.remoteAddress || 'unknown',
 });
+const signoffLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many attempts, please try again later.' },
+  keyGenerator: (req) => req.ip || req.socket.remoteAddress || 'unknown',
+});
 
 /* == ACCOUNT LOCKOUT ======================================================= */
 // Persistent DB-backed lockout: reads/writes djs.failed_attempts and djs.locked_until.
@@ -358,7 +366,7 @@ app.get('/api/config', async (req, res) => {
       .map(d => d.name);
     res.json({ success: true, residents });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -373,7 +381,7 @@ app.get('/api/fixed-schedules', async (req, res) => {
     }
     res.json({ success: true, schedules });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -381,7 +389,7 @@ app.get('/api/fixed-schedules', async (req, res) => {
 
 app.get('/api/djs', async (req, res) => {
   try { res.json(await fetchDJs()); }
-  catch (err) { res.json({ success: false, error: err.message }); }
+  catch (err) { console.error(err); res.json({ success: false, error: 'An error occurred' }); }
 });
 
 app.get('/api/availability', async (req, res) => {
@@ -391,7 +399,7 @@ app.get('/api/availability', async (req, res) => {
     res.json(await fetchAvailability(month));
   } catch (err) {
     console.error(err);
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -400,7 +408,7 @@ app.get('/api/roster', async (req, res) => {
     const { venue, month } = req.query;
     res.json(await fetchRoster(venue, month));
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -421,7 +429,7 @@ app.get('/api/roster/unavailability/:month', requireAdmin, async (req, res) => {
     }
     res.json({ success: true, unavailability: map });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -695,7 +703,7 @@ app.post('/api/roster/assign', requireAdmin, async (req, res) => {
     invalidateCaches('roster', { venue, month });
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -716,7 +724,7 @@ app.post('/api/roster/batch', requireAdmin, async (req, res) => {
     });
     res.json({ success: true, ...result });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -734,7 +742,7 @@ app.post('/api/roster/clear', requireAdmin, async (req, res) => {
     res.json({ success: true, cleared: (deleted || []).length });
   } catch (err) {
     console.error('Clear error:', err);
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -781,7 +789,7 @@ app.post('/api/dj/login', loginLimiter, async (req, res) => {
     const djInfo = (djData.djs || []).find(d => d.name.toLowerCase() === djName.toLowerCase());
     res.json({ success: true, name: djName, isResident: djRow.type === 'resident', rate: djInfo ? djInfo.rate : 0 });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -915,7 +923,7 @@ app.get('/api/dj/availability/:name/:month', async (req, res) => {
 
     res.json({ success: true, availability, isFinalized, isResident, submissionStatus, fixedSchedule: fixedDisplay });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -952,7 +960,7 @@ app.post('/api/dj/availability', requireDJAuth, async (req, res) => {
     res.json({ success: true, saved: newRows.length });
   } catch (err) {
     console.error('[dj/availability] caught:', err.message);
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -972,7 +980,7 @@ app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
     invalidateCaches('availability', { month });
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -991,7 +999,7 @@ app.get('/api/dj/submissions/:month', async (req, res) => {
     const submitted = (rows || []).map(r => ({ name: r.name.trim(), status: r.status }));
     res.json({ success: true, submitted });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -1016,12 +1024,12 @@ app.get('/api/dj/schedule/:name/:month', async (req, res) => {
     schedule.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.slot < b.slot ? -1 : 1);
     res.json({ success: true, schedule });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
 /* -- POST /api/dj/signoff ------------------------------------------------- */
-app.post('/api/dj/signoff', async (req, res) => {
+app.post('/api/dj/signoff', signoffLimiter, async (req, res) => {
   try {
     const { name, date, slot, venue, month, password } = req.body;
     if (!password || !(await bcrypt.compare(password, process.env.MANAGER_PASSWORD))) return res.json({ success: false, error: 'Unauthorized' });
@@ -1032,13 +1040,13 @@ app.post('/api/dj/signoff', async (req, res) => {
     if (error) throw new Error(error.message);
     res.json({ success: true });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
 /* -- POST /api/dj/signoff-batch ------------------------------------------- */
 // AUDIT (Phase 2 Plan 02): batch insert is atomic; error path throws; count returned. OK.
-app.post('/api/dj/signoff-batch', async (req, res) => {
+app.post('/api/dj/signoff-batch', signoffLimiter, async (req, res) => {
   try {
     const { name, date, slots, month, password } = req.body;
     if (!password || !(await bcrypt.compare(password, process.env.MANAGER_PASSWORD))) return res.json({ success: false, error: 'Unauthorized' });
@@ -1052,13 +1060,13 @@ app.post('/api/dj/signoff-batch', async (req, res) => {
     if (error) throw new Error(error.message);
     res.json({ success: true, count: rows.length });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
 /* -- POST /api/dj/unsignoff-day ------------------------------------------- */
 // AUDIT (Phase 2 Plan 02): filters dj+month+date; null action defaults to 'sign'; append-only write. OK.
-app.post('/api/dj/unsignoff-day', async (req, res) => {
+app.post('/api/dj/unsignoff-day', signoffLimiter, async (req, res) => {
   try {
     const { name, date, month, password } = req.body;
     if (!password || !(await bcrypt.compare(password, process.env.MANAGER_PASSWORD))) return res.json({ success: false, error: 'Unauthorized' });
@@ -1082,7 +1090,7 @@ app.post('/api/dj/unsignoff-day', async (req, res) => {
     if (writeError) throw new Error(writeError.message);
     res.json({ success: true, unsignedCount: unsignRows.length });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -1104,7 +1112,7 @@ app.get('/api/dj/signoffs/:name/:month', async (req, res) => {
     const signoffs = Object.values(latest).filter(e => e.action === 'sign').map(({ date, slot, venue }) => ({ date, slot, venue }));
     res.json({ success: true, signoffs });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -1132,7 +1140,7 @@ app.get('/api/signoffs/:month', async (req, res) => {
     }
     res.json({ success: true, signedOff });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -1150,7 +1158,7 @@ app.get('/api/finalized', async (req, res) => {
     const month = req.query.month;
     res.json({ success: true, finalized: finalized.months, isFinalized: month ? finalized.months.includes(month) : false });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -1193,7 +1201,7 @@ app.post('/api/roster/finalize', async (req, res) => {
     invalidateCaches('finalized');
     res.json({ success: true, month, report, grandTotal, grandCost });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -1242,7 +1250,7 @@ app.post('/api/admin/clear-lockout', requireAdmin, async (req, res) => {
     await clearFailedAttempts(name);
     res.json({ success: true, cleared: name.trim().toLowerCase() });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 
@@ -1266,7 +1274,7 @@ app.post('/api/admin/reset-month', requireAdmin, async (req, res) => {
     res.json({ success: true, month });
   } catch (err) {
     console.error('Reset-month error:', err);
-    res.json({ success: false, error: err.message });
+    console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
 

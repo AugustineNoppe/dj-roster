@@ -565,18 +565,18 @@ const SESSION_KEY = 'djPortalSession';
 const SESSION_TTL = 12 * 60 * 60 * 1000; // 12 hours
 
 function saveSession() {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({
     name: djName, pin: djPin, isResident, rate: djRate, loginTime: Date.now()
   }));
 }
 
 function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
 }
 
 function restoreSession() {
   try {
-    const s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
     if (!s || !s.name || Date.now() - s.loginTime > SESSION_TTL) return false;
     djName = s.name;
     djPin = s.pin || '';
