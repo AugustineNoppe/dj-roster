@@ -171,6 +171,11 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   background:rgba(93,184,192,0.15);border-color:rgba(93,184,192,0.45);color:var(--teal);cursor:default;
 }
 .submit-hint{font-size:10px;color:var(--text-3);font-weight:600;text-align:center}
+.submit-warning{
+  width:100%;padding:10px 16px;border-radius:6px;text-align:center;
+  font-size:14px;font-weight:600;box-sizing:border-box;word-wrap:break-word;
+  background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.5);color:#ff5252;
+}
 .submit-locked-msg{font-size:12px;color:var(--text-3);font-weight:600;text-align:center;padding:10px 0}
 .locked-notice{
   display:flex;align-items:center;justify-content:center;gap:8px;
@@ -321,6 +326,7 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
   .portal-btn,.logout-btn{min-height:44px;display:inline-flex;align-items:center}
   .pill{padding:12px 8px;min-height:44px}
   .submit-btn{min-height:44px;padding:14px 28px}
+  .submit-warning{font-size:13px}
   .signoff-btn{min-height:44px;padding:8px 16px;font-size:11px}
   .day-signoff-btn{min-height:44px;padding:8px 16px;font-size:11px}
   .select-all-btn{min-height:44px;padding:8px 16px}
@@ -886,8 +892,8 @@ function renderCalendar() {
       html += `<div class="submit-wrap"><button class="submit-btn submitted" disabled>Submitted &#10003;</button></div>`;
     } else {
       html += `<div class="submit-wrap">
+        <div class="submit-warning">&#9888;&#65039; Only submit when you are 100% certain of your availability. Submissions cannot be changed.</div>
         <button class="submit-btn" onclick="submitAvailability()">Submit Availability</button>
-        <div class="submit-hint">Submit to confirm your availability with management.</div>
       </div>`;
     }
   }
