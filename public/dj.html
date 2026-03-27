@@ -820,7 +820,7 @@ function renderCalendar() {
     html += `<div class="locked-notice">&#128274; Availability submitted — slots are locked for this month</div>`;
   }
 
-  html += `<div class="cal-instruction-note ${isResident ? 'resident' : 'casual'}">${isResident ? '&#128683; Select your unavailable dates.' : '&#9989; Select your available dates.'}</div>`;
+  html += `<div class="cal-instruction-note casual">&#9989; Select your available time slots</div>`;
 
   // "Available All Month" toggle for all DJs
   if (!isFinalized && !isLocked) {

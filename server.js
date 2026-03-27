@@ -15,6 +15,7 @@ const supabase = createClient(
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { Resend } = require('resend');
+const TelegramBot = require('node-telegram-bot-api');
 const app = express();
 
 app.set('trust proxy', 1);
@@ -1261,6 +1262,126 @@ app.post('/api/admin/clear-lockout', requireAdmin, async (req, res) => {
     console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
 });
+
+/* == TELEGRAM BOT ========================================================= */
+if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
+  const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
+  const ALLOWED_CHAT = String(process.env.TELEGRAM_GROUP_ID);
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function parseMonth(input) {
+    const idx = MONTHS.findIndex(m => m.toLowerCase() === input.toLowerCase());
+    if (idx === -1) return null;
+    return `${MONTHS[idx]} ${new Date().getFullYear()}`;
+  }
+
+  function parseDate(input) {
+    // "13 april" or "13 April"
+    const match = input.match(/^(\d{1,2})\s+(\w+)$/);
+    if (!match) return null;
+    const day = parseInt(match[1], 10);
+    const monthIdx = MONTHS.findIndex(m => m.toLowerCase() === match[2].toLowerCase());
+    if (monthIdx === -1 || day < 1 || day > 31) return null;
+    const year = new Date().getFullYear();
+    return { dateKey: `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`, label: `${day} ${MONTHS[monthIdx]} ${year}` };
+  }
+
+  bot.on('message', async (msg) => {
+    if (String(msg.chat.id) !== ALLOWED_CHAT) return;
+    const text = (msg.text || '').trim();
+    if (!text) return;
+    const lower = text.toLowerCase();
+
+    try {
+      // --- help ---
+      if (lower === 'help') {
+        return bot.sendMessage(msg.chat.id,
+          `📋 *Available commands*\n\n` +
+          `• \`submitted [month]\` — DJs who have submitted\n` +
+          `• \`not submitted [month]\` — DJs who haven't submitted\n` +
+          `• \`hours [dj name] [month]\` — total hours scheduled\n` +
+          `• \`roster [day] [month]\` — full roster for a date\n` +
+          `• \`help\` — this message`,
+          { parse_mode: 'Markdown' }
+        );
+      }
+
+      // --- submitted [month] ---
+      if (/^submitted\s+\w+$/i.test(lower)) {
+        const month = parseMonth(lower.split(/\s+/)[1]);
+        if (!month) return bot.sendMessage(msg.chat.id, '❌ Unknown month. Try: submitted april');
+        const { data, error } = await supabase.from('dj_submissions').select('name').eq('month', month).eq('status', 'submitted');
+        if (error) throw error;
+        if (!data || data.length === 0) return bot.sendMessage(msg.chat.id, `No submissions yet for ${month}.`);
+        const list = data.map(r => `• ${r.name}`).join('\n');
+        return bot.sendMessage(msg.chat.id, `✅ *Submitted for ${month}* (${data.length})\n\n${list}`, { parse_mode: 'Markdown' });
+      }
+
+      // --- not submitted [month] ---
+      if (/^not submitted\s+\w+$/i.test(lower)) {
+        const month = parseMonth(lower.split(/\s+/)[2]);
+        if (!month) return bot.sendMessage(msg.chat.id, '❌ Unknown month. Try: not submitted april');
+        const [djsResult, { data: subs, error: subErr }] = await Promise.all([
+          fetchDJs(),
+          supabase.from('dj_submissions').select('name').eq('month', month).eq('status', 'submitted'),
+        ]);
+        if (subErr) throw subErr;
+        const submittedNames = new Set((subs || []).map(r => r.name.trim().toLowerCase()));
+        const missing = (djsResult.djs || []).filter(d => !submittedNames.has(d.name.trim().toLowerCase()));
+        if (missing.length === 0) return bot.sendMessage(msg.chat.id, `🎉 All active DJs have submitted for ${month}!`);
+        const list = missing.map(d => `• ${d.name}`).join('\n');
+        return bot.sendMessage(msg.chat.id, `⏳ *Not submitted for ${month}* (${missing.length})\n\n${list}`, { parse_mode: 'Markdown' });
+      }
+
+      // --- hours [dj name] [month] ---
+      if (/^hours\s+.+\s+\w+$/i.test(lower)) {
+        const parts = text.split(/\s+/);
+        const monthName = parts[parts.length - 1];
+        const djName = parts.slice(1, -1).join(' ');
+        const month = parseMonth(monthName);
+        if (!month) return bot.sendMessage(msg.chat.id, '❌ Unknown month. Try: hours Pick March');
+        const { data, error } = await supabase.from('roster_assignments').select('venue, slot').eq('month', month).ilike('dj', djName.trim());
+        if (error) throw error;
+        if (!data || data.length === 0) return bot.sendMessage(msg.chat.id, `No roster assignments found for ${djName} in ${month}.`);
+        const totalHours = data.length; // each slot = 1 hour
+        const byVenue = {};
+        for (const r of data) { byVenue[r.venue] = (byVenue[r.venue] || 0) + 1; }
+        const breakdown = Object.entries(byVenue).map(([v, h]) => `• ${v}: ${h}h`).join('\n');
+        return bot.sendMessage(msg.chat.id, `🎧 *${djName} — ${month}*\n\nTotal: ${totalHours} hours\n\n${breakdown}`, { parse_mode: 'Markdown' });
+      }
+
+      // --- roster [day] [month] ---
+      if (/^roster\s+\d{1,2}\s+\w+$/i.test(lower)) {
+        const rest = text.slice('roster'.length).trim();
+        const parsed = parseDate(rest);
+        if (!parsed) return bot.sendMessage(msg.chat.id, '❌ Could not parse date. Try: roster 13 april');
+        const { data, error } = await supabase.from('roster_assignments').select('venue, slot, dj').eq('date', parsed.dateKey);
+        if (error) throw error;
+        if (!data || data.length === 0) return bot.sendMessage(msg.chat.id, `No roster assignments for ${parsed.label}.`);
+        const byVenue = {};
+        for (const r of data) { (byVenue[r.venue] = byVenue[r.venue] || []).push(r); }
+        let reply = `📅 *Roster for ${parsed.label}*\n`;
+        for (const [venue, slots] of Object.entries(byVenue).sort()) {
+          reply += `\n*${venue.toUpperCase()}*\n`;
+          slots.sort((a, b) => a.slot.localeCompare(b.slot));
+          for (const s of slots) reply += `  ${s.slot} — ${s.dj}\n`;
+        }
+        return bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
+      }
+
+      // --- unknown command ---
+      if (/^(submitted|not submitted|hours|roster)\b/i.test(lower)) {
+        return bot.sendMessage(msg.chat.id, '❌ Could not parse that command. Type `help` for usage.', { parse_mode: 'Markdown' });
+      }
+    } catch (err) {
+      console.error('Telegram bot error:', err.message);
+      bot.sendMessage(msg.chat.id, '⚠️ Something went wrong. Please try again.').catch(() => {});
+    }
+  });
+
+  bot.on('polling_error', (err) => console.error('Telegram polling error:', err.message));
+  console.log('Telegram bot started (polling)');
+}
 
 /* == START ================================================================= */
 const PORT = process.env.PORT || 8080;
