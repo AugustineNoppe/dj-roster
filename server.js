@@ -979,6 +979,19 @@ app.post('/api/dj/availability/submit', requireDJAuth, async (req, res) => {
 
     invalidateCaches('availability', { month });
     res.json({ success: true });
+
+    // Send notification email (fire-and-forget — never block the response)
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: 'noreply@ark-bar.com',
+        to: 'entertainment@ark-bar.com',
+        subject: `Availability Submitted — ${name} — ${month}`,
+        text: `${name} has submitted their availability for ${month}.\n\nLog in to the admin panel to view and build the roster.`
+      });
+    } catch (emailErr) {
+      console.error('Availability submission email error:', emailErr.message);
+    }
   } catch (err) {
     console.error(err); res.json({ success: false, error: 'An error occurred' });
   }
