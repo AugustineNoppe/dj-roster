@@ -168,10 +168,16 @@ html,body{height:100%;font-family:'Montserrat',sans-serif;background:var(--bg);c
 }
 .submit-btn:hover:not(:disabled){background:rgba(93,184,192,0.3);border-color:rgba(93,184,192,0.8)}
 .submit-btn.submitted{
-  background:rgba(76,175,80,0.1);border-color:rgba(76,175,80,0.35);color:#81c784;cursor:default;
+  background:rgba(93,184,192,0.15);border-color:rgba(93,184,192,0.45);color:var(--teal);cursor:default;
 }
 .submit-hint{font-size:10px;color:var(--text-3);font-weight:600;text-align:center}
 .submit-locked-msg{font-size:12px;color:var(--text-3);font-weight:600;text-align:center;padding:10px 0}
+.locked-notice{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:8px 12px 4px;padding:10px 16px;border-radius:10px;
+  font-size:12px;font-weight:700;letter-spacing:.03em;text-align:center;
+  background:rgba(93,184,192,0.10);border:1px solid rgba(93,184,192,0.30);color:var(--teal);
+}
 
 /* === CALENDAR === */
 .cal-instruction-note{
@@ -804,6 +810,10 @@ function renderCalendar() {
     html += `<div class="finalized-banner">&#128274; ${getMonthStr()} is finalised — read only</div>`;
   }
 
+  if (isLocked && !isFinalized) {
+    html += `<div class="locked-notice">&#128274; Availability submitted — slots are locked for this month</div>`;
+  }
+
   html += `<div class="cal-instruction-note ${isResident ? 'resident' : 'casual'}">${isResident ? '&#128683; Select your unavailable dates.' : '&#9989; Select your available dates.'}</div>`;
 
   // "Available All Month" toggle for all DJs
@@ -857,8 +867,7 @@ function renderCalendar() {
     const isToday = dk === today;
 
     html += `<div class="cal-cell${isExpanded ? ' expanded' : ''}${isToday ? ' today' : ''}"
-                  style="${isLocked ? 'opacity:0.6;cursor:default' : ''}"
-                  ${isLocked ? '' : `onclick="toggleDate('${dk}')"`}>
+                  onclick="toggleDate('${dk}')">
       <div class="cal-date-num">${d}</div>
       <div class="cal-bar"><div class="cal-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
     </div>`;
@@ -874,7 +883,7 @@ function renderCalendar() {
   // Submit Availability button
   if (!isFinalized) {
     if (isLocked) {
-      html += `<div class="submit-wrap"><button class="submit-btn submitted" disabled>Availability Submitted</button></div>`;
+      html += `<div class="submit-wrap"><button class="submit-btn submitted" disabled>Submitted &#10003;</button></div>`;
     } else {
       html += `<div class="submit-wrap">
         <button class="submit-btn" onclick="submitAvailability()">Submit Availability</button>
@@ -1145,7 +1154,7 @@ async function submitAvailability() {
       setTimeout(() => { if (saveState === 'saved') setSaveState('idle'); }, 3000);
       showToast(`Availability submitted for ${month}`, 'success');
       const btn = document.querySelector('.submit-btn');
-      if (btn) { btn.disabled = true; btn.textContent = 'Availability Submitted'; btn.classList.add('submitted'); }
+      if (btn) { btn.disabled = true; btn.innerHTML = 'Submitted &#10003;'; btn.classList.add('submitted'); }
       renderCalendar();
     } else {
       setSaveState('error');
