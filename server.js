@@ -1296,12 +1296,12 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
       // --- help ---
       if (lower === 'help') {
         return bot.sendMessage(msg.chat.id,
-          `📋 *Available commands*\n\n` +
-          `• \`submitted [month]\` — DJs who have submitted\n` +
-          `• \`not submitted [month]\` — DJs who haven't submitted\n` +
-          `• \`hours [dj name] [month]\` — total hours scheduled\n` +
-          `• \`roster [day] [month]\` — full roster for a date\n` +
-          `• \`help\` — this message`,
+          `*ARKbar DJ Roster Bot — Available Commands:*\n\n` +
+          `📋 \`submitted [month]\`\nExample: \`submitted april\`\n\n` +
+          `❌ \`not submitted [month]\`\nExample: \`not submitted april\`\n\n` +
+          `⏱ \`hours [dj name] [month]\`\nExample: \`hours Pick March\`\n\n` +
+          `📅 \`roster [day] [month]\`\nExample: \`roster 13 april\`\n\n` +
+          `Type any command to get started.`,
           { parse_mode: 'Markdown' }
         );
       }
