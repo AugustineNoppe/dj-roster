@@ -1311,7 +1311,8 @@ function renderSchedule() {
     for (const venue of venueOrder) {
       if (!byDate[date][venue]) continue;
       const cls = venueCls[venue] || 'ark';
-      for (const slot of byDate[date][venue]) {
+      const sortedSlots = byDate[date][venue].slice().sort((a, b) => slotToMins(a.split('\u2013')[0]) - slotToMins(b.split('\u2013')[0]));
+      for (const slot of sortedSlots) {
         const key = `${date}|${slot}|${venue}`;
         const isSigned = signoffs.has(key);
         const slotEsc = slot.replace(/'/g, "\\'");

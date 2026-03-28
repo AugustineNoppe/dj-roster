@@ -2249,11 +2249,12 @@ async function clearDJLockoutUI(id, name) {
 // === UNLOCK SUBMISSION ===
 
 function openUnlockSubmission(id, name) {
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const now = new Date();
   const months = [];
   for (let i = -2; i <= 1; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const label = d.toLocaleString('en-US', { month: 'long' }) + ' ' + d.getFullYear();
+    const label = MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
     months.push(label);
   }
 
@@ -2267,9 +2268,10 @@ function openUnlockSubmission(id, name) {
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
         Allow <strong>${name}</strong> to resubmit availability for:
       </p>
-      <select id="unlockMonth" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:#fff;font-family:inherit;font-size:14px;font-weight:600;margin-bottom:16px">
+      <select id="unlockMonth" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:#1a1f2e;color:#f1f5f9;font-family:inherit;font-size:14px;font-weight:600;margin-bottom:16px">
         ${options}
       </select>
+      <style>#unlockMonth option{background:#1a1f2e;color:#f1f5f9}</style>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="manage-btn" onclick="document.getElementById('unlockOverlay').remove()">Cancel</button>
         <button class="manage-btn" style="background:var(--teal);color:#fff;border-color:var(--teal)" onclick="confirmUnlockSubmission('${id}', '${name}')">Unlock</button>
