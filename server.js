@@ -1306,6 +1306,7 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
           `❌ \`not submitted [month]\`\nExample: \`not submitted april\`\n\n` +
           `⏱ \`hours [dj name] [month]\`\nExample: \`hours Pick March\`\n\n` +
           `📅 \`roster [day] [month]\`\nExample: \`roster 13 april\`\n\n` +
+          `📆 \`roster [month] [venue]\` — Full monthly roster for a venue\nExample: \`roster april arkbar\`\nExample: \`roster april love\`\n\n` +
           `Type any command to get started.`,
           { parse_mode: 'Markdown' }
         );
@@ -1353,6 +1354,33 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
         for (const r of data) { byVenue[r.venue] = (byVenue[r.venue] || 0) + 1; }
         const breakdown = Object.entries(byVenue).map(([v, h]) => `• ${v}: ${h}h`).join('\n');
         return bot.sendMessage(msg.chat.id, `🎧 *${djName} — ${month}*\n\nTotal: ${totalHours} hours\n\n${breakdown}`, { parse_mode: 'Markdown' });
+      }
+
+      // --- roster [month] [venue] ---
+      if (/^roster\s+\w+\s+(arkbar|hip|love)$/i.test(lower)) {
+        const parts = lower.split(/\s+/);
+        const venueKey = parts[parts.length - 1].toLowerCase();
+        const month = parseMonth(parts[1]);
+        if (!month) return bot.sendMessage(msg.chat.id, '❌ Unknown month. Try: roster april arkbar');
+        const venueLabels = { arkbar: 'ARKbar', hip: 'HIP', love: 'Love Beach' };
+        const venueLabel = venueLabels[venueKey] || venueKey;
+        const { data, error } = await supabase.from('roster_assignments').select('date, slot, dj').eq('venue', venueKey).eq('month', month);
+        if (error) throw error;
+        if (!data || data.length === 0) return bot.sendMessage(msg.chat.id, `No roster data for ${month} ${venueLabel}.`);
+        const DAYS3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const byDate = {};
+        for (const r of data) { (byDate[r.date] = byDate[r.date] || []).push(r); }
+        const slotSort = (s) => { const h = parseInt(s.split(':')[0], 10); return h < 14 ? h + 24 : h; };
+        let lines = [];
+        for (const date of Object.keys(byDate).sort()) {
+          const [y, m, d] = date.split('-').map(Number);
+          const dow = DAYS3[new Date(y, m - 1, d).getDay()];
+          const sorted = byDate[date].sort((a, b) => slotSort(a.slot) - slotSort(b.slot));
+          const names = [...new Map(sorted.map(r => [r.dj, true])).keys()].join(' · ');
+          lines.push(`${dow} ${String(d).padStart(2, '0')}  ${names}`);
+        }
+        const reply = `📆 *${venueLabel} — ${month}*\n\n\`\`\`\n${lines.join('\n')}\n\`\`\``;
+        return bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
       }
 
       // --- roster [day] [month] ---
