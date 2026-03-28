@@ -2061,7 +2061,7 @@ function renderManageDJs(djs) {
           <button class="manage-btn" onclick="resetDJPin('${dj.id}', '${escapedName}')">Reset PIN</button>
           ${clearLockoutBtn}
           <button class="manage-btn" onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'))">Availability</button>
-
+          <button class="manage-btn" onclick="openUnlockSubmission('${dj.id}', '${escapedName}')">Unlock</button>
         </span>
         <div class="manage-actions-wrap">
           <button class="manage-actions-toggle" onclick="toggleActionsMenu(event)">Actions &#9662;</button>
@@ -2071,7 +2071,7 @@ function renderManageDJs(djs) {
             <button onclick="resetDJPin('${dj.id}', '${escapedName}');this.closest('.manage-actions-menu').classList.remove('open')">Reset PIN</button>
             ${clearLockoutMenu}
             <button onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'));this.closest('.manage-actions-menu').classList.remove('open')">Availability</button>
-
+            <button onclick="openUnlockSubmission('${dj.id}', '${escapedName}');this.closest('.manage-actions-menu').classList.remove('open')">Unlock</button>
           </div>
         </div>
       </td>
@@ -2241,6 +2241,56 @@ async function clearDJLockoutUI(id, name) {
     if (!data.success) { showToast(data.error || 'Error clearing lockout', 'error'); return; }
     showToast(`Lockout cleared for ${name}`, 'success');
     loadManageDJs();
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
+// === UNLOCK SUBMISSION ===
+
+function openUnlockSubmission(id, name) {
+  const now = new Date();
+  const months = [];
+  for (let i = -2; i <= 1; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const label = d.toLocaleString('en-US', { month: 'long' }) + ' ' + d.getFullYear();
+    months.push(label);
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'manage-edit-overlay';
+  overlay.id = 'unlockOverlay';
+  const options = months.map(m => `<option value="${m}">${m}</option>`).join('');
+  overlay.innerHTML = `
+    <div class="manage-edit-modal" style="max-width:340px">
+      <h3 style="margin-bottom:12px;font-size:15px;font-weight:800">Unlock Submission</h3>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+        Allow <strong>${name}</strong> to resubmit availability for:
+      </p>
+      <select id="unlockMonth" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:#fff;font-family:inherit;font-size:14px;font-weight:600;margin-bottom:16px">
+        ${options}
+      </select>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="manage-btn" onclick="document.getElementById('unlockOverlay').remove()">Cancel</button>
+        <button class="manage-btn" style="background:var(--teal);color:#fff;border-color:var(--teal)" onclick="confirmUnlockSubmission('${id}', '${name}')">Unlock</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function confirmUnlockSubmission(id, name) {
+  const month = document.getElementById('unlockMonth').value;
+  const overlay = document.getElementById('unlockOverlay');
+  if (overlay) overlay.remove();
+  try {
+    const res = await fetch(`/api/admin/djs/${id}/unlock-submission`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify({ month })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error unlocking submission', 'error'); return; }
+    showToast(data.message || `Submission unlocked for ${name} — ${month}`, 'success');
   } catch(e) {
     showToast('Connection error', 'error');
   }
