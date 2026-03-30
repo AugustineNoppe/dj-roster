@@ -407,6 +407,7 @@ app.get('/api/availability', async (req, res) => {
 app.get('/api/roster', async (req, res) => {
   try {
     const { venue, month } = req.query;
+    res.set('Cache-Control', 'no-store');
     res.json(await fetchRoster(venue, month));
   } catch (err) {
     console.error(err); res.json({ success: false, error: 'An error occurred' });
