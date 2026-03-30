@@ -881,9 +881,9 @@ async function loadAll() {
     const enc = encodeURIComponent;
     const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes, submissionsRes, unavailRes] = await Promise.all([
       fetch(`/api/availability?month=${enc(month)}`),
-      fetch(`/api/roster?venue=arkbar&month=${enc(month)}`),
-      fetch(`/api/roster?venue=hip&month=${enc(month)}`),
-      fetch(`/api/roster?venue=love&month=${enc(month)}`),
+      fetch(`/api/roster?venue=arkbar&month=${enc(month)}&t=${Date.now()}`),
+      fetch(`/api/roster?venue=hip&month=${enc(month)}&t=${Date.now()}`),
+      fetch(`/api/roster?venue=love&month=${enc(month)}&t=${Date.now()}`),
       fetch('/api/djs'),
       fetch('/api/config'),
       fetch(`/api/dj/submissions/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
@@ -1519,9 +1519,9 @@ async function loadHours() {
   try {
     const enc = encodeURIComponent;
     const [arkRes, hipRes, loveRes, djRes, signoffRes] = await Promise.all([
-      fetch(`/api/roster?venue=arkbar&month=${enc(month)}`),
-      fetch(`/api/roster?venue=hip&month=${enc(month)}`),
-      fetch(`/api/roster?venue=love&month=${enc(month)}`),
+      fetch(`/api/roster?venue=arkbar&month=${enc(month)}&t=${Date.now()}`),
+      fetch(`/api/roster?venue=hip&month=${enc(month)}&t=${Date.now()}`),
+      fetch(`/api/roster?venue=love&month=${enc(month)}&t=${Date.now()}`),
       fetch('/api/djs'),
       fetch(`/api/signoffs/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
     ]);
@@ -1642,9 +1642,9 @@ async function showDJDetail(djName) {
   const month = getMonthString();
   const enc = encodeURIComponent;
   const [arkRes, hipRes, loveRes, signoffRes] = await Promise.all([
-    fetch(`/api/roster?venue=arkbar&month=${enc(month)}`).then(r=>r.json()),
-    fetch(`/api/roster?venue=hip&month=${enc(month)}`).then(r=>r.json()),
-    fetch(`/api/roster?venue=love&month=${enc(month)}`).then(r=>r.json()),
+    fetch(`/api/roster?venue=arkbar&month=${enc(month)}&t=${Date.now()}`).then(r=>r.json()),
+    fetch(`/api/roster?venue=hip&month=${enc(month)}&t=${Date.now()}`).then(r=>r.json()),
+    fetch(`/api/roster?venue=love&month=${enc(month)}&t=${Date.now()}`).then(r=>r.json()),
     fetch(`/api/dj/signoffs/${enc(djName)}/${enc(month)}`).then(r=>r.json()).catch(()=>({signoffs:[]})),
   ]);
 
@@ -1796,9 +1796,9 @@ async function previewMonth() {
   const norm = n => n ? n.trim().toLowerCase() : '';
   try {
     const [arkRes, hipRes, loveRes, djRes, soRes] = await Promise.all([
-      fetch(`/api/roster?venue=arkbar&month=${enc(month)}`).then(r => r.json()),
-      fetch(`/api/roster?venue=hip&month=${enc(month)}`).then(r => r.json()),
-      fetch(`/api/roster?venue=love&month=${enc(month)}`).then(r => r.json()),
+      fetch(`/api/roster?venue=arkbar&month=${enc(month)}&t=${Date.now()}`).then(r => r.json()),
+      fetch(`/api/roster?venue=hip&month=${enc(month)}&t=${Date.now()}`).then(r => r.json()),
+      fetch(`/api/roster?venue=love&month=${enc(month)}&t=${Date.now()}`).then(r => r.json()),
       fetch('/api/djs').then(r => r.json()),
       fetch(`/api/signoffs/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }).then(r => r.json()).catch(() => ({ signedOff: {} })),
     ]);
