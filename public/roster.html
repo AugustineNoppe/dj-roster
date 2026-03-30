@@ -554,6 +554,12 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   .td-slot.empty-slot{background:#fafafa!important}
   .hours-wrap,.summary-row{display:none!important}
   .roster-table tbody tr:nth-child(even){background:#fafbff!important}
+  /* Love Beach: tighter cells for A4 landscape */
+  body.love-print .td-slot{min-width:70px}
+  body.love-print .slot-select{font-size:7px}
+  body.love-print .td-date{min-width:50px;padding:3px 5px}
+  body.love-print .roster-table{font-size:7px}
+  body.love-print .roster-table thead th{font-size:6.5px}
 }
 </style>
 </head>
@@ -1507,7 +1513,8 @@ function publishRoster() {
 function printRoster() {
   const venue = currentVenue === 'arkbar' ? 'ARKbar / HIP Restaurant' : 'Love Beach Club';
   $('printHeader').textContent = `${venue}  \u2014  DJ Roster  \u2014  ${getMonthString()}`;
-  setTimeout(() => window.print(), 100);
+  document.body.classList.toggle('love-print', currentVenue === 'love');
+  setTimeout(() => { window.print(); document.body.classList.remove('love-print'); }, 100);
 }
 
 // === HOURS TAB ===

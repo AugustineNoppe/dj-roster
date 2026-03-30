@@ -268,9 +268,8 @@ async function fetchAvailability(month) {
 async function fetchRoster(venue, month) {
   const key = `${venue}|${month}`;
   const cached = cache.roster.get(key);
-  if (cached) { console.log('[roster] cache hit', { venue, month }); return cached; }
+  if (cached) return cached;
 
-  console.log('[roster] fetching from Supabase', { venue, month });
   let query = supabase.from('roster_assignments').select('*').eq('venue', venue);
   if (month) query = query.eq('month', month);
   const { data, error } = await query;
@@ -408,7 +407,6 @@ app.get('/api/availability', async (req, res) => {
 app.get('/api/roster', async (req, res) => {
   try {
     const { venue, month } = req.query;
-    console.log('[roster] GET /api/roster hit', { venue, month });
     res.set('Cache-Control', 'no-store');
     res.json(await fetchRoster(venue, month));
   } catch (err) {
