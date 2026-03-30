@@ -1308,6 +1308,7 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
           `📅 \`roster [day] [month]\`\nExample: \`roster 13 april\`\n\n` +
           `📆 \`roster [month] [venue]\` — Full monthly roster for a venue\nExample: \`roster april arkbar\`\nExample: \`roster april love\`\n\n` +
           `🔍 \`availability [dj] [day] [month]\` — A DJ's availability for a specific date\nExample: \`availability alex 15 april\`\nExample: \`availability sound bogie 15 april\`\n\n` +
+          `🗓 \`submitted [dj] [month]\` — View a DJ's available slots for the month\nExample: \`submitted alex april\`\nExample: \`submitted sound bogie april\`\n\n` +
           `Type any command to get started.`,
           { parse_mode: 'Markdown' }
         );
@@ -1322,6 +1323,81 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
         if (!data || data.length === 0) return bot.sendMessage(msg.chat.id, `No submissions yet for ${month}.`);
         const list = data.map(r => `• ${r.name}`).join('\n');
         return bot.sendMessage(msg.chat.id, `✅ *Submitted for ${month}* (${data.length})\n\n${list}`, { parse_mode: 'Markdown' });
+      }
+
+      // --- submitted [dj] [month] ---
+      if (/^submitted\s+.+\s+\w+$/i.test(lower)) {
+        const parts = text.split(/\s+/);
+        const monthName = parts[parts.length - 1];
+        const djInput = parts.slice(1, -1).join(' ').trim();
+        const month = parseMonth(monthName);
+        if (!month) return bot.sendMessage(msg.chat.id, '❌ Unknown month. Try: submitted alex april');
+
+        // Find matching DJ
+        const djsResult = await fetchDJs();
+        const allDJs = djsResult.djs || [];
+        const exact = allDJs.find(d => d.name.toLowerCase() === djInput.toLowerCase());
+        const matches = exact ? [exact] : allDJs.filter(d => d.name.toLowerCase().includes(djInput.toLowerCase()));
+        if (matches.length === 0) return bot.sendMessage(msg.chat.id, `No DJ found matching '${djInput}'.`);
+        if (matches.length > 1) {
+          const list = matches.map(d => `• ${d.name}`).join('\n');
+          return bot.sendMessage(msg.chat.id, `Multiple DJs match '${djInput}':\n\n${list}\n\nPlease be more specific.`);
+        }
+        const dj = matches[0];
+
+        const { data, error } = await supabase
+          .from('dj_availability')
+          .select('date, slot, status')
+          .ilike('name', dj.name.trim())
+          .eq('month', month)
+          .eq('status', 'available');
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          return bot.sendMessage(msg.chat.id, `No availability submitted for ${dj.name} in ${month}.`);
+        }
+
+        // Group by date
+        const byDate = {};
+        for (const r of data) { (byDate[r.date] = byDate[r.date] || []).push(r.slot); }
+
+        const slotSort = (s) => { const h = parseInt(s.split(':')[0], 10); return h < 14 ? h + 24 : h; };
+        const slotEnd = (s) => {
+          const parts = s.split('\u2013');
+          if (parts.length < 2) return slotSort(s) + 1;
+          const h = parseInt(parts[1].split(':')[0], 10);
+          return h < 14 ? h + 24 : h;
+        };
+        const fmtH = (h) => `${String(h % 24).padStart(2, '0')}:00`;
+        const DAYS3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const monthIdx = MONTHS.findIndex(m => m.toLowerCase() === monthName.toLowerCase());
+
+        let lines = [];
+        for (const date of Object.keys(byDate).sort()) {
+          const slots = byDate[date].slice().sort((a, b) => slotSort(a) - slotSort(b));
+          // Merge consecutive slots into ranges
+          const ranges = [];
+          let rangeStart = slotSort(slots[0]);
+          let rangeEnd = slotEnd(slots[0]);
+          for (let i = 1; i < slots.length; i++) {
+            const s = slotSort(slots[i]);
+            const e = slotEnd(slots[i]);
+            if (s === rangeEnd) {
+              rangeEnd = e;
+            } else {
+              ranges.push(`${fmtH(rangeStart)}\u2013${fmtH(rangeEnd)}`);
+              rangeStart = s;
+              rangeEnd = e;
+            }
+          }
+          ranges.push(`${fmtH(rangeStart)}\u2013${fmtH(rangeEnd)}`);
+
+          const [, , d] = date.split('-').map(Number);
+          const dow = DAYS3[new Date(parseInt(date.split('-')[0]), monthIdx, d).getDay()];
+          lines.push(`${dow} ${String(d).padStart(2, '0')}:  ${ranges.join(', ')}`);
+        }
+
+        const reply = `🗓 *${dj.name} — ${month}*\n\n\`\`\`\n${lines.join('\n')}\n\`\`\``;
+        return bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
       }
 
       // --- not submitted [month] ---
