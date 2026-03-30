@@ -923,7 +923,6 @@ function buildSlotPanel(dk) {
         ? 'Teal = available. Tap to mark yourself unavailable.'
         : 'Tap to mark yourself available for a slot.';
 
-  const fixedDay = fixedSchedule[dk] || {};
   let pills = '';
   for (const slot of ALL_SLOTS) {
     const status = slotMap[slot] !== undefined ? slotMap[slot] : (isResident ? 'available' : 'unavailable');
@@ -931,8 +930,7 @@ function buildSlotPanel(dk) {
     const cls = `pill ${isAvail ? 'avail' : 'unavail'}`;
     const onclick = (isFinalized || isLocked) ? '' : `onclick="toggleSlot('${dk}','${slot.replace(/'/g, "\\'")}')"`;
     const disabled = (isFinalized || isLocked) ? 'disabled' : '';
-    const venueLabel = fixedDay[slot] ? `<span class="fixed-venue">${fixedDay[slot]}</span>` : '';
-    pills += `<button class="${cls}" ${onclick} ${disabled}>${slot}${venueLabel}</button>`;
+    pills += `<button class="${cls}" ${onclick} ${disabled}>${slot}</button>`;
   }
 
   const allAvail = ALL_SLOTS.every(s => {
