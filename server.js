@@ -1371,29 +1371,27 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
         const DAYS3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const monthIdx = MONTHS.findIndex(m => m.toLowerCase() === monthName.toLowerCase());
 
+        const year = new Date().getFullYear();
+        const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
         let lines = [];
-        for (const date of Object.keys(byDate).sort()) {
-          const slots = byDate[date].slice().sort((a, b) => slotSort(a) - slotSort(b));
-          // Merge consecutive slots into ranges
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dk = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const dow = DAYS3[new Date(year, monthIdx, d).getDay()];
+          const prefix = `${dow} ${String(d).padStart(2, '0')}:`;
+          const slots = byDate[dk];
+          if (!slots || slots.length === 0) { lines.push(prefix); continue; }
+          const sorted = slots.slice().sort((a, b) => slotSort(a) - slotSort(b));
           const ranges = [];
-          let rangeStart = slotSort(slots[0]);
-          let rangeEnd = slotEnd(slots[0]);
-          for (let i = 1; i < slots.length; i++) {
-            const s = slotSort(slots[i]);
-            const e = slotEnd(slots[i]);
-            if (s === rangeEnd) {
-              rangeEnd = e;
-            } else {
-              ranges.push(`${fmtH(rangeStart)}\u2013${fmtH(rangeEnd)}`);
-              rangeStart = s;
-              rangeEnd = e;
-            }
+          let rangeStart = slotSort(sorted[0]);
+          let rangeEnd = slotEnd(sorted[0]);
+          for (let i = 1; i < sorted.length; i++) {
+            const s = slotSort(sorted[i]);
+            const e = slotEnd(sorted[i]);
+            if (s === rangeEnd) { rangeEnd = e; }
+            else { ranges.push(`${fmtH(rangeStart)}\u2013${fmtH(rangeEnd)}`); rangeStart = s; rangeEnd = e; }
           }
           ranges.push(`${fmtH(rangeStart)}\u2013${fmtH(rangeEnd)}`);
-
-          const [, , d] = date.split('-').map(Number);
-          const dow = DAYS3[new Date(parseInt(date.split('-')[0]), monthIdx, d).getDay()];
-          lines.push(`${dow} ${String(d).padStart(2, '0')}:  ${ranges.join(', ')}`);
+          lines.push(`${prefix}  ${ranges.join(', ')}`);
         }
 
         const reply = `🗓 *${dj.name} — ${month}*\n\n\`\`\`\n${lines.join('\n')}\n\`\`\``;
