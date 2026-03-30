@@ -1443,15 +1443,12 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
           return bot.sendMessage(msg.chat.id, `No availability submitted for ${dj.name} on ${dateLabel}.`);
         }
 
-        const availCount = data.filter(r => r.status === 'available').length;
-        const unavailCount = data.filter(r => r.status === 'unavailable').length;
-        const total = data.length;
-        const status = availCount === total ? '✅ Available (all slots)'
-          : unavailCount === total ? '❌ Unavailable (all slots)'
-          : `⚠️ Partial — ${availCount}/${total} slots available`;
+        const slotSort = (s) => { const h = parseInt(s.split(':')[0], 10); return h < 14 ? h + 24 : h; };
+        const sorted = data.slice().sort((a, b) => slotSort(a.slot) - slotSort(b.slot));
+        const lines = sorted.map(r => `${r.slot}  ${r.status === 'available' ? '✅' : '❌'}`).join('\n');
 
         return bot.sendMessage(msg.chat.id,
-          `🔍 *${dj.name} — ${dateLabel}*\n\n${status}`,
+          `🔍 *${dj.name} — ${dateLabel}*\n\n${lines}`,
           { parse_mode: 'Markdown' }
         );
       }
