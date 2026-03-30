@@ -2062,6 +2062,7 @@ function renderManageDJs(djs) {
           ${clearLockoutBtn}
           <button class="manage-btn" onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'))">Availability</button>
           <button class="manage-btn" onclick="openUnlockSubmission('${dj.id}', '${escapedName}')">Unlock</button>
+          <button class="manage-btn" onclick="openEditAvailability('${escapedName}')">Edit Avail</button>
         </span>
         <div class="manage-actions-wrap">
           <button class="manage-actions-toggle" onclick="toggleActionsMenu(event)">Actions &#9662;</button>
@@ -2072,6 +2073,7 @@ function renderManageDJs(djs) {
             ${clearLockoutMenu}
             <button onclick="openAvailabilityGrid(manageDJs.find(d => d.id === '${dj.id}'));this.closest('.manage-actions-menu').classList.remove('open')">Availability</button>
             <button onclick="openUnlockSubmission('${dj.id}', '${escapedName}');this.closest('.manage-actions-menu').classList.remove('open')">Unlock</button>
+            <button onclick="openEditAvailability('${escapedName}');this.closest('.manage-actions-menu').classList.remove('open')">Edit Avail</button>
           </div>
         </div>
       </td>
@@ -2293,6 +2295,234 @@ async function confirmUnlockSubmission(id, name) {
     const data = await res.json();
     if (!data.success) { showToast(data.error || 'Error unlocking submission', 'error'); return; }
     showToast(data.message || `Submission unlocked for ${name} — ${month}`, 'success');
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
+// === ADMIN EDIT AVAILABILITY ===
+
+let _editAvailState = null; // { name, month, original: {dk: {slot: status}}, current: {dk: {slot: status}}, expandedDate: null }
+
+async function openEditAvailability(name) {
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DAYS_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const now = new Date();
+  const months = [];
+  for (let i = -2; i <= 1; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push(MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear());
+  }
+  const currentMonth = MONTH_NAMES[now.getMonth()] + ' ' + now.getFullYear();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'manage-edit-overlay';
+  overlay.id = 'editAvailOverlay';
+  overlay.style.alignItems = 'flex-start';
+  overlay.style.overflowY = 'auto';
+  overlay.style.padding = '24px 0';
+
+  const monthOptions = months.map(m => `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${m}</option>`).join('');
+
+  overlay.innerHTML = `
+    <div class="manage-edit-modal" style="max-width:420px;width:95vw;max-height:none;display:flex;flex-direction:column">
+      <h3 style="margin-bottom:8px;font-size:15px;font-weight:800">Edit Availability — ${name}</h3>
+      <select id="editAvailMonth" onchange="loadEditAvailMonth('${name.replace(/'/g, "\\'")}')" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:#1a1f2e;color:#f1f5f9;font-family:inherit;font-size:14px;font-weight:600;margin-bottom:12px">
+        ${monthOptions}
+      </select>
+      <style>#editAvailMonth option{background:#1a1f2e;color:#f1f5f9}</style>
+      <div id="editAvailContent" style="flex:1"><div style="text-align:center;padding:30px;color:var(--text-secondary)">Loading...</div></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="manage-btn" onclick="document.getElementById('editAvailOverlay').remove();_editAvailState=null">Cancel</button>
+        <button class="manage-btn" id="editAvailSaveBtn" style="background:var(--teal);color:#fff;border-color:var(--teal)" onclick="confirmEditAvailSave()">Save Changes</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  await loadEditAvailMonth(name);
+}
+
+async function loadEditAvailMonth(name) {
+  const month = document.getElementById('editAvailMonth').value;
+  const content = document.getElementById('editAvailContent');
+  content.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-secondary)">Loading...</div>';
+
+  try {
+    const res = await fetch(`/api/dj/availability/${encodeURIComponent(name)}/${encodeURIComponent(month)}`);
+    const data = await res.json();
+    if (!data.success) { content.innerHTML = '<div style="padding:20px;color:#ff5252">Failed to load availability.</div>'; return; }
+
+    const availability = data.availability || {};
+    // Deep clone for original snapshot
+    const original = JSON.parse(JSON.stringify(availability));
+
+    _editAvailState = { name, month, original, current: availability, expandedDate: null };
+    renderEditAvailGrid();
+  } catch(e) {
+    content.innerHTML = '<div style="padding:20px;color:#ff5252">Connection error.</div>';
+  }
+}
+
+function renderEditAvailGrid() {
+  const st = _editAvailState;
+  if (!st) return;
+  const content = document.getElementById('editAvailContent');
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DAYS3 = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const parts = st.month.split(' ');
+  const monthIdx = MONTH_NAMES.indexOf(parts[0]);
+  const year = parseInt(parts[1]);
+  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+
+  let html = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dk = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dow = DAYS3[new Date(year, monthIdx, d).getDay()];
+    const slotMap = st.current[dk] || {};
+    const origMap = st.original[dk] || {};
+
+    // Count available and changed slots
+    const availCount = ARKBAR_SLOTS.filter(s => (slotMap[s] || 'unavailable') === 'available').length;
+    const changedCount = ARKBAR_SLOTS.filter(s => (slotMap[s] || 'unavailable') !== (origMap[s] || 'unavailable')).length;
+    const isExpanded = st.expandedDate === dk;
+
+    const barPct = Math.round(availCount / ARKBAR_SLOTS.length * 100);
+    const barColor = availCount === ARKBAR_SLOTS.length ? 'rgba(93,184,192,0.9)' : availCount === 0 ? 'rgba(255,80,80,0.7)' : 'rgba(241,90,41,0.85)';
+    const changedBadge = changedCount > 0 ? `<span style="font-size:10px;font-weight:700;color:#F5A623;margin-left:auto">${changedCount} changed</span>` : '';
+
+    html += `<div style="border:1px solid ${isExpanded ? 'rgba(93,184,192,0.5)' : 'rgba(255,255,255,0.06)'};border-radius:8px;margin-bottom:4px;background:${isExpanded ? 'rgba(93,184,192,0.08)' : 'rgba(255,255,255,0.03)'};transition:all 0.2s">
+      <div onclick="_editAvailToggleDay('${dk}')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none">
+        <span style="font-size:13px;font-weight:800;min-width:28px">${String(d).padStart(2,'0')}</span>
+        <span style="font-size:11px;font-weight:600;color:var(--text-secondary);min-width:28px">${dow}</span>
+        <div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:2px;transition:width 0.3s"></div>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:var(--text-secondary);min-width:30px;text-align:right">${availCount}/${ARKBAR_SLOTS.length}</span>
+        ${changedBadge}
+      </div>`;
+
+    if (isExpanded) {
+      html += `<div style="padding:4px 12px 12px;display:grid;grid-template-columns:1fr 1fr;gap:4px">`;
+      for (const slot of ARKBAR_SLOTS) {
+        const status = slotMap[slot] || 'unavailable';
+        const isAvail = status === 'available';
+        const origStatus = origMap[slot] || 'unavailable';
+        const isChanged = status !== origStatus;
+        const bg = isAvail ? 'rgba(93,184,192,0.2)' : 'rgba(255,255,255,0.04)';
+        const border = isChanged ? '1px solid #F5A623' : isAvail ? '1px solid rgba(93,184,192,0.5)' : '1px solid rgba(255,255,255,0.1)';
+        const color = isAvail ? 'var(--teal)' : 'var(--text-secondary)';
+        html += `<button onclick="_editAvailToggleSlot('${dk}','${slot.replace(/'/g, "\\'")}')" style="padding:8px 4px;border-radius:6px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;background:${bg};border:${border};color:${color};transition:all 0.15s">${slot}</button>`;
+      }
+      html += `<div style="grid-column:1/-1;display:flex;gap:6px;margin-top:6px">
+        <button onclick="_editAvailSelectAll('${dk}', true)" style="flex:1;padding:6px;border-radius:6px;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:rgba(93,184,192,0.12);border:1px solid rgba(93,184,192,0.4);color:var(--teal)">Select All</button>
+        <button onclick="_editAvailSelectAll('${dk}', false)" style="flex:1;padding:6px;border-radius:6px;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--text-secondary)">Deselect All</button>
+      </div>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  content.innerHTML = html;
+}
+
+function _editAvailToggleDay(dk) {
+  if (!_editAvailState) return;
+  _editAvailState.expandedDate = _editAvailState.expandedDate === dk ? null : dk;
+  renderEditAvailGrid();
+}
+
+function _editAvailToggleSlot(dk, slot) {
+  if (!_editAvailState) return;
+  if (!_editAvailState.current[dk]) _editAvailState.current[dk] = {};
+  const cur = _editAvailState.current[dk][slot] || 'unavailable';
+  _editAvailState.current[dk][slot] = cur === 'available' ? 'unavailable' : 'available';
+  renderEditAvailGrid();
+}
+
+function _editAvailSelectAll(dk, avail) {
+  if (!_editAvailState) return;
+  if (!_editAvailState.current[dk]) _editAvailState.current[dk] = {};
+  for (const slot of ARKBAR_SLOTS) {
+    _editAvailState.current[dk][slot] = avail ? 'available' : 'unavailable';
+  }
+  renderEditAvailGrid();
+}
+
+function _getEditAvailChanges() {
+  const st = _editAvailState;
+  if (!st) return { changes: [], byDate: {} };
+  const changes = [];
+  const byDate = {};
+  const allDates = new Set([...Object.keys(st.original), ...Object.keys(st.current)]);
+  for (const dk of allDates) {
+    const origMap = st.original[dk] || {};
+    const curMap = st.current[dk] || {};
+    for (const slot of ARKBAR_SLOTS) {
+      const origStatus = origMap[slot] || 'unavailable';
+      const curStatus = curMap[slot] || 'unavailable';
+      if (origStatus !== curStatus) {
+        changes.push({ date: dk, slot, status: curStatus });
+        byDate[dk] = (byDate[dk] || 0) + 1;
+      }
+    }
+  }
+  return { changes, byDate };
+}
+
+function confirmEditAvailSave() {
+  const st = _editAvailState;
+  if (!st) return;
+  const { changes, byDate } = _getEditAvailChanges();
+  if (changes.length === 0) { showToast('No changes to save', 'error'); return; }
+
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const parts = st.month.split(' ');
+  const monthIdx = MONTH_NAMES.indexOf(parts[0]);
+  const shortMonth = MONTH_NAMES[monthIdx].slice(0, 3);
+
+  const dateLines = Object.keys(byDate).sort().map(dk => {
+    const d = parseInt(dk.split('-')[2], 10);
+    return `${d} ${shortMonth} — ${byDate[dk]} slot${byDate[dk] > 1 ? 's' : ''} changed`;
+  }).join('<br>');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'manage-edit-overlay';
+  overlay.id = 'editAvailConfirm';
+  overlay.style.zIndex = '1001';
+  overlay.innerHTML = `
+    <div class="manage-edit-modal" style="max-width:360px;text-align:center">
+      <h3 style="margin-bottom:12px;font-size:15px;font-weight:800">Update availability for ${st.name}?</h3>
+      <div style="text-align:left;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:16px;line-height:1.8">${dateLines}</div>
+      <p style="font-size:12px;font-weight:700;color:#ff5252;margin-bottom:16px">This cannot be undone.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="manage-btn" onclick="document.getElementById('editAvailConfirm').remove()">Cancel</button>
+        <button class="manage-btn" style="background:var(--teal);color:#fff;border-color:var(--teal)" onclick="executeEditAvailSave()">Confirm</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function executeEditAvailSave() {
+  const st = _editAvailState;
+  if (!st) return;
+  const confirm = document.getElementById('editAvailConfirm');
+  if (confirm) confirm.remove();
+
+  const { changes } = _getEditAvailChanges();
+  if (changes.length === 0) return;
+
+  try {
+    const res = await fetch('/api/admin/availability', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify({ name: st.name, month: st.month, slots: changes })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast(data.error || 'Error saving availability', 'error'); return; }
+    showToast(`Availability updated for ${st.name} — ${changes.length} slot${changes.length > 1 ? 's' : ''} saved`, 'success');
+    // Refresh to reflect saved state
+    await loadEditAvailMonth(st.name);
   } catch(e) {
     showToast('Connection error', 'error');
   }

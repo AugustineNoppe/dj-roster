@@ -1256,6 +1256,31 @@ app.post('/api/admin/djs/:id/unlock-submission', requireAdmin, async (req, res) 
   res.status(result.status || 200).json(result);
 });
 
+/* -- POST /api/admin/availability ----------------------------------------- */
+app.post('/api/admin/availability', requireAdmin, async (req, res) => {
+  try {
+    const { name, month, slots } = req.body;
+    if (!name || !month || !Array.isArray(slots) || slots.length === 0) {
+      return res.status(400).json({ success: false, error: 'Missing fields' });
+    }
+    const rows = slots.map(({ date, slot, status }) => ({
+      name: name.trim(), date, slot: normalizeSlot(slot), month, status,
+    }));
+    for (let i = 0; i < rows.length; i += 500) {
+      const chunk = rows.slice(i, i + 500);
+      const { error } = await supabase
+        .from('dj_availability')
+        .upsert(chunk, { onConflict: 'name,date,slot' });
+      if (error) throw new Error(error.message);
+    }
+    invalidateCaches('availability', { month });
+    res.json({ success: true, saved: rows.length });
+  } catch (err) {
+    console.error('[admin/availability]', err.message);
+    res.json({ success: false, error: 'An error occurred' });
+  }
+});
+
 /* == ADMIN — CLEAR DJ LOCKOUT ============================================= */
 app.post('/api/admin/clear-lockout', requireAdmin, async (req, res) => {
   try {
