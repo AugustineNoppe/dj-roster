@@ -1307,6 +1307,7 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
           `⏱ \`hours [dj name] [month]\`\nExample: \`hours Pick March\`\n\n` +
           `📅 \`roster [day] [month]\`\nExample: \`roster 13 april\`\n\n` +
           `📆 \`roster [month] [venue]\` — Full monthly roster for a venue\nExample: \`roster april arkbar\`\nExample: \`roster april love\`\n\n` +
+          `🔍 \`availability [dj] [day] [month]\` — A DJ's availability for a specific date\nExample: \`availability alex 15 april\`\nExample: \`availability sound bogie 15 april\`\n\n` +
           `Type any command to get started.`,
           { parse_mode: 'Markdown' }
         );
@@ -1402,8 +1403,61 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_GROUP_ID) {
         return bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
       }
 
+      // --- availability [dj] [day] [month] ---
+      if (/^availability\s+.+\s+\d{1,2}\s+\w+$/i.test(lower)) {
+        const parts = text.split(/\s+/);
+        const monthName = parts[parts.length - 1];
+        const dayNum = parseInt(parts[parts.length - 2], 10);
+        const djInput = parts.slice(1, -2).join(' ').trim();
+        const month = parseMonth(monthName);
+        if (!month) return bot.sendMessage(msg.chat.id, '❌ Unknown month. Try: availability alex 15 april');
+        if (dayNum < 1 || dayNum > 31) return bot.sendMessage(msg.chat.id, '❌ Invalid day. Use 1–31.');
+
+        // Find matching DJ (case-insensitive partial match)
+        const djsResult = await fetchDJs();
+        const allDJs = djsResult.djs || [];
+        const exact = allDJs.find(d => d.name.toLowerCase() === djInput.toLowerCase());
+        const matches = exact ? [exact] : allDJs.filter(d => d.name.toLowerCase().includes(djInput.toLowerCase()));
+
+        if (matches.length === 0) return bot.sendMessage(msg.chat.id, `No DJ found matching '${djInput}'.`);
+        if (matches.length > 1) {
+          const list = matches.map(d => `• ${d.name}`).join('\n');
+          return bot.sendMessage(msg.chat.id, `Multiple DJs match '${djInput}':\n\n${list}\n\nPlease be more specific.`);
+        }
+
+        const dj = matches[0];
+        const monthIdx = MONTHS.findIndex(m => m.toLowerCase() === monthName.toLowerCase());
+        const year = new Date().getFullYear();
+        const dateKey = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        const dateLabel = `${dayNum} ${MONTHS[monthIdx]} ${year}`;
+
+        const { data, error } = await supabase
+          .from('dj_availability')
+          .select('slot, status')
+          .ilike('name', dj.name.trim())
+          .eq('month', month)
+          .eq('date', dateKey);
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          return bot.sendMessage(msg.chat.id, `No availability submitted for ${dj.name} on ${dateLabel}.`);
+        }
+
+        const availCount = data.filter(r => r.status === 'available').length;
+        const unavailCount = data.filter(r => r.status === 'unavailable').length;
+        const total = data.length;
+        const status = availCount === total ? '✅ Available (all slots)'
+          : unavailCount === total ? '❌ Unavailable (all slots)'
+          : `⚠️ Partial — ${availCount}/${total} slots available`;
+
+        return bot.sendMessage(msg.chat.id,
+          `🔍 *${dj.name} — ${dateLabel}*\n\n${status}`,
+          { parse_mode: 'Markdown' }
+        );
+      }
+
       // --- unknown command ---
-      if (/^(submitted|not submitted|hours|roster)\b/i.test(lower)) {
+      if (/^(submitted|not submitted|hours|roster|availability)\b/i.test(lower)) {
         return bot.sendMessage(msg.chat.id, '❌ Could not parse that command. Type `help` for usage.', { parse_mode: 'Markdown' });
       }
     } catch (err) {
