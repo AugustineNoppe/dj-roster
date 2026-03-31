@@ -1523,8 +1523,7 @@ async function loadHours() {
   }
 }
 
-function renderHours(djs, scheduledHours, signedOffHours, prevHoursRaw, prevMonthLabel) {
-  checkFinalized();
+async function renderHours(djs, scheduledHours, signedOffHours, prevHoursRaw, prevMonthLabel) {
   const normalize = name => name ? name.trim().toLowerCase() : '';
 
   const schedNorm = {}, signNorm = {}, prevNorm = {};
@@ -1624,6 +1623,7 @@ function renderHours(djs, scheduledHours, signedOffHours, prevHoursRaw, prevMont
       </table>
     </div>
   </div>`;
+  await checkFinalized();
 }
 
 // === DJ DETAIL MODAL ===
