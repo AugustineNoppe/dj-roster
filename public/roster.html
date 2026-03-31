@@ -230,9 +230,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 .slot-select.no-avail{background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:10px}
 .slot-select option{background:#1a1f2e;color:#fff}
 
-/* Locked state */
-.roster-locked .slot-select:not(.no-avail){pointer-events:none;opacity:.95}
-.roster-locked .slot-select.unassigned{opacity:.4}
 
 /* === STATUS BAR === */
 .status-bar{
@@ -240,9 +237,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:20px;
   flex-shrink:0;font-size:11px;font-weight:600;color:var(--text-muted);
 }
-.status-pill{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-weight:700;font-size:11px}
-.status-pill.draft{background:rgba(230,81,0,0.2);color:#ffab40;border:1px solid rgba(230,81,0,0.3)}
-.status-pill.published{background:rgba(46,125,50,0.2);color:#69f0ae;border:1px solid rgba(46,125,50,0.3)}
+.status-pill{display:none}
 .status-bar-right{margin-left:auto;display:flex;gap:10px}
 .btn-sm{
   padding:7px 16px;border-radius:var(--radius-sm);font-family:inherit;font-size:11px;
@@ -250,8 +245,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   background:rgba(255,255,255,0.08);color:#fff;backdrop-filter:blur(10px);
 }
 .btn-sm:hover{background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3)}
-.btn-publish{background:rgba(43,57,144,0.6);border-color:rgba(93,184,192,0.5)}
-.btn-publish:hover{background:rgba(43,57,144,0.85);border-color:var(--teal)}
 .btn-suggest{background:rgba(93,184,192,0.15);border-color:rgba(93,184,192,0.4);color:var(--teal)}
 .btn-suggest:hover{background:rgba(93,184,192,0.3);border-color:var(--teal);color:#fff}
 .btn-clear{background:rgba(241,90,41,0.12);border-color:rgba(241,90,41,0.35);color:#ff8a65}
@@ -496,7 +489,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   .status-bar>span{display:none}
   .status-bar-right{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .btn-sm{padding:8px 10px;font-size:11px;min-height:44px;text-align:center;justify-content:center;display:flex;align-items:center}
-  .status-pill{font-size:10px}
   /* Hours page */
   .summary-row{grid-template-columns:1fr 1fr}
   .hours-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -625,14 +617,10 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   </main>
 
   <footer class="status-bar" id="statusBarEl">
-    <div class="status-pill draft" id="statusPill">&#x25CF; Draft</div>
-    <span id="statusText">Unsaved changes will auto-save per cell</span>
     <div class="status-bar-right">
       <button class="btn-sm btn-suggest" onclick="runAutoSuggest()">&#9889; Auto-suggest</button>
       <button class="btn-sm btn-clear" onclick="clearRoster()">Clear Roster</button>
-<button class="btn-sm btn-publish" id="btnPublish" onclick="publishRoster()">Publish Roster</button>
-      <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="display:none;background:#2e7d32;color:#fff;">Print / PDF</button>
-
+      <button class="btn-sm" id="btnPrint" onclick="printRoster()" style="background:#2e7d32;color:#fff;">Print / PDF</button>
     </div>
   </footer>
   <div id="manageContent" style="display:none"></div>
@@ -668,7 +656,6 @@ let djList = [];
 let submittedDJs = new Map(); // name → status ('pre-loaded' | 'submitted')
 let unavailabilityMap = {};   // DJ name → array of "date|slot" strings
 let fixedSchedules = null;   // populated once from /api/fixed-schedules
-let isPublished = false;
 let toastTimer;
 
 // === CONSTANTS ===
@@ -1060,8 +1047,6 @@ function buildCell(dateStr, slot, type) {
 
 // === ASSIGN DJ ===
 async function assignDJ(sel) {
-  if (isPublished) return;
-
   const date = sel.dataset.date;
   const slot = sel.dataset.slot;
   const type = sel.dataset.type;
@@ -1159,7 +1144,6 @@ async function assignDJ(sel) {
 }
 
 async function clearRoster() {
-  if (isPublished) { showToast('Unlock roster before clearing', 'error'); return; }
   if (currentVenue === 'hours') return;
 
   const venueName = currentVenue === 'love' ? 'Love Beach' : 'ARKbar/HIP';
@@ -1193,7 +1177,6 @@ async function clearRoster() {
 
 // === AUTO-SUGGEST ===
 async function runAutoSuggest() {
-  if (isPublished) { showToast('Unlock roster before auto-suggesting', 'error'); return; }
   if (currentVenue === 'hours') { showToast('Switch to a venue tab first', 'error'); return; }
 
   // Refresh submission state and unavailability.
@@ -1484,29 +1467,6 @@ async function runAutoSuggest() {
       : 'Some saves failed \u2014 check sheet', allOk ? 'success' : 'error');
   } catch(e) {
     showToast('UI updated \u2014 check connection', 'error');
-  }
-}
-
-// === PUBLISH ===
-function publishRoster() {
-  if (!isPublished) {
-    isPublished = true;
-    $('statusPill').className = 'status-pill published';
-    $('statusPill').textContent = '\u25CF Published';
-    $('statusText').textContent = `Published \u2014 ${getMonthString()}`;
-    $('btnPublish').textContent = 'Unlock Roster';
-    $('btnPrint').style.display = 'inline-block';
-    $('mainContent').classList.add('roster-locked');
-    showToast('Roster published \u2014 locked for editing', 'success');
-  } else {
-    isPublished = false;
-    $('statusPill').className = 'status-pill draft';
-    $('statusPill').textContent = '\u25CF Draft';
-    $('statusText').textContent = 'Unsaved changes will auto-save per cell';
-    $('btnPublish').textContent = 'Publish Roster';
-    $('btnPrint').style.display = 'none';
-    $('mainContent').classList.remove('roster-locked');
-    showToast('Roster unlocked for editing', '');
   }
 }
 
