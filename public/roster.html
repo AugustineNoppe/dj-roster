@@ -1774,19 +1774,17 @@ function closeDJDetail() { const m = $('djDetailModal'); if (m) m.remove(); }
 async function checkFinalized() {
   const btn = $('finalizeBtn');
   const area = $('finalizeArea');
-  console.log('[checkFinalized] btn:', !!btn, 'area:', !!area);
   if (!btn || !area) return;
   try {
     const month = getMonthString();
     const data = await fetch(`/api/finalized?month=${encodeURIComponent(month)}`).then(r => r.json());
-    console.log('[checkFinalized]', { month, isFinalized: data.isFinalized, data });
     if (data.isFinalized) {
       area.innerHTML = `<span class="finalized-pill">&#128274; Finalised</span>`;
     } else {
       btn.disabled = false;
     }
     area.style.visibility = 'visible';
-  } catch(e) { console.error('[checkFinalized] error:', e); area.style.visibility = 'visible'; }
+  } catch(e) { area.style.visibility = 'visible'; }
 }
 
 async function previewMonth() {
