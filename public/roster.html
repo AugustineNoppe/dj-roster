@@ -1607,7 +1607,7 @@ async function renderHours(djs, scheduledHours, signedOffHours, prevHoursRaw, pr
     <div class="hours-table-wrap">
       <div class="hours-table-header">
         <h2>Hours by DJ \u2014 ${getMonthString()}</h2>
-        <div style="display:flex;align-items:center;gap:8px" id="finalizeArea">
+        <div style="display:flex;align-items:center;gap:8px;visibility:hidden" id="finalizeArea">
           <button class="finalize-btn" id="finalizeBtn" onclick="previewMonth()">Finalise Month</button>
         </div>
       </div>
@@ -1778,7 +1778,8 @@ async function checkFinalized() {
     } else {
       btn.disabled = false;
     }
-  } catch(e) { console.error('[checkFinalized] error:', e); }
+    area.style.visibility = 'visible';
+  } catch(e) { console.error('[checkFinalized] error:', e); area.style.visibility = 'visible'; }
 }
 
 async function previewMonth() {
