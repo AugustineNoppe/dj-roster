@@ -690,6 +690,8 @@ app.get('/api/admin/diagnostic/:month', requireAdmin, async (req, res) => {
 app.post('/api/roster/assign', requireAdmin, async (req, res) => {
   try {
     const { venue, date, slot, dj, month } = req.body;
+    const finalized = await fetchFinalized();
+    if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalised and cannot be edited' });
     const normSlot = normalizeSlot(slot);
     if (dj) {
       const { error } = await supabase.from('roster_assignments').upsert(
@@ -713,6 +715,8 @@ app.post('/api/roster/assign', requireAdmin, async (req, res) => {
 app.post('/api/roster/batch', requireAdmin, async (req, res) => {
   const { venue, month, assignments } = req.body;
   try {
+    const finalized = await fetchFinalized();
+    if (finalized.months.includes(month)) return res.json({ success: false, error: 'This month is finalised and cannot be edited' });
     const result = await withVenueLock(venue, async () => {
       const rows = assignments.map(({ date, slot, dj }) => ({
         venue, date, slot: normalizeSlot(slot), month, dj,
