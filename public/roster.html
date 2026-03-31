@@ -1483,41 +1483,57 @@ async function loadHours() {
   $('mainContent').style.display = '';
   $('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading hours...</div>';
   const month = getMonthString();
+  // Calculate previous month string
+  let prevM = currentMonth - 1, prevY = currentYear;
+  if (prevM < 0) { prevM = 11; prevY--; }
+  const prevMonth = `${MONTHS[prevM]} ${prevY}`;
   try {
     const enc = encodeURIComponent;
-    const [arkRes, hipRes, loveRes, djRes, signoffRes] = await Promise.all([
+    const [arkRes, hipRes, loveRes, djRes, signoffRes, prevArkRes, prevHipRes, prevLoveRes] = await Promise.all([
       fetch(`/api/roster?venue=arkbar&month=${enc(month)}&t=${Date.now()}`),
       fetch(`/api/roster?venue=hip&month=${enc(month)}&t=${Date.now()}`),
       fetch(`/api/roster?venue=love&month=${enc(month)}&t=${Date.now()}`),
       fetch('/api/djs'),
       fetch(`/api/signoffs/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
+      fetch(`/api/roster?venue=arkbar&month=${enc(prevMonth)}&t=${Date.now()}`),
+      fetch(`/api/roster?venue=hip&month=${enc(prevMonth)}&t=${Date.now()}`),
+      fetch(`/api/roster?venue=love&month=${enc(prevMonth)}&t=${Date.now()}`),
     ]);
-    const [arkData, hipData, loveData, djData, signoffData] = await Promise.all([arkRes.json(), hipRes.json(), loveRes.json(), djRes.json(), signoffRes.json()]);
+    const [arkData, hipData, loveData, djData, signoffData, prevArkData, prevHipData, prevLoveData] = await Promise.all([
+      arkRes.json(), hipRes.json(), loveRes.json(), djRes.json(), signoffRes.json(),
+      prevArkRes.json(), prevHipRes.json(), prevLoveRes.json(),
+    ]);
     const scheduledHours = {};
     (arkData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') scheduledHours[r[2]] = (scheduledHours[r[2]] || 0) + 1; });
     (hipData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') scheduledHours[r[2]] = (scheduledHours[r[2]] || 0) + 1; });
     (loveData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') scheduledHours[r[2]] = (scheduledHours[r[2]] || 0) + 1; });
+    const prevHours = {};
+    (prevArkData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') prevHours[r[2]] = (prevHours[r[2]] || 0) + 1; });
+    (prevHipData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') prevHours[r[2]] = (prevHours[r[2]] || 0) + 1; });
+    (prevLoveData.roster || []).forEach(r => { if (r[2] && r[2] !== 'Guest DJ') prevHours[r[2]] = (prevHours[r[2]] || 0) + 1; });
     const signedOffHours = signoffData.signedOff || {};
 
-    renderHours(djData.djs || [], scheduledHours, signedOffHours);
+    renderHours(djData.djs || [], scheduledHours, signedOffHours, prevHours, prevMonth);
   } catch(e) {
     $('mainContent').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
   }
 }
 
-function renderHours(djs, scheduledHours, signedOffHours) {
+function renderHours(djs, scheduledHours, signedOffHours, prevHoursRaw, prevMonthLabel) {
   checkFinalized();
   const normalize = name => name ? name.trim().toLowerCase() : '';
 
-  const schedNorm = {}, signNorm = {};
+  const schedNorm = {}, signNorm = {}, prevNorm = {};
   Object.entries(scheduledHours).forEach(([k,v]) => { schedNorm[normalize(k)] = v; });
   Object.entries(signedOffHours).forEach(([k,v]) => { signNorm[normalize(k)] = v; });
+  Object.entries(prevHoursRaw || {}).forEach(([k,v]) => { prevNorm[normalize(k)] = v; });
 
-  const scheduled = {}, signedOff = {};
+  const scheduled = {}, signedOff = {}, prev = {};
   djs.forEach(d => {
-    if (d.name === 'Guest DJ') { scheduled[d.name] = 0; signedOff[d.name] = 0; return; }
+    if (d.name === 'Guest DJ') { scheduled[d.name] = 0; signedOff[d.name] = 0; prev[d.name] = 0; return; }
     scheduled[d.name] = schedNorm[normalize(d.name)] || 0;
     signedOff[d.name] = signNorm[normalize(d.name)] || 0;
+    prev[d.name] = prevNorm[normalize(d.name)] || 0;
   });
 
   const totalScheduled = Object.values(scheduled).reduce((a,b) => a + b, 0);
@@ -1536,6 +1552,7 @@ function renderHours(djs, scheduledHours, signedOffHours) {
   const rows = sorted.map(dj => {
     const sched = scheduled[dj.name] || 0;
     const signed = signedOff[dj.name] || 0;
+    const prevH = prev[dj.name] || 0;
     const isResident = RESIDENTS.includes(dj.name);
     const has80Target = RESIDENTS_80HR.includes(dj.name);
     const pct = maxHours > 0 ? Math.min(sched / maxHours * 100, 100) : 0;
@@ -1559,6 +1576,7 @@ function renderHours(djs, scheduledHours, signedOffHours) {
           ${isResident ? '<div style="font-size:9px;color:var(--teal);font-weight:800;text-transform:uppercase;letter-spacing:.06em">Resident</div>' : ''}
         </div>
       </div></td>
+      <td class="right" style="color:var(--text-muted)">${prevH > 0 ? prevH + 'h' : '\u2014'}</td>
       <td class="right">${sched > 0 ? sched + 'h' : '\u2014'}</td>
       <td class="right">${signed > 0 ? signed + 'h' : '\u2014'}</td>
       <td><div class="hours-bar-wrap">
@@ -1591,10 +1609,10 @@ function renderHours(djs, scheduledHours, signedOffHours) {
         </div>
       </div>
       <table class="hours-table">
-        <thead><tr><th>DJ</th><th class="right">Scheduled</th><th class="right">Signed Off</th><th>Hours Bar</th><th class="right">Rate</th><th class="right">Est. Cost</th><th class="right">Cost (signed)</th></tr></thead>
+        <thead><tr><th>DJ</th><th class="right"><div>Prev Month</div><div style="font-size:9px;font-weight:500;color:var(--text-muted);text-transform:none;letter-spacing:0">${prevMonthLabel || ''}</div></th><th class="right">Scheduled</th><th class="right">Signed Off</th><th>Hours Bar</th><th class="right">Rate</th><th class="right">Est. Cost</th><th class="right">Cost (signed)</th></tr></thead>
         <tbody>${rows}
           <tr class="totals-row">
-            <td>Total</td><td class="right">${totalScheduled}h</td><td class="right">${totalSignedOff}h</td>
+            <td>Total</td><td></td><td class="right">${totalScheduled}h</td><td class="right">${totalSignedOff}h</td>
             <td></td>
             <td></td><td class="right" style="font-size:14px;color:var(--text-secondary)">\u0E3F${totalEstCost.toLocaleString()}</td><td class="right" style="font-size:14px;color:#F5A623">\u0E3F${totalCost.toLocaleString()}</td>
           </tr>
