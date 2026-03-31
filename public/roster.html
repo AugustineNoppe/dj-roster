@@ -523,38 +523,39 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
 
 /* === PRINT === */
 @media print{
-  @page{size:A3 landscape;margin:8mm}
+  @page{size:A3 landscape;margin:6mm}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-  body{background:#fff;font-size:10px}
+  body{background:#fff!important;font-size:9px}
+  body::before,body::after{display:none!important}
   .login-wrap,.app-header,.venue-bar,.status-bar,.hours-toggle,.hours-panel,.hours-panel-overlay,.toast,.dj-detail-actions{display:none!important}
-  .print-header{display:block!important;padding:0 0 6px;margin-bottom:6px;border-bottom:2px solid var(--navy);font-size:13px}
+  .print-header{display:block!important;padding:0 0 4px;margin-bottom:4px;border-bottom:2px solid #2B3390;font-size:11px}
   .main-content{padding:0!important;overflow:visible!important;flex:none}
-  .app{display:block!important;min-height:unset}
-  .grid-wrap{box-shadow:none;overflow:visible!important;border-radius:0}
-  .roster-table{font-size:9px}
-  .roster-table thead th{font-size:9.5px;padding:5px 3px;position:static}
+  .app{display:block!important;min-height:unset;background:#fff!important}
+  .grid-wrap{box-shadow:none!important;overflow:visible!important;border-radius:0;background:#fff!important}
+  .roster-table{font-size:9px;table-layout:fixed;width:100%}
+  .roster-table thead th{font-size:8px;padding:3px 2px;position:static;line-height:1.2}
   .th-arkbar{background:#eaf6f7!important;color:#2B3990!important}
   .th-hip{background:#F15A29!important;color:#fff!important}
   .th-love{background:#fce4ec!important;color:#880e4f!important}
-  .th-date{background:#2B3990!important;color:#fff!important;min-width:20px!important;width:20px!important;max-width:20px!important}
-  .td-date{font-size:9.5px!important;padding:2px;min-width:20px!important;width:20px!important;max-width:20px!important;white-space:normal!important;position:static;border-right:1px solid #ccc}
-  .td-date .dow{font-size:9px!important}
-  .td-slot{min-width:60px;padding:2px;border:.5px solid #eee}
+  .th-date{background:#2B3990!important;color:#fff!important;width:32px!important;min-width:32px!important;max-width:32px!important;white-space:normal!important}
+  .td-date{font-size:8px!important;line-height:1.2;padding:2px 3px;width:32px!important;min-width:32px!important;max-width:32px!important;white-space:normal!important;position:static;border-right:1px solid #ccc}
+  .td-date .dow{font-size:7.5px!important;display:block}
+  .td-slot{width:60px;min-width:60px;max-width:60px;padding:1px;border:.5px solid #eee}
   .td-slot.hip-slot{background:#F15A29!important}
   .td-slot.hip-slot .slot-select{color:#fff!important;font-weight:700!important}
-  .slot-select{font-size:10px;padding:3px 2px;min-height:20px;border-radius:3px;border:none;width:100%}
+  .slot-select{font-size:9px;padding:2px 1px;min-height:18px;line-height:1.2;border-radius:3px;border:none;width:100%}
   .slot-select.assigned{color:#fff!important;font-weight:800!important;border-radius:3px!important}
   .slot-select.unassigned,.slot-select.no-avail{display:none}
   .td-slot.empty-slot{background:#fafafa!important}
   .hours-wrap,.summary-row{display:none!important}
+  .roster-table tbody tr{height:auto!important}
   .roster-table tbody tr:nth-child(even){background:#fafbff!important}
-  /* Love Beach: tighter cells for A3 landscape */
-  body.love-print .td-slot{min-width:70px}
-  body.love-print .slot-select{font-size:8px}
-  body.love-print .th-date{min-width:20px!important;width:20px!important;max-width:20px!important}
-  body.love-print .td-date{min-width:20px!important;width:20px!important;max-width:20px!important;white-space:normal!important;padding:2px}
-  body.love-print .roster-table{font-size:8px}
-  body.love-print .roster-table thead th{font-size:7px}
+  body.love-print .roster-table{font-size:9px}
+  body.love-print .roster-table thead th{font-size:8px}
+  body.love-print .td-slot{width:70px;min-width:70px;max-width:70px}
+  body.love-print .slot-select{font-size:9px}
+  body.love-print .th-date{width:32px!important;min-width:32px!important;max-width:32px!important;white-space:normal!important}
+  body.love-print .td-date{width:32px!important;min-width:32px!important;max-width:32px!important;white-space:normal!important;padding:2px 3px}
 }
 </style>
 </head>
