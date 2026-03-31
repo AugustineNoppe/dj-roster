@@ -555,6 +555,7 @@ let saveTimer = null;
 let saveState = 'idle';  // 'idle'|'pending'|'saving'|'saved'|'error'
 let currentTab = 'calendar';
 let toastTimer;
+let isSubmitting = false;
 
 // ===== CONSTANTS =====
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1118,7 +1119,10 @@ function markDirty() {
 
 // ===== SUBMIT AVAILABILITY =====
 async function submitAvailability() {
-  if (isFinalized) return;
+  if (isFinalized || isSubmitting) return;
+  isSubmitting = true;
+  const btn = document.querySelector('.submit-btn');
+  if (btn) btn.disabled = true;
   clearTimeout(saveTimer);
   setSaveState('saving');
   const month = getMonthStr();
@@ -1143,6 +1147,8 @@ async function submitAvailability() {
       renderCalendar();
       setSaveState('error');
       showToast('Failed to save \u2014 please try again.', 'error');
+      isSubmitting = false;
+      if (btn) btn.disabled = false;
       return;
     }
 
@@ -1154,17 +1160,21 @@ async function submitAvailability() {
     if (submitData.success) {
       submissionStatus = 'submitted';
       isLocked = true;
+      isSubmitting = false;
       setSaveState('saved');
       setTimeout(() => { if (saveState === 'saved') setSaveState('idle'); }, 3000);
       showToast(`Availability submitted for ${month}`, 'success');
-      const btn = document.querySelector('.submit-btn');
       if (btn) { btn.disabled = true; btn.innerHTML = 'Submitted &#10003;'; btn.classList.add('submitted'); }
       renderCalendar();
     } else {
+      isSubmitting = false;
+      if (btn) btn.disabled = false;
       setSaveState('error');
       showToast(submitData.error || 'Submit failed \u2014 please try again.', 'error');
     }
   } catch(e) {
+    isSubmitting = false;
+    if (btn) btn.disabled = false;
     availability = snapshot;
     renderCalendar();
     setSaveState('error');
