@@ -328,6 +328,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text-p
   background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.35);
   font-size:9px;font-weight:800;color:#81c784;text-transform:uppercase;letter-spacing:.1em;
 }
+.slot-select.finalised-slot{cursor:not-allowed;opacity:0.85}
 
 /* === FINALIZE MODAL === */
 .fin-modal-overlay{
@@ -660,6 +661,7 @@ let djList = [];
 let submittedDJs = new Map(); // name → status ('pre-loaded' | 'submitted')
 let unavailabilityMap = {};   // DJ name → array of "date|slot" strings
 let fixedSchedules = null;   // populated once from /api/fixed-schedules
+let isMonthFinalized = false;
 let toastTimer;
 
 // === CONSTANTS ===
@@ -876,7 +878,7 @@ async function loadAll() {
   const month = getMonthString();
   try {
     const enc = encodeURIComponent;
-    const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes, submissionsRes, unavailRes] = await Promise.all([
+    const [availRes, arkbarRes, hipRes, loveRes, djRes, configRes, submissionsRes, unavailRes, finalizedRes] = await Promise.all([
       fetch(`/api/availability?month=${enc(month)}`),
       fetch(`/api/roster?venue=arkbar&month=${enc(month)}&t=${Date.now()}`),
       fetch(`/api/roster?venue=hip&month=${enc(month)}&t=${Date.now()}`),
@@ -885,10 +887,12 @@ async function loadAll() {
       fetch('/api/config'),
       fetch(`/api/dj/submissions/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
       fetch(`/api/roster/unavailability/${enc(month)}`, { headers: { 'x-admin-password': adminPassword } }),
+      fetch(`/api/finalized?month=${enc(month)}`),
     ]);
-    const [availData, arkbarData, hipData, loveData, djData, configData, submissionsData, unavailData] = await Promise.all([
-      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json(), configRes.json(), submissionsRes.json(), unavailRes.json()
+    const [availData, arkbarData, hipData, loveData, djData, configData, submissionsData, unavailData, finalizedData] = await Promise.all([
+      availRes.json(), arkbarRes.json(), hipRes.json(), loveRes.json(), djRes.json(), configRes.json(), submissionsRes.json(), unavailRes.json(), finalizedRes.json()
     ]);
+    isMonthFinalized = finalizedData.isFinalized || false;
     if (configData.success && Array.isArray(configData.residents) && configData.residents.length) {
       RESIDENTS = configData.residents;
     }
@@ -970,7 +974,9 @@ function renderGrid() {
     </tr>`);
   }
 
+  const finalizedBanner = isMonthFinalized ? `<div style="padding:8px 16px;display:flex;align-items:center;justify-content:center"><span class="finalized-pill">&#128274; Finalised — ${getMonthString()}</span></div>` : '';
   $('mainContent').innerHTML = `<div class="grid-wrap">
+    ${finalizedBanner}
     <table class="roster-table">
       <thead>${venueHeaderRow}<tr>${slotHeaderRow}</tr></thead>
       <tbody>${rowParts.join('')}</tbody>
@@ -999,9 +1005,10 @@ function buildCell(dateStr, slot, type) {
   }
 
   const djColor = assigned ? (getDJColor(assigned) || '#555') : '';
-  const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}`;
+  const selClass = `slot-select ${assigned ? 'assigned' : 'unassigned'}${isMonthFinalized ? ' finalised-slot' : ''}`;
   const styleAttr = assigned ? `style="background:${djColor};border-color:${djColor}"` : '';
   const slotEsc = slot.replace(/"/g, '&quot;');
+  const disabledAttr = isMonthFinalized ? ' disabled' : '';
 
   // Build flat DJ list with status suffixes
   const djEntries = [];
@@ -1046,7 +1053,7 @@ function buildCell(dateStr, slot, type) {
     opts += `<option value="${dj}"${isSelected ? ' selected' : ''}${colorStyle}>${label}</option>`;
   });
 
-  return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)">${opts}</select></td>`;
+  return `<td class="${tdClass}"><select class="${selClass}" ${styleAttr} data-date="${dateStr}" data-slot="${slotEsc}" data-type="${type}" onchange="assignDJ(this)"${disabledAttr}>${opts}</select></td>`;
 }
 
 // === ASSIGN DJ ===
